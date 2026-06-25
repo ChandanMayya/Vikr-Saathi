@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/dashboardFragment">
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.loctell.vikrsaathi.ui.dashboard.DashboardFragment"
+        android:label="@string/dashboard"
+        tools:layout="@layout/fragment_dashboard">
+        <action
+            android:id="@+id/action_dashboard_to_bill"
+            app:destination="@id/billFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_customers"
+            app:destination="@id/customerFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_items"
+            app:destination="@id/itemFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_bills_history"
+            app:destination="@id/billsHistoryFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_settings"
+            app:destination="@id/settingsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/billFragment"
+        android:name="com.loctell.vikrsaathi.ui.bill.BillFragment"
+        android:label="@string/new_bill"
+        tools:layout="@layout/fragment_bill">
+        <argument
+            android:name="billId"
+            android:defaultValue="-1L"
+            app:argType="long" />
+        <action
+            android:id="@+id/action_bill_to_items"
+            app:destination="@id/itemFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/customerFragment"
+        android:name="com.loctell.vikrsaathi.ui.customer.CustomerFragment"
+        android:label="@string/customers"
+        tools:layout="@layout/fragment_customers" />
+
+    <fragment
+        android:id="@+id/itemFragment"
+        android:name="com.loctell.vikrsaathi.ui.item.ItemFragment"
+        android:label="@string/items"
+        tools:layout="@layout/fragment_items" />
+
+    <fragment
+        android:id="@+id/billsHistoryFragment"
+        android:name="com.loctell.vikrsaathi.ui.bills.BillsHistoryFragment"
+        android:label="@string/bills_history"
+        tools:layout="@layout/fragment_bills_history">
+        <action
+            android:id="@+id/action_bills_history_to_bill"
+            app:destination="@id/billFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.loctell.vikrsaathi.ui.settings.SettingsFragment"
+        android:label="@string/settings"
+        tools:layout="@layout/fragment_settings" />
+</navigation>
