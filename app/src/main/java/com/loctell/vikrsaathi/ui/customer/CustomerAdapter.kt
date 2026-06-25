@@ -26,6 +26,8 @@ class CustomerAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(customer: Customer) {
+            binding.textCustomerBadge.text =
+                customer.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
             binding.textCustomerName.text = customer.name
             binding.textCustomerPhone.text = customer.phone.ifBlank { "-" }
             binding.textCustomerAddress.text = customer.formattedAddress().ifBlank { "-" }

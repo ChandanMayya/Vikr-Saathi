@@ -1,0 +1,191 @@
+﻿Diagnose log at 2026-06-25T12:16:56Z
+
+AppPath: C:\Program Files\Git\mingw64\bin\git-credential-manager.exe
+InstallDir: C:\Program Files\Git\mingw64\bin\
+Version: 2.5.0+d34930736e131ad80e5690e5634ced1808aff3e2
+
+------------
+Diagnostic: Environment
+Skipped: False
+Success: True
+Exception: None
+Log:
+OSType: Windows
+OSVersion: 10.0 (build 26200)
+Reading environment variables... OK
+ Variables:
+HOMEPATH=\Users\LOCTELL
+DriverData=C:\Windows\System32\Drivers\DriverData
+COMPUTERNAME=DESKTOP-JOSJP4M
+GIT_TRACE2_PARENT_SID=c90c11a6-e686-418e-80de-e198dd1be1e7
+MAVEN_HOME=C:\apache-maven\apache-maven-3.9.12\bin
+OneDrive=C:\Users\LOCTELL\OneDrive
+SESSIONNAME=Console
+TMP=C:\Users\LOCTELL\AppData\Local\Temp
+HOME=C:\Users\LOCTELL
+PROCESSOR_REVISION=9a04
+USERDOMAIN_ROAMINGPROFILE=DESKTOP-JOSJP4M
+EFC_29188_4126798990=1
+PATHEXT=.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC
+GIT_EXEC_PATH=C:/Program Files/Git/mingw64/libexec/git-core
+TEMP=C:\Users\LOCTELL\AppData\Local\Temp
+LOCALAPPDATA=C:\Users\LOCTELL\AppData\Local
+MSYSTEM=MINGW64
+TERM=xterm-256color
+COLORTERM=truecolor
+JAVA_HOME=C:\Program Files\Java\jdk-17\
+USERDOMAIN=DESKTOP-JOSJP4M
+Path=C:/Program Files/Git/mingw64/libexec/git-core;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\bin;C:\Users\LOCTELL\bin;C:\Program Files\coreutils\bin;C:\Program Files\Common Files\Oracle\Java\javapath;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\Git\cmd;C:\Program Files\Java\jdk-17\bin;C:\Program Files\PuTTY\;C:\Program Files\nodejs\;C:\Program Files\Tailscale\;c:\Users\LOCTELL\AppData\Local\Programs\cursor\resources\app\codeBin;C:\Users\LOCTELL\AppData\Local\Microsoft\WindowsApps;C:\Users\LOCTELL\AppData\Local\GitHubDesktop\bin;C:\Program Files\Java\jdk-17\bin;C:\Users\LOCTELL\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\LOCTELL\AppData\Roaming\npm;C:\apache-tomcat-9.0.70\apache-tomcat-9.0.70\bin;C:\apache-tomcat-9.0.70\apache-tomcat-9.0.70;C:\apache-tomcat-9.0.70\apache-tomcat-9.0.70\lib;C:\apache-maven\apache-maven-3.9.12\bin;C:\jdk1.8.0_202;C:\Users\LOCTELL\AppData\Local\Programs\cursor\resources\app\bin;C:\Program Files\Mosquitto;C:\Users\LOCTELL\AppData\Local\Microsoft\WinGet\Packages\LibreSpeed.librespeed-cli_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\LOCTELL\AppData\Local\Python\bin
+PROCESSOR_LEVEL=6
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 154 Stepping 4, GenuineIntel
+TMPDIR=C:\Users\LOCTELL\AppData\Local\Temp
+PROMPT=$P$G
+ProgramFiles(x86)=C:\Program Files (x86)
+PUBLIC=C:\Users\Public
+NUMBER_OF_PROCESSORS=12
+CommonProgramFiles=C:\Program Files (x86)\Common Files
+TOMCAT_HOME=C:\apache-tomcat-9.0.70\apache-tomcat-9.0.70\bin
+IGCCSVC_DB=AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAAU2p9kRZW5kCnkSKbegc9ZgQAAAACAAAAAAAQZgAAAAEAACAAAADTFeIeZ7JDrY9j7WFwbWeu70hBrS/VN0F0kWhMSwcu6wAAAAAOgAAAAAIAACAAAABIkcY00DuZpwsdK62ElcTfkNQxyvD7OG+47aOcvR3cDWAAAAB6KtpJ+AGB5EvrT5RFuD2gBxfmzwBB+14+63Z/5DfFRly0qTfidGJ3DP7/3fqveV1uR4ancgkvHy7kAs1AA33Jhz12jzd+iYCqn7q3du7+GlBhloPSoj6dalUYxaN/RUdAAAAAe8zSg0lEUHl2lZAEv35bPX1UEhjnfLMexdA0ntls93NpngWnAeRHBDlpTRUNP0930LWUrBK8u5WdXtm6+Du7kw==
+PLINK_PROTOCOL=ssh
+ProgramData=C:\ProgramData
+MSYS=disable_pcon
+ProgramFiles=C:\Program Files (x86)
+ProgramW6432=C:\Program Files
+EFC_29188_344590478=1
+LC_CTYPE=C.UTF-8
+CommonProgramW6432=C:\Program Files\Common Files
+ZES_ENABLE_SYSMAN=1
+LOGONSERVER=\\DESKTOP-JOSJP4M
+USERPROFILE=C:\Users\LOCTELL
+SystemRoot=C:\WINDOWS
+MOSQUITTO_DIR=C:\Program Files\Mosquitto
+CommonProgramFiles(x86)=C:\Program Files (x86)\Common Files
+APPDATA=C:\Users\LOCTELL\AppData\Roaming
+HOMEDRIVE=C:
+EFC_29188_1592913036=1
+PSModulePath=C:\Program Files\WindowsPowerShell\Modules;C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules
+USERNAME=LOCTELL
+PROCESSOR_ARCHITEW6432=AMD64
+PROCESSOR_ARCHITECTURE=x86
+OS=Windows_NT
+ComSpec=C:\WINDOWS\system32\cmd.exe
+SystemDrive=C:
+windir=C:\WINDOWS
+OneDriveConsumer=C:\Users\LOCTELL\OneDrive
+ALLUSERSPROFILE=C:\ProgramData
+
+
+------------
+Diagnostic: File system
+Skipped: False
+Success: True
+Exception: None
+Log:
+Temporary directory is 'C:\Users\LOCTELL\AppData\Local\Temp\'...
+Checking basic file I/O...
+Writing to temporary file 'C:\Users\LOCTELL\AppData\Local\Temp\53fc4441bbfec118f771d709'... OK
+Reading from temporary file 'C:\Users\LOCTELL\AppData\Local\Temp\53fc4441bbfec118f771d709'... OK
+Deleting temporary file 'C:\Users\LOCTELL\AppData\Local\Temp\53fc4441bbfec118f771d709'... OK
+Testing IFileSystem instance...
+UserHomePath: C:\Users\LOCTELL
+UserDataDirectoryPath: C:\Users\LOCTELL\.gcm
+GetCurrentDirectory(): D:\pseudo-world\VikrSaathi
+
+------------
+Diagnostic: Networking
+Skipped: False
+Success: True
+Exception: None
+Log:
+Checking networking and HTTP stack...
+Creating HTTP client... OK
+IsNetworkAvailable: True
+Sending HEAD request to http://example.com...Sending HEAD request to https://example.com... OK
+ OK
+Acquiring free TCP port... OK
+Testing local HTTP loopback connections...
+Creating new HTTP listener for http://localhost:63147/... OK
+Waiting for loopback connection... OK
+Writing response... OK
+Waiting for response data... OK
+Loopback connection data OK
+
+------------
+Diagnostic: Git
+Skipped: False
+Success: True
+Exception: None
+Log:
+Getting Git version... OK
+Git version is '2.45.1.windows.1'
+Locating current repository...Git repository at 'D:/pseudo-world/VikrSaathi/.git'
+ OK
+Listing all Git configuration... OK
+Git configuration:
+file:C:/Program Files/Git/etc/gitconfig	diff.astextplain.textconv=astextplain
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.process=git-lfs filter-process
+file:C:/Program Files/Git/etc/gitconfig	filter.lfs.required=true
+file:C:/Program Files/Git/etc/gitconfig	http.sslbackend=openssl
+file:C:/Program Files/Git/etc/gitconfig	http.sslcainfo=C:/Program Files/Git/mingw64/etc/ssl/certs/ca-bundle.crt
+file:C:/Program Files/Git/etc/gitconfig	core.autocrlf=true
+file:C:/Program Files/Git/etc/gitconfig	core.fscache=true
+file:C:/Program Files/Git/etc/gitconfig	core.symlinks=false
+file:C:/Program Files/Git/etc/gitconfig	pull.rebase=false
+file:C:/Program Files/Git/etc/gitconfig	credential.helper=manager
+file:C:/Program Files/Git/etc/gitconfig	credential.https://dev.azure.com.usehttppath=true
+file:C:/Program Files/Git/etc/gitconfig	init.defaultbranch=master
+file:C:/Users/LOCTELL/.gitconfig	filter.lfs.required=true
+file:C:/Users/LOCTELL/.gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:C:/Users/LOCTELL/.gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:C:/Users/LOCTELL/.gitconfig	filter.lfs.process=git-lfs filter-process
+file:C:/Users/LOCTELL/.gitconfig	user.name=chandanmogral
+file:C:/Users/LOCTELL/.gitconfig	user.email=130539160+chandanmogral@users.noreply.github.com
+file:.git/config	core.repositoryformatversion=0
+file:.git/config	core.filemode=false
+file:.git/config	core.bare=false
+file:.git/config	core.logallrefupdates=true
+file:.git/config	core.symlinks=false
+file:.git/config	core.ignorecase=true
+file:.git/config	user.name=chandan mayya
+file:.git/config	user.email=chandanmogral@gmail.com
+file:.git/config	remote.origin.url=https://github.com/ChandanMayya/Vikr-Saathi.git
+file:.git/config	remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
+
+
+------------
+Diagnostic: Credential storage
+Skipped: False
+Success: True
+Exception: None
+Log:
+ICredentialStore instance is of type: CredentialStore
+Writing test credential... OK
+Reading test credential... OK
+Deleting test credential... OK
+
+------------
+Diagnostic: Microsoft authentication (AAD/MSA)
+Skipped: False
+Success: True
+Exception: None
+Log:
+Broker is not enabled.
+Flow type is: Auto
+Gathering MSAL token cache data... OK
+CacheDirectory: C:\Users\LOCTELL\AppData\Local\.IdentityService
+CacheFileName: msal.cache
+CacheFilePath: C:\Users\LOCTELL\AppData\Local\.IdentityService\msal.cache
+Creating cache helper... OK
+Verifying MSAL token cache persistence... OK
+
+------------
+Diagnostic: GitHub API
+Skipped: False
+Success: True
+Exception: None
+Log:
+Using 'https://github.com/' as API target.
+Querying '/meta' endpoint... OK
+

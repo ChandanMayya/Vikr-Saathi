@@ -5,15 +5,23 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.core.os.bundleOf
+import androidx.core.view.GravityCompat
+import androidx.core.view.MenuProvider
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -25,7 +33,6 @@ import com.loctell.vikrsaathi.databinding.DialogCustomerFormBinding
 import com.loctell.vikrsaathi.databinding.FragmentBillBinding
 import com.loctell.vikrsaathi.ui.scanner.BarcodeScannerActivity
 import com.loctell.vikrsaathi.ui.scanner.BarcodeScanBus
-import com.loctell.vikrsaathi.util.PdfGenerator
 import com.loctell.vikrsaathi.util.PriceCalculator
 import com.loctell.vikrsaathi.util.ViewModelFactory
 
@@ -43,6 +50,7 @@ class BillFragment : Fragment() {
     private var itemSuggestions: List<Item> = emptyList()
     private var suppressCustomerSearch = false
     private var suppressItemSearch = false
+    private var isReadOnly = false
 
     private val scannerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -67,6 +75,8 @@ class BillFragment : Fragment() {
         val app = requireActivity().application as VikrSaathiApp
         val settings = app.settingsRepository
 
+        isReadOnly = arguments?.getBoolean(ARG_READ_ONLY, false) == true
+
         binding.imageHeader.setImageBitmap(settings.getHeaderImage())
         binding.imageSignature.setImageBitmap(settings.getSignatureImage())
 
@@ -88,6 +98,9 @@ class BillFragment : Fragment() {
 
         setupCustomerAutocomplete()
         setupItemAutocomplete()
+        setupDrawer()
+        setupToolbarMenu()
+        applyReadOnlyState()
 
         viewModel.selectedCustomer.observe(viewLifecycleOwner) { customer ->
             suppressCustomerSearch = true
@@ -122,13 +135,67 @@ class BillFragment : Fragment() {
         binding.buttonPrint.setOnClickListener { generatePdf(print = true) }
     }
 
+    private fun setupToolbarMenu() {
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                if (isReadOnly) {
+                    menuInflater.inflate(R.menu.menu_bill_view, menu)
+                }
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                if (menuItem.itemId == R.id.action_bill_options) {
+                    binding.drawerLayout.openDrawer(GravityCompat.END)
+                    return true
+                }
+                return false
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
+    private fun setupDrawer() {
+        binding.billDrawer.buttonEnableEditBill.setOnClickListener {
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            isReadOnly = false
+            applyReadOnlyState()
+            requireActivity().invalidateOptionsMenu()
+        }
+        binding.drawerLayout.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
+            override fun onDrawerClosed(drawerView: View) {
+                if (drawerView.id == binding.billDrawer.root.id && isReadOnly) {
+                    requireActivity().invalidateOptionsMenu()
+                }
+            }
+        })
+    }
+
+    private fun applyReadOnlyState() {
+        lineAdapter.readOnly = isReadOnly
+        binding.autoCompleteCustomer.isEnabled = !isReadOnly
+        binding.editBuyerAddress.isEnabled = !isReadOnly
+        binding.editBuyerPhone.isEnabled = !isReadOnly
+        binding.buttonAddNewCustomer.visibility = if (isReadOnly) View.GONE else View.VISIBLE
+        binding.layoutAddItem.visibility = if (isReadOnly) View.GONE else View.VISIBLE
+        binding.buttonSaveBill.visibility = if (isReadOnly) View.GONE else View.VISIBLE
+        updateTitle()
+    }
+
+    private fun updateTitle() {
+        val billId = arguments?.getLong(ARG_BILL_ID, -1L) ?: -1L
+        (requireActivity() as? AppCompatActivity)?.supportActionBar?.title = when {
+            isReadOnly -> getString(R.string.view_bill)
+            billId > 0 || viewModel.currentBillId != null -> getString(R.string.edit_bill)
+            else -> getString(R.string.new_bill)
+        }
+    }
+
     private fun setupCustomerAutocomplete() {
         binding.autoCompleteCustomer.threshold = 1
 
         binding.autoCompleteCustomer.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                if (suppressCustomerSearch) return
+                if (suppressCustomerSearch || isReadOnly) return
                 val query = s?.toString().orEmpty().trim()
                 if (query.isEmpty()) {
                     binding.autoCompleteCustomer.dismissDropDown()
@@ -151,6 +218,7 @@ class BillFragment : Fragment() {
         })
 
         binding.autoCompleteCustomer.setOnItemClickListener { _, _, position, _ ->
+            if (isReadOnly) return@setOnItemClickListener
             suppressCustomerSearch = true
             binding.autoCompleteCustomer.dismissDropDown()
 
@@ -183,7 +251,7 @@ class BillFragment : Fragment() {
         binding.autoCompleteItem.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                if (suppressItemSearch) return
+                if (suppressItemSearch || isReadOnly) return
                 val query = s?.toString().orEmpty().trim()
                 if (query.isEmpty()) {
                     binding.autoCompleteItem.dismissDropDown()
@@ -208,6 +276,7 @@ class BillFragment : Fragment() {
         })
 
         binding.autoCompleteItem.setOnItemClickListener { _, _, position, _ ->
+            if (isReadOnly) return@setOnItemClickListener
             suppressItemSearch = true
             binding.autoCompleteItem.dismissDropDown()
 
@@ -227,6 +296,7 @@ class BillFragment : Fragment() {
     }
 
     private fun showAddCustomerDialog() {
+        if (isReadOnly) return
         val formBinding = DialogCustomerFormBinding.inflate(layoutInflater)
         formBinding.editCustomerName.setText(binding.autoCompleteCustomer.text)
         formBinding.editCustomerAddress.setText(binding.editBuyerAddress.text)
@@ -252,7 +322,8 @@ class BillFragment : Fragment() {
     }
 
     private fun handleBarcodeResult(barcode: String) {
-        viewModel.addItemByBarcode(barcode) { item ->
+        if (isReadOnly) return
+        viewModel.findItemByBarcode(barcode) { item ->
             if (item == null) {
                 MaterialAlertDialogBuilder(requireContext())
                     .setMessage(R.string.item_not_found_add_new)
@@ -264,68 +335,72 @@ class BillFragment : Fragment() {
                     }
                     .setNegativeButton(R.string.cancel, null)
                     .show()
+            } else {
+                viewModel.addItemFromMaster(item)
             }
         }
     }
 
     private fun saveBill() {
+        if (isReadOnly) return
+        binding.root.clearFocus()
         if (viewModel.lineItems.value.isNullOrEmpty()) {
             Toast.makeText(requireContext(), R.string.add_items_first, Toast.LENGTH_SHORT).show()
             return
         }
         viewModel.saveBill {
+            updateTitle()
             Toast.makeText(requireContext(), R.string.bill_saved, Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun generatePdf(print: Boolean) {
-        fun createPdf(billId: Long) {
-            val app = requireActivity().application as VikrSaathiApp
-            viewModel.getBillDetails(billId) { bill ->
-                if (bill == null) return@getBillDetails
-                val file = PdfGenerator.generateBillPdf(
-                    requireContext(),
-                    bill,
-                    app.settingsRepository.shopName,
-                    app.settingsRepository.currencySymbol,
-                    app.settingsRepository.getHeaderImage(),
-                    app.settingsRepository.getSignatureImage()
-                )
-                val uri = FileProvider.getUriForFile(
-                    requireContext(),
-                    "${requireContext().packageName}.fileprovider",
-                    file
-                )
+        fun openPdf(file: java.io.File) {
+            val uri = FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                file
+            )
+            if (print) {
+                val printIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/pdf"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                try {
+                    startActivity(Intent.createChooser(printIntent, getString(R.string.print)))
+                } catch (_: Exception) {
+                    Toast.makeText(requireContext(), R.string.pdf_saved, Toast.LENGTH_LONG).show()
+                }
+            } else {
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     setDataAndType(uri, "application/pdf")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                if (print) {
-                    val printIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/pdf"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    try {
-                        startActivity(Intent.createChooser(printIntent, getString(R.string.print)))
-                    } catch (_: Exception) {
-                        Toast.makeText(requireContext(), R.string.pdf_saved, Toast.LENGTH_LONG).show()
-                    }
+                try {
+                    startActivity(intent)
+                } catch (_: Exception) {
+                    Toast.makeText(requireContext(), R.string.pdf_saved, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        fun exportForBill(billId: Long) {
+            viewModel.exportBillPdf(requireContext(), billId) { file ->
+                if (file == null) {
+                    Toast.makeText(requireContext(), R.string.pdf_generation_failed, Toast.LENGTH_SHORT).show()
                 } else {
-                    try {
-                        startActivity(intent)
-                    } catch (_: Exception) {
-                        Toast.makeText(requireContext(), R.string.pdf_saved, Toast.LENGTH_LONG).show()
-                    }
+                    openPdf(file)
                 }
             }
         }
 
         val existingId = viewModel.currentBillId ?: arguments?.getLong(ARG_BILL_ID, -1L)?.takeIf { it > 0 }
         if (existingId != null) {
-            createPdf(existingId)
+            exportForBill(existingId)
         } else {
-            viewModel.saveBill { id -> createPdf(id) }
+            binding.root.clearFocus()
+            viewModel.saveBill { id -> exportForBill(id) }
         }
     }
 
@@ -337,5 +412,6 @@ class BillFragment : Fragment() {
 
     companion object {
         const val ARG_BILL_ID = "billId"
+        const val ARG_READ_ONLY = "readOnly"
     }
 }

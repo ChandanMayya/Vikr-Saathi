@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/dashboardFragment"
         android:name="com.loctell.vikrsaathi.ui.dashboard.DashboardFragment"
-        android:label="@string/dashboard"
+        android:label="@string/app_name"
         tools:layout="@layout/fragment_dashboard">
         <action
             android:id="@+id/action_dashboard_to_bill"
@@ -36,6 +36,10 @@
             android:name="billId"
             android:defaultValue="-1L"
             app:argType="long" />
+        <argument
+            android:name="readOnly"
+            android:defaultValue="false"
+            app:argType="boolean" />
         <action
             android:id="@+id/action_bill_to_items"
             app:destination="@id/itemFragment" />
@@ -61,11 +65,45 @@
         <action
             android:id="@+id/action_bills_history_to_bill"
             app:destination="@id/billFragment" />
+        <action
+            android:id="@+id/action_bills_history_to_excel_upload"
+            app:destination="@id/excelUploadFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/excelUploadFragment"
+        android:name="com.loctell.vikrsaathi.ui.bills.ExcelUploadFragment"
+        android:label="@string/excel_upload"
+        tools:layout="@layout/fragment_excel_upload" />
 
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.loctell.vikrsaathi.ui.settings.SettingsFragment"
         android:label="@string/settings"
-        tools:layout="@layout/fragment_settings" />
+        tools:layout="@layout/fragment_settings">
+        <action
+            android:id="@+id/action_settings_to_invoice_templates"
+            app:destination="@id/invoiceTemplatesFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/invoiceTemplatesFragment"
+        android:name="com.loctell.vikrsaathi.ui.settings.InvoiceTemplatesFragment"
+        android:label="@string/invoice_templates"
+        tools:layout="@layout/fragment_invoice_templates">
+        <action
+            android:id="@+id/action_invoice_templates_to_builder"
+            app:destination="@id/invoiceBuilderFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/invoiceBuilderFragment"
+        android:name="com.loctell.vikrsaathi.ui.settings.invoicebuilder.InvoiceBuilderFragment"
+        android:label="@string/invoice_builder"
+        tools:layout="@layout/fragment_invoice_builder">
+        <argument
+            android:name="templateId"
+            android:defaultValue="-1L"
+            app:argType="long" />
+    </fragment>
 </navigation>

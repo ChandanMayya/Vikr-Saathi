@@ -37,6 +37,9 @@ interface BillDao {
     )
     fun searchBills(query: String): LiveData<List<Bill>>
 
+    @Query("SELECT MAX(invoiceCounter) FROM bills")
+    suspend fun getMaxInvoiceCounter(): Int?
+
     @Query("SELECT MAX(CAST(billNumber AS INTEGER)) FROM bills WHERE billNumber GLOB '[0-9]*'")
     suspend fun getMaxBillNumber(): Int?
 
@@ -47,4 +50,7 @@ interface BillDao {
     @Transaction
     @Query("SELECT * FROM bills ORDER BY date DESC")
     fun getAllBillsWithDetails(): LiveData<List<BillWithDetails>>
+
+    @Query("SELECT COUNT(*) FROM bills WHERE billNumber = :billNumber")
+    suspend fun countByBillNumber(billNumber: String): Int
 }

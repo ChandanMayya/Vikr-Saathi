@@ -12,14 +12,19 @@ import com.loctell.vikrsaathi.data.repository.BillRepository
 import com.loctell.vikrsaathi.data.repository.CustomerRepository
 import com.loctell.vikrsaathi.data.repository.ItemRepository
 import com.loctell.vikrsaathi.data.repository.SettingsRepository
+import android.content.Context
+import com.loctell.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.loctell.vikrsaathi.util.NumberToWords
+import com.loctell.vikrsaathi.util.PdfGenerator
+import java.io.File
 import kotlinx.coroutines.launch
 
 class BillViewModel(
     private val customerRepository: CustomerRepository,
     private val itemRepository: ItemRepository,
     private val billRepository: BillRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val invoiceTemplateRepository: InvoiceTemplateRepository
 ) : ViewModel() {
 
     private val _lineItems = MutableLiveData<List<BillLineItem>>(emptyList())
@@ -91,7 +96,8 @@ class BillViewModel(
         viewModelScope.launch { callback(itemRepository.searchByName(query)) }
     }
 
-    fun addItemFromMaster(item: Item) {
+    fun addItemFromMaster(item: Item, quantity: Int = 1) {
+        val qty = quantity.coerceAtLeast(1)
         val discount = if (item.discount > 0) item.discount else defaultDiscount
         val sellingPrice = item.sellingPrice
         val effectiveDiscount = if (sellingPrice != null && sellingPrice > 0) {
@@ -105,15 +111,14 @@ class BillViewModel(
                 name = item.name,
                 mrp = item.mrp,
                 discount = effectiveDiscount.coerceAtLeast(0.0)
-            )
+            ),
+            qty
         )
     }
 
-    fun addItemByBarcode(barcode: String, callback: (Item?) -> Unit) {
+    fun findItemByBarcode(barcode: String, callback: (Item?) -> Unit) {
         viewModelScope.launch {
-            val item = itemRepository.getByBarcode(barcode)
-            if (item != null) addItemFromMaster(item)
-            callback(item)
+            callback(itemRepository.getByBarcode(barcode))
         }
     }
 
@@ -161,16 +166,37 @@ class BillViewModel(
         }
     }
 
-    private fun addOrIncrementLine(line: BillLineItem) {
+    fun exportBillPdf(context: Context, billId: Long, onResult: (File?) -> Unit) {
+        viewModelScope.launch {
+            val bill = billRepository.getBillWithDetails(billId) ?: run {
+                onResult(null)
+                return@launch
+            }
+            val template = invoiceTemplateRepository.getDefaultTemplate()
+            val file = PdfGenerator.generateBillPdf(
+                context = context,
+                template = template,
+                bill = bill,
+                shopName = settingsRepository.shopName,
+                currencySymbol = settingsRepository.currencySymbol,
+                headerImage = settingsRepository.getHeaderImage(),
+                signatureImage = settingsRepository.getSignatureImage(),
+                shopLogoImage = settingsRepository.getShopLogoImage()
+            )
+            onResult(file)
+        }
+    }
+
+    private fun addOrIncrementLine(line: BillLineItem, quantityToAdd: Int = 1) {
         val items = _lineItems.value?.toMutableList() ?: mutableListOf()
         val existingIndex = items.indexOfFirst {
             it.itemId != null && it.itemId == line.itemId
         }
         if (existingIndex >= 0) {
             val existing = items[existingIndex]
-            items[existingIndex] = existing.copy(quantity = existing.quantity + 1)
+            items[existingIndex] = existing.copy(quantity = existing.quantity + quantityToAdd)
         } else {
-            items.add(line)
+            items.add(line.copy(quantity = quantityToAdd))
         }
         _lineItems.value = items
         recalculate()

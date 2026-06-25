@@ -28,10 +28,15 @@ class ItemAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: Item) {
+            binding.textItemBadge.text =
+                item.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
             binding.textItemName.text = item.name
-            binding.textItemBarcode.text = item.barcode ?: "-"
+            val displayPrice = item.sellingPrice
+                ?: PriceCalculator.priceAfterDiscount(item.mrp, item.discount)
+            binding.textItemPrice.text = PriceCalculator.formatAmount(displayPrice, currencySymbol)
             binding.textItemMrp.text = PriceCalculator.formatAmount(item.mrp, currencySymbol)
-            binding.textItemDiscount.text = "${item.discount}%"
+            binding.textItemDiscount.text = String.format("%.1f%%", item.discount)
+            binding.textItemBarcode.text = item.barcode?.ifBlank { null } ?: "-"
             binding.buttonEditItem.setOnClickListener { onEdit(item) }
             binding.buttonDeleteItem.setOnClickListener { onDelete(item) }
         }

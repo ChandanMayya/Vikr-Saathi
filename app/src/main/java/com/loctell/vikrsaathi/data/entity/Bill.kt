@@ -15,12 +15,13 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("customerId"), Index("billNumber")]
+    indices = [Index("customerId"), Index("billNumber"), Index("invoiceCounter")]
 )
 data class Bill(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val billNumber: String,
+    val invoiceCounter: Int = 0,
     val customerId: Long? = null,
     val total: Double,
     val date: Long = System.currentTimeMillis()

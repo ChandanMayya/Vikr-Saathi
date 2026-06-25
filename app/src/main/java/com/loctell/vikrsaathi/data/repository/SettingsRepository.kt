@@ -30,13 +30,37 @@ class SettingsRepository(context: Context) {
         get() = prefs.getFloat(KEY_DEFAULT_DISCOUNT, 0f).toDouble()
         set(value) = prefs.edit().putFloat(KEY_DEFAULT_DISCOUNT, value.toFloat()).apply()
 
+    var invoicePrefix: String
+        get() = prefs.getString(KEY_INVOICE_PREFIX, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_INVOICE_PREFIX, value).apply()
+
+    var invoiceSuffix: String
+        get() = prefs.getString(KEY_INVOICE_SUFFIX, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_INVOICE_SUFFIX, value).apply()
+
+    var invoiceSeparator: String
+        get() = prefs.getString(KEY_INVOICE_SEPARATOR, "/") ?: "/"
+        set(value) = prefs.edit().putString(KEY_INVOICE_SEPARATOR, value).apply()
+
+    var invoiceCounter: Int
+        get() = prefs.getInt(KEY_INVOICE_COUNTER, 1)
+        set(value) = prefs.edit().putInt(KEY_INVOICE_COUNTER, value.coerceAtLeast(1)).apply()
+
+    var invoiceCounterMinDigits: Int
+        get() = prefs.getInt(KEY_INVOICE_COUNTER_DIGITS, 2).coerceIn(0, 6)
+        set(value) = prefs.edit().putInt(KEY_INVOICE_COUNTER_DIGITS, value.coerceIn(0, 6)).apply()
+
     fun getHeaderImage(): Bitmap? = loadImage(HEADER_FILE)
 
     fun getSignatureImage(): Bitmap? = loadImage(SIGNATURE_FILE)
 
+    fun getShopLogoImage(): Bitmap? = loadImage(LOGO_FILE)
+
     fun saveHeaderImage(bitmap: Bitmap) = saveImage(bitmap, HEADER_FILE)
 
     fun saveSignatureImage(bitmap: Bitmap) = saveImage(bitmap, SIGNATURE_FILE)
+
+    fun saveShopLogoImage(bitmap: Bitmap) = saveImage(bitmap, LOGO_FILE)
 
     fun copyAssetHeaderIfNeeded(context: Context) {
         if (File(filesDir, HEADER_FILE).exists()) return
@@ -87,9 +111,15 @@ class SettingsRepository(context: Context) {
         private const val KEY_SHOP_NAME = "shop_name"
         private const val KEY_CURRENCY = "currency_symbol"
         private const val KEY_DEFAULT_DISCOUNT = "default_discount"
+        private const val KEY_INVOICE_PREFIX = "invoice_prefix"
+        private const val KEY_INVOICE_SUFFIX = "invoice_suffix"
+        private const val KEY_INVOICE_SEPARATOR = "invoice_separator"
+        private const val KEY_INVOICE_COUNTER = "invoice_counter"
+        private const val KEY_INVOICE_COUNTER_DIGITS = "invoice_counter_digits"
         private const val DEFAULT_SHOP_NAME = "Vikr Saathi Shop"
         private const val DEFAULT_CURRENCY = "₹"
         private const val HEADER_FILE = "header.png"
         private const val SIGNATURE_FILE = "signature.png"
+        private const val LOGO_FILE = "logo.png"
     }
 }

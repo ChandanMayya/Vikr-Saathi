@@ -34,6 +34,8 @@ class BillHistoryAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(bill: BillWithDetails) {
+            val counter = bill.bill.invoiceCounter
+            binding.textBillBadge.text = if (counter > 0) counter.toString() else "#"
             binding.textBillNumber.text = bill.bill.billNumber
             binding.textBillCustomer.text = bill.customer?.name ?: "-"
             binding.textBillDate.text = dateFormat.format(Date(bill.bill.date))

@@ -1,6 +1,8 @@
 package com.loctell.vikrsaathi.ui.settings
 
 import android.graphics.BitmapFactory
+import android.text.Editable
+import android.text.TextWatcher
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import com.loctell.vikrsaathi.R
 import com.loctell.vikrsaathi.VikrSaathiApp
 import com.loctell.vikrsaathi.databinding.FragmentSettingsBinding
@@ -37,6 +40,10 @@ class SettingsFragment : Fragment() {
             ImageTarget.HEADER -> {
                 viewModel.saveHeaderImage(bitmap)
                 binding.imageHeaderPreview.setImageBitmap(bitmap)
+            }
+            ImageTarget.LOGO -> {
+                viewModel.saveShopLogoImage(bitmap)
+                binding.imageLogoPreview.setImageBitmap(bitmap)
             }
             ImageTarget.SIGNATURE -> {
                 viewModel.saveSignatureImage(bitmap)
@@ -71,15 +78,39 @@ class SettingsFragment : Fragment() {
         }
 
         binding.imageHeaderPreview.setImageBitmap(viewModel.getHeaderImage())
+        binding.imageLogoPreview.setImageBitmap(viewModel.getShopLogoImage())
         binding.imageSignaturePreview.setImageBitmap(viewModel.getSignatureImage())
+
+        binding.editInvoicePrefix.setText(viewModel.invoicePrefix())
+        binding.editInvoiceSuffix.setText(viewModel.invoiceSuffix())
+        binding.editInvoiceSeparator.setText(viewModel.invoiceSeparator())
+        binding.editInvoiceCounter.setText(viewModel.invoiceCounter().toString())
+        updateInvoicePreview()
+
+        val invoiceWatcher = object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) = updateInvoicePreview()
+        }
+        binding.editInvoicePrefix.addTextChangedListener(invoiceWatcher)
+        binding.editInvoiceSuffix.addTextChangedListener(invoiceWatcher)
+        binding.editInvoiceSeparator.addTextChangedListener(invoiceWatcher)
+        binding.editInvoiceCounter.addTextChangedListener(invoiceWatcher)
 
         binding.buttonChangeHeader.setOnClickListener {
             pendingImageTarget = ImageTarget.HEADER
             imagePicker.launch("image/*")
         }
+        binding.buttonChangeLogo.setOnClickListener {
+            pendingImageTarget = ImageTarget.LOGO
+            imagePicker.launch("image/*")
+        }
         binding.buttonChangeSignature.setOnClickListener {
             pendingImageTarget = ImageTarget.SIGNATURE
             imagePicker.launch("image/*")
+        }
+        binding.buttonInvoiceTemplates.setOnClickListener {
+            findNavController().navigate(R.id.action_settings_to_invoice_templates)
         }
         binding.buttonSaveSettings.setOnClickListener {
             viewModel.saveShopName(binding.editShopName.text.toString().trim())
@@ -87,8 +118,31 @@ class SettingsFragment : Fragment() {
             viewModel.saveDefaultDiscount(
                 binding.editDefaultDiscount.text.toString().toDoubleOrNull() ?: 0.0
             )
+            val counter = binding.editInvoiceCounter.text.toString().trim().toIntOrNull()
+            if (counter == null || counter < 1) {
+                Toast.makeText(requireContext(), R.string.invalid_invoice_counter, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            viewModel.saveInvoiceConfig(
+                prefix = binding.editInvoicePrefix.text.toString().trim(),
+                suffix = binding.editInvoiceSuffix.text.toString().trim(),
+                separator = binding.editInvoiceSeparator.text.toString().trim().ifEmpty { "/" },
+                counter = counter
+            )
+            updateInvoicePreview()
             Toast.makeText(requireContext(), R.string.settings_saved, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun updateInvoicePreview() {
+        val counter = binding.editInvoiceCounter.text.toString().trim().toIntOrNull() ?: viewModel.invoiceCounter()
+        val preview = com.loctell.vikrsaathi.util.InvoiceNumberFormatter.preview(
+            prefix = binding.editInvoicePrefix.text.toString().trim(),
+            counter = counter,
+            suffix = binding.editInvoiceSuffix.text.toString().trim(),
+            separator = binding.editInvoiceSeparator.text.toString().trim().ifEmpty { "/" }
+        )
+        binding.textInvoicePreview.text = getString(R.string.invoice_number_preview, preview)
     }
 
     override fun onDestroyView() {
@@ -96,5 +150,5 @@ class SettingsFragment : Fragment() {
         _binding = null
     }
 
-    private enum class ImageTarget { HEADER, SIGNATURE }
+    private enum class ImageTarget { HEADER, LOGO, SIGNATURE }
 }

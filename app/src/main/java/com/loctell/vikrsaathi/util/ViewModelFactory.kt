@@ -5,10 +5,13 @@ import androidx.lifecycle.ViewModelProvider
 import com.loctell.vikrsaathi.VikrSaathiApp
 import com.loctell.vikrsaathi.ui.bill.BillViewModel
 import com.loctell.vikrsaathi.ui.bills.BillsHistoryViewModel
+import com.loctell.vikrsaathi.ui.bills.ExcelUploadViewModel
 import com.loctell.vikrsaathi.ui.customer.CustomerViewModel
 import com.loctell.vikrsaathi.ui.dashboard.DashboardViewModel
 import com.loctell.vikrsaathi.ui.item.ItemViewModel
 import com.loctell.vikrsaathi.ui.settings.SettingsViewModel
+import com.loctell.vikrsaathi.ui.settings.InvoiceTemplatesViewModel
+import com.loctell.vikrsaathi.ui.settings.invoicebuilder.InvoiceBuilderViewModel
 
 class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Factory {
 
@@ -26,12 +29,32 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.customerRepository,
                     app.itemRepository,
                     app.billRepository,
-                    app.settingsRepository
+                    app.settingsRepository,
+                    app.invoiceTemplateRepository
                 ) as T
             modelClass.isAssignableFrom(BillsHistoryViewModel::class.java) ->
-                BillsHistoryViewModel(app.billRepository) as T
+                BillsHistoryViewModel(
+                    app.billRepository,
+                    app.settingsRepository,
+                    app.customerRepository,
+                    app.itemRepository
+                ) as T
             modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
                 SettingsViewModel(app.settingsRepository) as T
+            modelClass.isAssignableFrom(InvoiceTemplatesViewModel::class.java) ->
+                InvoiceTemplatesViewModel(app.invoiceTemplateRepository) as T
+            modelClass.isAssignableFrom(InvoiceBuilderViewModel::class.java) ->
+                InvoiceBuilderViewModel(
+                    app.invoiceTemplateRepository,
+                    app.settingsRepository,
+                    app.invoiceBuilderPreferences
+                ) as T
+            modelClass.isAssignableFrom(ExcelUploadViewModel::class.java) ->
+                ExcelUploadViewModel(
+                    app.billRepository,
+                    app.customerRepository,
+                    app.itemRepository
+                ) as T
             else -> throw IllegalArgumentException("Unknown ViewModel: ${modelClass.name}")
         }
     }
