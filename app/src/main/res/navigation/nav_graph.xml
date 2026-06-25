@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/dashboardFragment"
-        android:name="com.loctell.vikrsaathi.ui.dashboard.DashboardFragment"
+        android:name="com.kex.vikrsaathi.ui.dashboard.DashboardFragment"
         android:label="@string/app_name"
         tools:layout="@layout/fragment_dashboard">
         <action
@@ -29,7 +29,7 @@
 
     <fragment
         android:id="@+id/billFragment"
-        android:name="com.loctell.vikrsaathi.ui.bill.BillFragment"
+        android:name="com.kex.vikrsaathi.ui.bill.BillFragment"
         android:label="@string/new_bill"
         tools:layout="@layout/fragment_bill">
         <argument
@@ -47,19 +47,19 @@
 
     <fragment
         android:id="@+id/customerFragment"
-        android:name="com.loctell.vikrsaathi.ui.customer.CustomerFragment"
+        android:name="com.kex.vikrsaathi.ui.customer.CustomerFragment"
         android:label="@string/customers"
         tools:layout="@layout/fragment_customers" />
 
     <fragment
         android:id="@+id/itemFragment"
-        android:name="com.loctell.vikrsaathi.ui.item.ItemFragment"
+        android:name="com.kex.vikrsaathi.ui.item.ItemFragment"
         android:label="@string/items"
         tools:layout="@layout/fragment_items" />
 
     <fragment
         android:id="@+id/billsHistoryFragment"
-        android:name="com.loctell.vikrsaathi.ui.bills.BillsHistoryFragment"
+        android:name="com.kex.vikrsaathi.ui.bills.BillsHistoryFragment"
         android:label="@string/bills_history"
         tools:layout="@layout/fragment_bills_history">
         <action
@@ -72,13 +72,13 @@
 
     <fragment
         android:id="@+id/excelUploadFragment"
-        android:name="com.loctell.vikrsaathi.ui.bills.ExcelUploadFragment"
+        android:name="com.kex.vikrsaathi.ui.bills.ExcelUploadFragment"
         android:label="@string/excel_upload"
         tools:layout="@layout/fragment_excel_upload" />
 
     <fragment
         android:id="@+id/settingsFragment"
-        android:name="com.loctell.vikrsaathi.ui.settings.SettingsFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.SettingsFragment"
         android:label="@string/settings"
         tools:layout="@layout/fragment_settings">
         <action
@@ -88,7 +88,7 @@
 
     <fragment
         android:id="@+id/invoiceTemplatesFragment"
-        android:name="com.loctell.vikrsaathi.ui.settings.InvoiceTemplatesFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.InvoiceTemplatesFragment"
         android:label="@string/invoice_templates"
         tools:layout="@layout/fragment_invoice_templates">
         <action
@@ -98,7 +98,7 @@
 
     <fragment
         android:id="@+id/invoiceBuilderFragment"
-        android:name="com.loctell.vikrsaathi.ui.settings.invoicebuilder.InvoiceBuilderFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.invoicebuilder.InvoiceBuilderFragment"
         android:label="@string/invoice_builder"
         tools:layout="@layout/fragment_invoice_builder">
         <argument

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.loctell.vikrsaathi"
+    namespace = "com.kex.vikrsaathi"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.loctell.vikrsaathi"
+        applicationId = "com.kex.vikrsaathi"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

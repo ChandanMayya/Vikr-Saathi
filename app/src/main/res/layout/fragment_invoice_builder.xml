@@ -131,7 +131,7 @@
                 android:textColor="?attr/colorError"
                 android:visibility="gone" />
 
-            <com.loctell.vikrsaathi.ui.settings.invoicebuilder.TemplateCanvasView
+            <com.kex.vikrsaathi.ui.settings.invoicebuilder.TemplateCanvasView
                 android:id="@+id/templateCanvas"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
