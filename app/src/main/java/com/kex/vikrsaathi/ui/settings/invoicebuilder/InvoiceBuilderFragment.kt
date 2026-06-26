@@ -77,18 +77,23 @@ class InvoiceBuilderFragment : Fragment() {
 
         binding.templateCanvas.listener = object : TemplateCanvasView.Listener {
             override fun onElementSelected(elementId: String?) {
-                viewModel.selectElement(elementId)
+                viewModel.selectElementSingle(elementId)
             }
 
-            override fun onElementBoundsChangeStarted(elementId: String) {
-                viewModel.onBoundsChangeStarted()
+            override fun onToggleSelection(elementId: String) {
+                viewModel.toggleElementInSelection(elementId)
             }
 
-            override fun onElementBoundsChanged(
-                elementId: String,
-                bounds: com.kex.vikrsaathi.data.model.template.ElementBounds
-            ) {
-                viewModel.updateElementBounds(elementId, bounds)
+            override fun onClearSelection() {
+                viewModel.clearSelection()
+            }
+
+            override fun onLockedElementTapped() {
+                Toast.makeText(requireContext(), R.string.element_locked, Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onElementBoundsChangeStarted(elementId: String, isResize: Boolean) {
+                viewModel.onBoundsChangeStarted(isResize)
             }
 
             override fun onElementBoundsChangeFinished(
@@ -96,18 +101,29 @@ class InvoiceBuilderFragment : Fragment() {
                 bounds: com.kex.vikrsaathi.data.model.template.ElementBounds
             ) {
                 viewModel.onBoundsChangeFinished(elementId, bounds)
+                refreshCanvas()
             }
         }
 
-        viewModel.template.observe(viewLifecycleOwner) { template ->
-            binding.templateCanvas.setTemplate(template, viewModel.selectedElementId.value)
+        viewModel.template.observe(viewLifecycleOwner) {
+            if (binding.templateCanvas.isGestureActive) return@observe
+            refreshCanvas()
             binding.templateCanvas.setRenderContext(viewModel.previewRenderContext(requireContext()))
         }
-        viewModel.selectedElementId.observe(viewLifecycleOwner) { selectedId ->
-            binding.templateCanvas.setTemplate(viewModel.template.value, selectedId)
-            val element = viewModel.getSelectedElement()
-            binding.buttonEditTableColumns.isVisible = element?.kind == ElementKind.TABLE
-            binding.scrollElementActions.isVisible = selectedId != null
+        viewModel.selectedElementIds.observe(viewLifecycleOwner) {
+            if (!binding.templateCanvas.isGestureActive) {
+                refreshCanvas()
+                updateSelectionUi()
+            }
+        }
+        viewModel.multiSelectMode.observe(viewLifecycleOwner) {
+            if (!binding.templateCanvas.isGestureActive) {
+                refreshCanvas()
+            }
+            updateMultiSelectButton()
+        }
+        viewModel.lockedTapEvent.observe(viewLifecycleOwner) {
+            Toast.makeText(requireContext(), R.string.element_locked, Toast.LENGTH_SHORT).show()
         }
         viewModel.saveResult.observe(viewLifecycleOwner) { saved ->
             if (saved == true) {
@@ -156,6 +172,13 @@ class InvoiceBuilderFragment : Fragment() {
         binding.buttonRedo.setOnClickListener { viewModel.redo() }
         binding.buttonInspectElement.setOnClickListener { openInspector() }
         binding.buttonEditTableColumns.setOnClickListener { openTableColumnEditor() }
+        binding.buttonMultiSelect.setOnClickListener {
+            viewModel.setMultiSelectMode(viewModel.multiSelectMode.value != true)
+        }
+        binding.buttonDelete.setOnClickListener { viewModel.removeSelectedElements() }
+        binding.buttonGroup.setOnClickListener { viewModel.groupSelection() }
+        binding.buttonUngroup.setOnClickListener { viewModel.ungroupSelection() }
+        binding.buttonToggleLock.setOnClickListener { viewModel.toggleLockSelection() }
         binding.buttonDuplicate.setOnClickListener { viewModel.duplicateSelectedElement() }
         binding.buttonBringForward.setOnClickListener { viewModel.bringForward() }
         binding.buttonSendBackward.setOnClickListener { viewModel.sendBackward() }
@@ -164,6 +187,55 @@ class InvoiceBuilderFragment : Fragment() {
         binding.buttonSaveTemplate.setOnClickListener { viewModel.saveTemplate() }
         binding.buttonPreviewTemplate.setOnClickListener { previewPdf() }
         binding.fabAddElement.setOnClickListener { openAddElementSheet() }
+
+        updateMultiSelectButton()
+        updateSelectionUi()
+    }
+
+    private fun refreshCanvas() {
+        binding.templateCanvas.setTemplate(
+            viewModel.template.value,
+            viewModel.selectedElementIds.value.orEmpty(),
+            viewModel.multiSelectMode.value == true
+        )
+    }
+
+    private fun updateSelectionUi() {
+        val ids = viewModel.selectedElementIds.value.orEmpty()
+        val hasSelection = ids.isNotEmpty()
+        val isSingleTable = ids.size == 1 && viewModel.getSelectedElement()?.kind == ElementKind.TABLE
+        val isGrouped = viewModel.isSelectionGrouped()
+
+        setActionEnabled(binding.buttonInspectElement, hasSelection)
+        setActionEnabled(binding.buttonEditTableColumns, isSingleTable)
+        setActionEnabled(binding.buttonDelete, hasSelection)
+        setActionEnabled(binding.buttonDuplicate, hasSelection)
+        setActionEnabled(binding.buttonToggleLock, hasSelection)
+        setActionEnabled(binding.buttonBringForward, hasSelection)
+        setActionEnabled(binding.buttonSendBackward, hasSelection)
+        setActionEnabled(binding.buttonBringToFront, hasSelection)
+        setActionEnabled(binding.buttonSendToBack, hasSelection)
+        setActionEnabled(binding.buttonGroup, ids.size >= 2)
+        setActionEnabled(binding.buttonUngroup, hasSelection && isGrouped)
+
+        binding.buttonToggleLock.text = getString(
+            if (viewModel.isSelectionLocked()) R.string.unlock_elements else R.string.lock_elements
+        )
+        binding.textSelectionCount.isVisible = ids.size > 1
+        if (ids.size > 1) {
+            binding.textSelectionCount.text = getString(R.string.n_elements_selected, ids.size)
+        }
+    }
+
+    private fun setActionEnabled(button: MaterialButton, enabled: Boolean) {
+        button.isEnabled = enabled
+        button.alpha = if (enabled) 1f else 0.4f
+    }
+
+    private fun updateMultiSelectButton() {
+        val enabled = viewModel.multiSelectMode.value == true
+        binding.buttonMultiSelect.isChecked = enabled
+        binding.buttonMultiSelect.alpha = if (enabled) 1f else 0.85f
     }
 
     private fun bindDrawerViews(view: View) {
@@ -241,24 +313,38 @@ class InvoiceBuilderFragment : Fragment() {
     }
 
     private fun openInspector() {
-        val element = viewModel.getSelectedElement()
-        if (element == null) {
-            Toast.makeText(requireContext(), R.string.select_element_first, Toast.LENGTH_SHORT).show()
+        val selected = viewModel.getSelectedElements()
+        if (selected.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.select_elements_first, Toast.LENGTH_SHORT).show()
             return
         }
-        val sheet = ElementInspectorBottomSheet.newInstance(
-            templateId = viewModel.template.value?.id ?: 0L,
-            element = element
-        )
-        sheet.callback = object : ElementInspectorBottomSheet.Callback {
+
+        val callback = object : ElementInspectorBottomSheet.Callback {
             override fun onApply(element: com.kex.vikrsaathi.data.model.template.TemplateElement) {
                 viewModel.updateElement(element)
             }
 
-            override fun onDelete(elementId: String) {
-                viewModel.removeElement(elementId)
+            override fun onApplyBulk(
+                elementIds: Set<String>,
+                updates: ElementInspectorBottomSheet.BulkInspectorUpdates
+            ) {
+                viewModel.applyBulkUpdates(elementIds, updates)
+            }
+
+            override fun onDelete(elementIds: Set<String>) {
+                viewModel.removeElements(elementIds)
             }
         }
+
+        val sheet = if (selected.size > 1) {
+            ElementInspectorBottomSheet.newInstanceForBulk(selected)
+        } else {
+            ElementInspectorBottomSheet.newInstance(
+                templateId = viewModel.template.value?.id ?: 0L,
+                element = selected.first()
+            )
+        }
+        sheet.callback = callback
         sheet.show(parentFragmentManager, "element_inspector")
     }
 

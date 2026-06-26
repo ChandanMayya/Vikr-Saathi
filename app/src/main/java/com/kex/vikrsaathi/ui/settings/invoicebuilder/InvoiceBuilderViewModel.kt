@@ -18,6 +18,8 @@ import com.kex.vikrsaathi.data.model.template.TemplateElement
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.domain.template.ElementBoundsHelper
+import com.kex.vikrsaathi.domain.template.ElementSelectionHelper
 import com.kex.vikrsaathi.domain.template.ElementZOrder
 import com.kex.vikrsaathi.domain.template.GridSnapper
 import com.kex.vikrsaathi.domain.template.SampleBillFactory
@@ -40,12 +42,21 @@ class InvoiceBuilderViewModel(
 
     private val history = TemplateHistory()
     private var dragSnapshot: InvoiceTemplate? = null
+    private var dragIsResize = false
+    private var dragStartBounds: Map<String, ElementBounds> = emptyMap()
+    private var dragStartUnion: ElementBounds? = null
 
     private val _template = MutableLiveData<InvoiceTemplate>()
     val template: LiveData<InvoiceTemplate> = _template
 
-    private val _selectedElementId = MutableLiveData<String?>()
-    val selectedElementId: LiveData<String?> = _selectedElementId
+    private val _selectedElementIds = MutableLiveData<Set<String>>(emptySet())
+    val selectedElementIds: LiveData<Set<String>> = _selectedElementIds
+
+    private val _multiSelectMode = MutableLiveData(false)
+    val multiSelectMode: LiveData<Boolean> = _multiSelectMode
+
+    private val _lockedTapEvent = MutableLiveData<Unit>()
+    val lockedTapEvent: LiveData<Unit> = _lockedTapEvent
 
     private val _saveResult = MutableLiveData<Boolean>()
     val saveResult: LiveData<Boolean> = _saveResult
@@ -107,52 +118,167 @@ class InvoiceBuilderViewModel(
                 ?: templateRepository.getDefaultTemplate()
             history.clear()
             setTemplateInternal(loaded, recordHistory = false)
-            _selectedElementId.value = null
+            _selectedElementIds.value = emptySet()
             refreshHistoryState()
         }
     }
 
-    fun selectElement(elementId: String?) {
-        _selectedElementId.value = elementId
+    fun setMultiSelectMode(enabled: Boolean) {
+        _multiSelectMode.value = enabled
+        if (!enabled) {
+            val ids = _selectedElementIds.value.orEmpty()
+            if (ids.size > 1) {
+                _selectedElementIds.value = ids.take(1).toSet()
+            }
+        }
     }
 
-    fun onBoundsChangeStarted() {
+    fun selectElementSingle(elementId: String?) {
+        if (elementId == null) {
+            if (_selectedElementIds.value.orEmpty().isNotEmpty()) {
+                _selectedElementIds.value = emptySet()
+            }
+            return
+        }
+        val elements = _template.value?.elements.orEmpty()
+        val element = elements.find { it.id == elementId } ?: return
+        if (element.locked) {
+            _lockedTapEvent.value = Unit
+            return
+        }
+        val expanded = ElementSelectionHelper.expandWithGroup(elements, elementId)
+        if (_selectedElementIds.value == expanded) return
+        _selectedElementIds.value = expanded
+    }
+
+    fun toggleElementInSelection(elementId: String) {
+        val elements = _template.value?.elements.orEmpty()
+        val element = elements.find { it.id == elementId } ?: return
+        val groupIds = ElementSelectionHelper.expandWithGroup(elements, elementId)
+        val current = _selectedElementIds.value.orEmpty().toMutableSet()
+        if (groupIds.any { it in current }) {
+            current.removeAll(groupIds)
+        } else {
+            current.addAll(groupIds)
+        }
+        _selectedElementIds.value = current
+    }
+
+    fun clearSelection() {
+        _selectedElementIds.value = emptySet()
+    }
+
+    /** @deprecated Use selectedElementIds */
+    fun selectElement(elementId: String?) = selectElementSingle(elementId)
+
+    fun onBoundsChangeStarted(isResize: Boolean) {
         dragSnapshot = _template.value?.copy()
+        dragIsResize = isResize
+        val ids = _selectedElementIds.value.orEmpty()
+        val elements = _template.value?.elements.orEmpty()
+        dragStartBounds = ids.associateWith { id ->
+            elements.first { it.id == id }.bounds
+        }
+        dragStartUnion = ElementBoundsHelper.unionBounds(elements, ids)
     }
 
-    fun updateElementBounds(elementId: String, bounds: ElementBounds) {
+    fun updateElementBounds(anchorId: String, bounds: ElementBounds) {
         val current = _template.value ?: return
-        setTemplateInternal(
-            current.copy(
-                elements = current.elements.map {
-                    if (it.id == elementId) it.copy(bounds = bounds) else it
-                }
-            ),
-            recordHistory = false
-        )
+        val ids = _selectedElementIds.value.orEmpty()
+        val updatedElements = if (ids.size <= 1) {
+            current.elements.map {
+                if (it.id == anchorId) it.copy(bounds = bounds) else it
+            }
+        } else if (dragIsResize) {
+            val startUnion = dragStartUnion ?: return
+            ElementBoundsHelper.scaleSelection(
+                current.elements,
+                ids,
+                startUnion,
+                bounds,
+                current.pageWidthPt,
+                current.pageHeightPt
+            )
+        } else {
+            val startUnion = dragStartUnion ?: return
+            val dx = bounds.x - startUnion.x
+            val dy = bounds.y - startUnion.y
+            ElementBoundsHelper.moveByDelta(
+                current.elements,
+                ids,
+                dx,
+                dy,
+                current.pageWidthPt,
+                current.pageHeightPt
+            )
+        }
+        setTemplateInternal(current.copy(elements = updatedElements), recordHistory = false)
     }
 
-    fun onBoundsChangeFinished(elementId: String, bounds: ElementBounds) {
+    fun onBoundsChangeFinished(anchorId: String, bounds: ElementBounds) {
         val snapshot = dragSnapshot
+        val wasResize = dragIsResize
+        val startBounds = dragStartBounds
+        val startUnion = dragStartUnion
         dragSnapshot = null
+        dragIsResize = false
+        dragStartBounds = emptyMap()
+        dragStartUnion = null
         if (snapshot == null) return
 
-        val snapped = GridSnapper.snapBounds(bounds, _snapToGrid.value == true)
-        val originalBounds = snapshot.elements.find { it.id == elementId }?.bounds
-        if (originalBounds == snapped) {
-            return
+        val snapToGrid = _snapToGrid.value == true
+        val ids = _selectedElementIds.value.orEmpty()
+        val current = _template.value ?: return
+
+        val newElements = if (ids.size <= 1) {
+            val snapped = GridSnapper.snapBounds(bounds, snapToGrid)
+            val original = snapshot.elements.find { it.id == anchorId }?.bounds ?: return
+            if (original == snapped) return
+            current.elements.map {
+                if (it.id == anchorId) it.copy(bounds = snapped) else it
+            }
+        } else if (wasResize) {
+            val union = startUnion ?: return
+            val snappedUnion = GridSnapper.snapBounds(bounds, snapToGrid)
+            if (union == snappedUnion) return
+            ElementBoundsHelper.scaleSelection(
+                snapshot.elements,
+                ids,
+                union,
+                snappedUnion,
+                current.pageWidthPt,
+                current.pageHeightPt
+            ).map { element ->
+                if (ids.contains(element.id)) {
+                    element.copy(bounds = GridSnapper.snapBounds(element.bounds, snapToGrid))
+                } else {
+                    element
+                }
+            }
+        } else {
+            val union = startUnion ?: return
+            val snappedUnion = GridSnapper.snapBounds(bounds, snapToGrid)
+            val dx = snappedUnion.x - union.x
+            val dy = snappedUnion.y - union.y
+            if (dx == 0f && dy == 0f) return
+            ElementBoundsHelper.moveByDelta(
+                snapshot.elements,
+                ids,
+                dx,
+                dy,
+                current.pageWidthPt,
+                current.pageHeightPt
+            ).map { element ->
+                if (ids.contains(element.id)) {
+                    element.copy(bounds = GridSnapper.snapBounds(element.bounds, snapToGrid))
+                } else {
+                    element
+                }
+            }
         }
 
         history.push(snapshot)
-        val current = _template.value ?: return
-        setTemplateInternal(
-            current.copy(
-                elements = current.elements.map {
-                    if (it.id == elementId) it.copy(bounds = snapped) else it
-                }
-            ),
-            recordHistory = false
-        )
+        setTemplateInternal(current.copy(elements = newElements), recordHistory = false)
         refreshHistoryState()
     }
 
@@ -183,7 +309,7 @@ class InvoiceBuilderViewModel(
         mutate { current ->
             val maxZ = current.elements.maxOfOrNull { it.zIndex } ?: 0
             val element = createDefaultElement(kind, maxZ + 1)
-            _selectedElementId.value = element.id
+            _selectedElementIds.value = setOf(element.id)
             current.copy(elements = current.elements + element)
         }
     }
@@ -192,14 +318,102 @@ class InvoiceBuilderViewModel(
         mutate { current ->
             current.copy(elements = current.elements.filter { it.id != elementId })
         }
-        if (_selectedElementId.value == elementId) {
-            _selectedElementId.value = null
+        _selectedElementIds.value = _selectedElementIds.value.orEmpty() - elementId
+    }
+
+    fun removeElements(elementIds: Set<String>) {
+        if (elementIds.isEmpty()) return
+        mutate { current ->
+            current.copy(elements = current.elements.filter { it.id !in elementIds })
+        }
+        _selectedElementIds.value = _selectedElementIds.value.orEmpty() - elementIds
+    }
+
+    fun removeSelectedElements() {
+        removeElements(_selectedElementIds.value.orEmpty())
+        _selectedElementIds.value = emptySet()
+    }
+
+    fun groupSelection() {
+        val ids = _selectedElementIds.value.orEmpty()
+        if (ids.size < 2) return
+        val groupId = UUID.randomUUID().toString()
+        mutate { current ->
+            current.copy(
+                elements = current.elements.map { element ->
+                    if (element.id in ids) element.copy(groupId = groupId) else element
+                }
+            )
         }
     }
 
-    fun removeSelectedElement() {
-        val id = _selectedElementId.value ?: return
-        removeElement(id)
+    fun ungroupSelection() {
+        val ids = _selectedElementIds.value.orEmpty()
+        if (ids.isEmpty()) return
+        mutate { current ->
+            current.copy(
+                elements = current.elements.map { element ->
+                    if (element.id in ids) element.copy(groupId = null) else element
+                }
+            )
+        }
+    }
+
+    fun toggleLockSelection() {
+        val ids = _selectedElementIds.value.orEmpty()
+        if (ids.isEmpty()) return
+        val elements = _template.value?.elements.orEmpty()
+        val lock = !ElementSelectionHelper.allSelectedLocked(elements, ids)
+        mutate { current ->
+            current.copy(
+                elements = current.elements.map { element ->
+                    if (element.id in ids) element.copy(locked = lock) else element
+                }
+            )
+        }
+    }
+
+    fun applyBulkUpdates(
+        elementIds: Set<String>,
+        updates: ElementInspectorBottomSheet.BulkInspectorUpdates
+    ) {
+        if (elementIds.isEmpty()) return
+        mutate { current ->
+            current.copy(
+                elements = current.elements.map { element ->
+                    if (element.id !in elementIds) return@map element
+                    var updated = element
+                    if (updates.x != null || updates.y != null || updates.width != null || updates.height != null) {
+                        updated = updated.copy(
+                            bounds = updated.bounds.copy(
+                                x = updates.x ?: updated.bounds.x,
+                                y = updates.y ?: updated.bounds.y,
+                                width = updates.width ?: updated.bounds.width,
+                                height = updates.height ?: updated.bounds.height
+                            )
+                        )
+                    }
+                    if (element.kind == ElementKind.TEXT) {
+                        updated = updated.copy(
+                            style = updated.style.copy(
+                                fontSize = updates.fontSize ?: updated.style.fontSize,
+                                bold = updates.bold ?: updated.style.bold,
+                                italic = updates.italic ?: updated.style.italic,
+                                underline = updates.underline ?: updated.style.underline,
+                                color = updates.color ?: updated.style.color,
+                                fontFamily = updates.fontFamily ?: updated.style.fontFamily,
+                                textAlign = updates.textAlign ?: updated.style.textAlign,
+                                verticalAlign = updates.verticalAlign ?: updated.style.verticalAlign
+                            )
+                        )
+                    }
+                    if (updates.locked != null) {
+                        updated = updated.copy(locked = updates.locked)
+                    }
+                    updated
+                }
+            )
+        }
     }
 
     fun duplicateSelectedElement() {
@@ -208,6 +422,7 @@ class InvoiceBuilderViewModel(
             val maxZ = current.elements.maxOfOrNull { it.zIndex } ?: 0
             val copy = selected.copy(
                 id = UUID.randomUUID().toString(),
+                groupId = null,
                 bounds = selected.bounds.copy(
                     x = (selected.bounds.x + 16f).coerceAtMost(
                         current.pageWidthPt - selected.bounds.width
@@ -218,7 +433,7 @@ class InvoiceBuilderViewModel(
                 ),
                 zIndex = maxZ + 1
             )
-            _selectedElementId.value = copy.id
+            _selectedElementIds.value = setOf(copy.id)
             current.copy(elements = current.elements + copy)
         }
     }
@@ -232,11 +447,18 @@ class InvoiceBuilderViewModel(
     fun sendToBack() = moveLayer(ElementZOrder.Direction.TO_BACK)
 
     private fun moveLayer(direction: ElementZOrder.Direction) {
-        val elementId = _selectedElementId.value ?: return
+        val ids = _selectedElementIds.value.orEmpty()
+        if (ids.isEmpty()) return
         mutate { current ->
-            current.copy(
-                elements = ElementZOrder.reorder(current.elements, elementId, direction)
-            )
+            var elements = current.elements
+            val orderedIds = elements
+                .filter { it.id in ids }
+                .sortedBy { it.zIndex }
+                .map { it.id }
+            orderedIds.forEach { elementId ->
+                elements = ElementZOrder.reorder(elements, elementId, direction)
+            }
+            current.copy(elements = elements)
         }
     }
 
@@ -294,8 +516,28 @@ class InvoiceBuilderViewModel(
     }
 
     fun getSelectedElement(): TemplateElement? {
-        val id = _selectedElementId.value ?: return null
+        val id = _selectedElementIds.value?.firstOrNull() ?: return null
         return _template.value?.elements?.find { it.id == id }
+    }
+
+    fun getSelectedElements(): List<TemplateElement> {
+        val ids = _selectedElementIds.value.orEmpty()
+        val elements = _template.value?.elements.orEmpty()
+        return elements.filter { it.id in ids }
+    }
+
+    fun isSelectionLocked(): Boolean {
+        return ElementSelectionHelper.allSelectedLocked(
+            _template.value?.elements.orEmpty(),
+            _selectedElementIds.value.orEmpty()
+        )
+    }
+
+    fun isSelectionGrouped(): Boolean {
+        return ElementSelectionHelper.isGroupSelected(
+            _template.value?.elements.orEmpty(),
+            _selectedElementIds.value.orEmpty()
+        )
     }
 
     fun validationElementIds(): Set<String> {

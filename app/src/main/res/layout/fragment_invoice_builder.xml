@@ -52,6 +52,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
+                    android:enabled="false"
                     android:minHeight="40dp"
                     android:text="@string/edit_element" />
 
@@ -61,65 +62,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
+                    android:enabled="false"
                     android:minHeight="40dp"
-                    android:text="@string/table_columns"
-                    android:visibility="gone" />
+                    android:text="@string/table_columns" />
             </LinearLayout>
-
-            <HorizontalScrollView
-                android:id="@+id/scrollElementActions"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:paddingBottom="4dp"
-                android:scrollbars="none"
-                android:visibility="gone">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/buttonDuplicate"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="4dp"
-                        android:text="@string/duplicate_element" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/buttonBringForward"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="4dp"
-                        android:text="@string/bring_forward" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/buttonSendBackward"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="4dp"
-                        android:text="@string/send_backward" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/buttonBringToFront"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="4dp"
-                        android:text="@string/bring_to_front" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/buttonSendToBack"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/send_to_back" />
-                </LinearLayout>
-            </HorizontalScrollView>
 
             <TextView
                 android:id="@+id/textValidation"
@@ -138,6 +84,121 @@
                 android:layout_weight="1"
                 android:background="@color/dashboard_bg"
                 android:padding="8dp" />
+
+            <TextView
+                android:id="@+id/textSelectionCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="12dp"
+                android:paddingTop="4dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:visibility="gone" />
+
+            <HorizontalScrollView
+                android:id="@+id/scrollElementActions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonMultiSelect"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:checkable="true"
+                        android:text="@string/multi_select" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonDelete"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:enabled="false"
+                        android:text="@string/delete_selected"
+                        android:textColor="?attr/colorError" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonGroup"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:enabled="false"
+                        android:text="@string/group_elements" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonUngroup"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:enabled="false"
+                        android:text="@string/ungroup_elements" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonToggleLock"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:enabled="false"
+                        android:text="@string/lock_elements" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonDuplicate"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:enabled="false"
+                        android:text="@string/duplicate_element" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonBringForward"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:enabled="false"
+                        android:text="@string/bring_forward" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonSendBackward"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:enabled="false"
+                        android:text="@string/send_backward" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonBringToFront"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:enabled="false"
+                        android:text="@string/bring_to_front" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonSendToBack"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:enabled="false"
+                        android:text="@string/send_to_back" />
+                </LinearLayout>
+            </HorizontalScrollView>
 
             <LinearLayout
                 android:layout_width="match_parent"

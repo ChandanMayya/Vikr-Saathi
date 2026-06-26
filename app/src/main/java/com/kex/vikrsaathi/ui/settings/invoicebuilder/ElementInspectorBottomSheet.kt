@@ -25,9 +25,26 @@ import com.kex.vikrsaathi.util.TemplateImageStore
 
 class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
 
+    data class BulkInspectorUpdates(
+        val x: Float? = null,
+        val y: Float? = null,
+        val width: Float? = null,
+        val height: Float? = null,
+        val fontSize: Float? = null,
+        val bold: Boolean? = null,
+        val italic: Boolean? = null,
+        val underline: Boolean? = null,
+        val color: String? = null,
+        val fontFamily: FontFamily? = null,
+        val textAlign: TextAlign? = null,
+        val verticalAlign: VerticalAlign? = null,
+        val locked: Boolean? = null
+    )
+
     interface Callback {
         fun onApply(element: TemplateElement)
-        fun onDelete(elementId: String)
+        fun onApplyBulk(elementIds: Set<String>, updates: BulkInspectorUpdates)
+        fun onDelete(elementIds: Set<String>)
     }
 
     private var _binding: BottomSheetElementInspectorBinding? = null
@@ -35,6 +52,7 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
 
     private var templateId: Long = 0L
     private var element: TemplateElement? = null
+    private var bulkElements: List<TemplateElement>? = null
     var callback: Callback? = null
 
     private var pendingStaticBitmap: Bitmap? = null
@@ -44,7 +62,10 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
     private var selectedVerticalAlign = VerticalAlign.TOP.name
     private var selectedFontFamily = FontFamily.DEFAULT.name
 
+    private val isBulkMode get() = bulkElements.orEmpty().size > 1
+
     private val imagePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (isBulkMode) return@registerForActivityResult
         uri ?: return@registerForActivityResult
         val bitmap = requireContext().contentResolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it)
@@ -65,27 +86,87 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val current = element ?: return
+        val current = element
+        val bulk = bulkElements
+        if (current == null && bulk.isNullOrEmpty()) return
 
+        if (isBulkMode) {
+            setupBulkMode(bulk!!)
+        } else if (current != null) {
+            setupSingleMode(current)
+        }
+
+        binding.buttonApplyInspector.setOnClickListener {
+            if (isBulkMode) {
+                applyBulkChanges(bulk!!)
+            } else if (current != null) {
+                applyChanges(current)
+            }
+        }
+        binding.buttonDeleteElement.setOnClickListener {
+            val ids = if (isBulkMode) bulk!!.map { it.id }.toSet() else setOf(current!!.id)
+            callback?.onDelete(ids)
+            dismiss()
+        }
+    }
+
+    private fun setupBulkMode(elements: List<TemplateElement>) {
+        binding.textElementKind.text = getString(R.string.n_elements_selected, elements.size)
+        binding.textBulkHint.isVisible = true
+        binding.switchLocked.isVisible = true
+        binding.switchLocked.isChecked = elements.all { it.locked }
+        binding.buttonDeleteElement.text = getString(R.string.delete_selected)
+
+        hideKindSpecificFields()
+
+        val allText = elements.all { it.kind == ElementKind.TEXT }
+        binding.layoutTextStyle.isVisible = allText
+        binding.layoutAlignment.isVisible = false
+
+        binding.editPosX.setText(mixedFloatText(elements) { it.bounds.x })
+        binding.editPosY.setText(mixedFloatText(elements) { it.bounds.y })
+        binding.editWidth.setText(mixedFloatText(elements) { it.bounds.width })
+        binding.editHeight.setText(mixedFloatText(elements) { it.bounds.height })
+
+        if (allText) {
+            binding.editFontSize.setText(mixedFloatText(elements) { it.style.fontSize })
+            binding.switchBold.isChecked = elements.all { it.style.bold }
+            binding.switchItalic.isChecked = elements.all { it.style.italic }
+            binding.switchUnderline.isChecked = elements.all { it.style.underline }
+            binding.editFontColor.setText(mixedStringText(elements) { it.style.color })
+        }
+    }
+
+    private fun setupSingleMode(current: TemplateElement) {
         binding.textElementKind.text = current.kind.name
+        binding.textBulkHint.isVisible = false
+        binding.switchLocked.isVisible = true
+        binding.switchLocked.isChecked = current.locked
 
         setupBindingTypeDropdown(current)
         setupDataFieldDropdown(current)
         setupAlignmentDropdowns(current)
         setupFontFamilyDropdown(current)
         loadCurrentValues(current)
+    }
 
-        binding.buttonChooseStaticImage.setOnClickListener {
-            imagePicker.launch("image/*")
-        }
+    private fun hideKindSpecificFields() {
+        binding.spinnerBindingType.isVisible = false
+        (binding.spinnerBindingType.parent as? View)?.isVisible = false
+        binding.layoutStaticText.isVisible = false
+        binding.layoutBindingKey.isVisible = false
+        binding.layoutStaticImage.isVisible = false
+        binding.layoutPrefix.isVisible = false
+    }
 
-        binding.buttonApplyInspector.setOnClickListener {
-            applyChanges(current)
-        }
-        binding.buttonDeleteElement.setOnClickListener {
-            callback?.onDelete(current.id)
-            dismiss()
-        }
+    private fun mixedFloatText(elements: List<TemplateElement>, selector: (TemplateElement) -> Float): String {
+        val values = elements.map(selector).distinct()
+        return if (values.size == 1) values.first().toString() else ""
+    }
+
+    private fun mixedStringText(elements: List<TemplateElement>, selector: (TemplateElement) -> String): String {
+        val values = elements.map(selector).distinct()
+        return if (values.size == 1) values.first() else ""
     }
 
     private fun setupBindingTypeDropdown(current: TemplateElement) {
@@ -216,6 +297,34 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
         binding.layoutAlignment.isVisible = isText || isImage
     }
 
+    private fun applyBulkChanges(elements: List<TemplateElement>) {
+        val ids = elements.map { it.id }.toSet()
+        val allText = elements.all { it.kind == ElementKind.TEXT }
+        val colorInput = binding.editFontColor.text.toString().trim()
+        val resolvedColor = if (allText && colorInput.isNotBlank()) {
+            parseColorOrDefault(colorInput, "#000000")
+        } else {
+            null
+        }
+
+        callback?.onApplyBulk(
+            ids,
+            BulkInspectorUpdates(
+                x = binding.editPosX.text.toString().toFloatOrNull(),
+                y = binding.editPosY.text.toString().toFloatOrNull(),
+                width = binding.editWidth.text.toString().toFloatOrNull(),
+                height = binding.editHeight.text.toString().toFloatOrNull(),
+                fontSize = if (allText) binding.editFontSize.text.toString().toFloatOrNull() else null,
+                bold = if (allText) binding.switchBold.isChecked else null,
+                italic = if (allText) binding.switchItalic.isChecked else null,
+                underline = if (allText) binding.switchUnderline.isChecked else null,
+                color = resolvedColor,
+                locked = binding.switchLocked.isChecked
+            )
+        )
+        dismiss()
+    }
+
     private fun applyChanges(original: TemplateElement) {
         val bindingType = ElementBinding.valueOf(selectedBindingType)
         val content = original.content.toMutableMap()
@@ -260,6 +369,7 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
 
         val updated = original.copy(
             binding = bindingType,
+            locked = binding.switchLocked.isChecked,
             bounds = ElementBounds(
                 x = binding.editPosX.text.toString().toFloatOrNull() ?: original.bounds.x,
                 y = binding.editPosY.text.toString().toFloatOrNull() ?: original.bounds.y,
@@ -304,6 +414,13 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
             return ElementInspectorBottomSheet().apply {
                 this.templateId = templateId
                 this.element = element
+            }
+        }
+
+        fun newInstanceForBulk(elements: List<TemplateElement>): ElementInspectorBottomSheet {
+            return ElementInspectorBottomSheet().apply {
+                this.bulkElements = elements
+                this.element = elements.firstOrNull()
             }
         }
     }

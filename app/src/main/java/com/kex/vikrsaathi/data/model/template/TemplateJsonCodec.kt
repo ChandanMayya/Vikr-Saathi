@@ -90,6 +90,8 @@ object TemplateJsonCodec {
             })
             put("zIndex", element.zIndex)
             put("visible", element.visible)
+            element.groupId?.let { put("groupId", it) }
+            put("locked", element.locked)
             put("style", JSONObject().apply {
                 put("fontSize", element.style.fontSize.toDouble())
                 put("bold", element.style.bold)
@@ -123,6 +125,8 @@ object TemplateJsonCodec {
             ),
             zIndex = obj.optInt("zIndex", 0),
             visible = obj.optBoolean("visible", true),
+            groupId = obj.optString("groupId").takeIf { it.isNotBlank() },
+            locked = obj.optBoolean("locked", false),
             style = ElementStyle(
                 fontSize = styleObj.optDouble("fontSize", 12.0).toFloat(),
                 bold = styleObj.optBoolean("bold", false),

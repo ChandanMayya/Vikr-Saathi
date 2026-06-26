@@ -91,7 +91,11 @@ data class TemplateElement(
     val visible: Boolean = true,
     val style: ElementStyle = ElementStyle(),
     /** Static text, binding key name, image source, table columns JSON, etc. */
-    val content: Map<String, String> = emptyMap()
+    val content: Map<String, String> = emptyMap(),
+    /** Elements sharing a groupId move, resize, and lock together in the builder. */
+    val groupId: String? = null,
+    /** Locked elements cannot be selected or edited until unlocked. */
+    val locked: Boolean = false
 )
 
 data class InvoiceTemplate(
