@@ -26,6 +26,10 @@ class InvoiceBuilderPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_GUIDES, true)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_GUIDES, value).apply()
 
+    var snapToObjects: Boolean
+        get() = prefs.getBoolean(KEY_SNAP_TO_OBJECTS, true)
+        set(value) = prefs.edit().putBoolean(KEY_SNAP_TO_OBJECTS, value).apply()
+
     companion object {
         private const val PREFS_NAME = "invoice_builder_prefs"
         private const val KEY_LIVE_PREVIEW = "live_preview"
@@ -33,5 +37,6 @@ class InvoiceBuilderPreferences(context: Context) {
         private const val KEY_SHOW_GRID = "show_grid"
         private const val KEY_SNAP_TO_GUIDES = "snap_to_guides"
         private const val KEY_SHOW_GUIDES = "show_guides"
+        private const val KEY_SNAP_TO_OBJECTS = "snap_to_objects"
     }
 }

@@ -36,6 +36,7 @@ class InvoiceBuilderFragment : Fragment() {
     private lateinit var drawerSwitchSnapGrid: MaterialSwitch
     private lateinit var drawerSwitchShowGrid: MaterialSwitch
     private lateinit var drawerSwitchSnapGuides: MaterialSwitch
+    private lateinit var drawerSwitchSnapObjects: MaterialSwitch
     private lateinit var drawerSwitchShowGuides: MaterialSwitch
     private lateinit var drawerButtonAddVerticalGuide: MaterialButton
     private lateinit var drawerButtonAddHorizontalGuide: MaterialButton
@@ -182,6 +183,10 @@ class InvoiceBuilderFragment : Fragment() {
             binding.templateCanvas.showGuides = enabled == true
             syncDrawerToggles()
         }
+        viewModel.snapToObjects.observe(viewLifecycleOwner) { enabled ->
+            binding.templateCanvas.snapToObjects = enabled == true
+            syncDrawerToggles()
+        }
         viewModel.selectedGuideId.observe(viewLifecycleOwner) {
             if (!binding.templateCanvas.isGestureActive) {
                 refreshCanvas()
@@ -291,6 +296,7 @@ class InvoiceBuilderFragment : Fragment() {
         drawerSwitchSnapGrid = view.findViewById(R.id.drawerSwitchSnapGrid)
         drawerSwitchShowGrid = view.findViewById(R.id.drawerSwitchShowGrid)
         drawerSwitchSnapGuides = view.findViewById(R.id.drawerSwitchSnapGuides)
+        drawerSwitchSnapObjects = view.findViewById(R.id.drawerSwitchSnapObjects)
         drawerSwitchShowGuides = view.findViewById(R.id.drawerSwitchShowGuides)
         drawerButtonAddVerticalGuide = view.findViewById(R.id.drawerButtonAddVerticalGuide)
         drawerButtonAddHorizontalGuide = view.findViewById(R.id.drawerButtonAddHorizontalGuide)
@@ -336,6 +342,9 @@ class InvoiceBuilderFragment : Fragment() {
         drawerSwitchSnapGuides.setOnCheckedChangeListener { _, checked ->
             if (!suppressDrawerListeners) viewModel.setSnapToGuides(checked)
         }
+        drawerSwitchSnapObjects.setOnCheckedChangeListener { _, checked ->
+            if (!suppressDrawerListeners) viewModel.setSnapToObjects(checked)
+        }
         drawerSwitchShowGuides.setOnCheckedChangeListener { _, checked ->
             if (!suppressDrawerListeners) viewModel.setShowGuides(checked)
         }
@@ -372,6 +381,7 @@ class InvoiceBuilderFragment : Fragment() {
         drawerSwitchSnapGrid.isChecked = viewModel.snapToGrid.value == true
         drawerSwitchShowGrid.isChecked = viewModel.showGrid.value == true
         drawerSwitchSnapGuides.isChecked = viewModel.snapToGuides.value == true
+        drawerSwitchSnapObjects.isChecked = viewModel.snapToObjects.value == true
         drawerSwitchShowGuides.isChecked = viewModel.showGuides.value == true
         suppressDrawerListeners = false
         updateGuideUi()

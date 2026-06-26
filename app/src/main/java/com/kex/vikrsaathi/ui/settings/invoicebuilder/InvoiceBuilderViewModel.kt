@@ -25,6 +25,7 @@ import com.kex.vikrsaathi.domain.template.ElementSelectionHelper
 import com.kex.vikrsaathi.domain.template.ElementZOrder
 import com.kex.vikrsaathi.domain.template.GridSnapper
 import com.kex.vikrsaathi.domain.template.GuideSnapper
+import com.kex.vikrsaathi.domain.template.ObjectAlignmentSnapper
 import com.kex.vikrsaathi.domain.template.SampleBillFactory
 import com.kex.vikrsaathi.domain.template.TemplateLayoutValidator
 import com.kex.vikrsaathi.domain.template.TemplateContextFactory
@@ -89,6 +90,9 @@ class InvoiceBuilderViewModel(
     private val _showGuides = MutableLiveData(true)
     val showGuides: LiveData<Boolean> = _showGuides
 
+    private val _snapToObjects = MutableLiveData(true)
+    val snapToObjects: LiveData<Boolean> = _snapToObjects
+
     private val _selectedGuideId = MutableLiveData<String?>(null)
     val selectedGuideId: LiveData<String?> = _selectedGuideId
 
@@ -104,6 +108,7 @@ class InvoiceBuilderViewModel(
         _showGrid.value = editorPreferences.showGrid
         _snapToGuides.value = editorPreferences.snapToGuides
         _showGuides.value = editorPreferences.showGuides
+        _snapToObjects.value = editorPreferences.snapToObjects
     }
 
     fun previewRenderContext(context: android.content.Context): TemplateRenderContext {
@@ -320,10 +325,17 @@ class InvoiceBuilderViewModel(
         val snapToGrid = _snapToGrid.value == true
         val guides = current.guides
         val snapGuides = _snapToGuides.value == true
+        val snapObjects = _snapToObjects.value == true
+        val referenceBounds = current.elements
+            .filter { it.visible && it.id !in ids }
+            .map { it.bounds }
 
         fun snap(bounds: ElementBounds): ElementBounds {
-            val gridSnapped = GridSnapper.snapBounds(bounds, snapToGrid)
-            return GuideSnapper.snapBounds(gridSnapped, guides, snapGuides)
+            var snapped = GridSnapper.snapBounds(bounds, snapToGrid)
+            if (snapObjects) {
+                snapped = ObjectAlignmentSnapper.snapBounds(snapped, referenceBounds, enabled = true).bounds
+            }
+            return GuideSnapper.snapBounds(snapped, guides, snapGuides)
         }
 
         val newElements = if (ids.size <= 1) {
@@ -619,6 +631,11 @@ class InvoiceBuilderViewModel(
     fun setShowGuides(enabled: Boolean) {
         _showGuides.value = enabled
         editorPreferences.showGuides = enabled
+    }
+
+    fun setSnapToObjects(enabled: Boolean) {
+        _snapToObjects.value = enabled
+        editorPreferences.snapToObjects = enabled
     }
 
     fun getSelectedElement(): TemplateElement? {

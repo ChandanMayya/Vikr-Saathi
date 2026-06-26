@@ -60,6 +60,13 @@
             android:text="@string/snap_to_guides" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/drawerSwitchSnapObjects"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/snap_to_objects" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/drawerSwitchShowGuides"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

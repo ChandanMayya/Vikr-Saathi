@@ -21,10 +21,15 @@ import com.kex.vikrsaathi.data.model.template.TemplateGuide
 import com.kex.vikrsaathi.domain.template.ElementBoundsHelper
 import com.kex.vikrsaathi.domain.template.GridSnapper
 import com.kex.vikrsaathi.domain.template.GuideSnapper
+import com.kex.vikrsaathi.domain.template.AlignmentDistanceLabel
+import com.kex.vikrsaathi.domain.template.ObjectAlignmentLine
+import com.kex.vikrsaathi.domain.template.ObjectAlignmentSnapper
+import com.kex.vikrsaathi.domain.template.AlignmentAxis
 import com.kex.vikrsaathi.domain.template.TemplateRenderer
 import com.kex.vikrsaathi.domain.template.TemplateRenderContext
 import kotlin.math.abs
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 import kotlin.math.min
 import kotlin.math.round
 
@@ -62,6 +67,7 @@ class TemplateCanvasView @JvmOverloads constructor(
         }
     var snapToGrid: Boolean = true
     var snapToGuides: Boolean = true
+    var snapToObjects: Boolean = true
     var showGuides: Boolean = true
         set(value) {
             field = value
@@ -122,6 +128,7 @@ class TemplateCanvasView @JvmOverloads constructor(
     private var dragStartElementBounds: Map<String, ElementBounds> = emptyMap()
     private var dragStartUnion: ElementBounds? = null
     private var liveUnion: ElementBounds? = null
+    private var activeAlignmentLines: List<ObjectAlignmentLine> = emptyList()
 
     private var isZoomGesture = false
     private var lastPinchFocusX = 0f
@@ -226,6 +233,24 @@ class TemplateCanvasView @JvmOverloads constructor(
         color = Color.parseColor("#E91E63")
         style = Paint.Style.STROKE
         strokeWidth = 2.5f
+    }
+    private val alignmentLinePaint = Paint().apply {
+        color = Color.parseColor("#4CAF50")
+        style = Paint.Style.STROKE
+        strokeWidth = 1.5f
+    }
+    private val alignmentDimensionPaint = Paint().apply {
+        color = Color.parseColor("#4CAF50")
+        style = Paint.Style.STROKE
+        strokeWidth = 1f
+    }
+    private val alignmentLabelTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textAlign = Paint.Align.CENTER
+    }
+    private val alignmentLabelBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#4CAF50")
+        style = Paint.Style.FILL
     }
 
     private val templateRenderer = TemplateRenderer()
@@ -352,7 +377,52 @@ class TemplateCanvasView @JvmOverloads constructor(
         dragPageOffsetX = 0f
         dragPageOffsetY = 0f
         touchFilterActive = false
+        activeAlignmentLines = emptyList()
         isGestureActive = false
+    }
+
+    private fun referenceBoundsExcludingDrag(): List<ElementBounds> {
+        val t = template ?: return emptyList()
+        return t.elements
+            .filter { it.visible && it.id !in dragTargetIds }
+            .map { it.bounds }
+    }
+
+    private fun resolvedLiveUnion(pageWidth: Int, pageHeight: Int): ElementBounds? {
+        val start = dragStartUnion ?: return null
+        var union = clampUnionDrag(
+            start.copy(x = start.x + dragPageOffsetX, y = start.y + dragPageOffsetY),
+            pageWidth,
+            pageHeight
+        )
+        if (snapToObjects) {
+            val result = ObjectAlignmentSnapper.snapBounds(
+                union,
+                referenceBoundsExcludingDrag(),
+                enabled = true
+            )
+            union = result.bounds
+            activeAlignmentLines = result.lines
+        } else {
+            activeAlignmentLines = emptyList()
+        }
+        if (snapToGuides) {
+            val guides = template?.guides.orEmpty()
+            union = GuideSnapper.snapBounds(union, guides, true)
+        }
+        return union
+    }
+
+    private fun applySnap(bounds: ElementBounds): ElementBounds {
+        var snapped = GridSnapper.snapBounds(bounds, snapToGrid)
+        if (snapToObjects) {
+            snapped = ObjectAlignmentSnapper.snapBounds(
+                snapped,
+                referenceBoundsExcludingDrag(),
+                enabled = true
+            ).bounds
+        }
+        return GuideSnapper.snapBounds(snapped, template?.guides.orEmpty(), snapToGuides)
     }
 
     private fun scheduleDragUpdate(screenX: Float, screenY: Float) {
@@ -382,25 +452,6 @@ class TemplateCanvasView @JvmOverloads constructor(
         dragPageOffsetX = 0f
         dragPageOffsetY = 0f
         touchFilterActive = false
-    }
-
-    private fun resolvedLiveUnion(pageWidth: Int, pageHeight: Int): ElementBounds? {
-        val start = dragStartUnion ?: return null
-        var union = clampUnionDrag(
-            start.copy(x = start.x + dragPageOffsetX, y = start.y + dragPageOffsetY),
-            pageWidth,
-            pageHeight
-        )
-        if (snapToGuides) {
-            val guides = template?.guides.orEmpty()
-            union = GuideSnapper.snapBounds(union, guides, true)
-        }
-        return union
-    }
-
-    private fun applySnap(bounds: ElementBounds): ElementBounds {
-        val gridSnapped = GridSnapper.snapBounds(bounds, snapToGrid)
-        return GuideSnapper.snapBounds(gridSnapped, template?.guides.orEmpty(), snapToGuides)
     }
 
     private fun applyDragTouch(
@@ -504,7 +555,95 @@ class TemplateCanvasView @JvmOverloads constructor(
 
         if (!showPreview) {
             drawSelectionOverlay(canvas, t)
+            drawAlignmentLines(canvas)
         }
+    }
+
+    private fun drawAlignmentLines(canvas: Canvas) {
+        if (activeAlignmentLines.isEmpty()) return
+        activeAlignmentLines.forEach { line ->
+            when (line.axis) {
+                AlignmentAxis.VERTICAL -> canvas.drawLine(
+                    offsetX + line.positionPt * scale,
+                    offsetY + line.spanStartPt * scale,
+                    offsetX + line.positionPt * scale,
+                    offsetY + line.spanEndPt * scale,
+                    alignmentLinePaint
+                )
+                AlignmentAxis.HORIZONTAL -> canvas.drawLine(
+                    offsetX + line.spanStartPt * scale,
+                    offsetY + line.positionPt * scale,
+                    offsetX + line.spanEndPt * scale,
+                    offsetY + line.positionPt * scale,
+                    alignmentLinePaint
+                )
+            }
+            line.distanceLabel?.let { label ->
+                drawAlignmentDistanceLabel(canvas, line.axis, line.positionPt, label)
+            }
+        }
+    }
+
+    private fun drawAlignmentDistanceLabel(
+        canvas: Canvas,
+        alignmentAxis: AlignmentAxis,
+        anchorPt: Float,
+        label: AlignmentDistanceLabel
+    ) {
+        val text = label.distancePt.roundToInt().toString()
+        val labelTextSize = (11f * scale).coerceIn(10f, 18f)
+        val tickHalf = 4f * scale
+        val dimOffset = 12f * scale
+
+        when (alignmentAxis) {
+            AlignmentAxis.VERTICAL -> {
+                val dimX = offsetX + (anchorPt + 12f) * scale
+                val y1 = offsetY + label.gapStartPt * scale
+                val y2 = offsetY + label.gapEndPt * scale
+                canvas.drawLine(dimX, y1, dimX, y2, alignmentDimensionPaint)
+                canvas.drawLine(dimX - tickHalf, y1, dimX + tickHalf, y1, alignmentDimensionPaint)
+                canvas.drawLine(dimX - tickHalf, y2, dimX + tickHalf, y2, alignmentDimensionPaint)
+                drawAlignmentLabelPill(canvas, dimX + dimOffset, (y1 + y2) / 2f, text, labelTextSize)
+            }
+            AlignmentAxis.HORIZONTAL -> {
+                val dimY = offsetY + (anchorPt + 12f) * scale
+                val x1 = offsetX + label.gapStartPt * scale
+                val x2 = offsetX + label.gapEndPt * scale
+                canvas.drawLine(x1, dimY, x2, dimY, alignmentDimensionPaint)
+                canvas.drawLine(x1, dimY - tickHalf, x1, dimY + tickHalf, alignmentDimensionPaint)
+                canvas.drawLine(x2, dimY - tickHalf, x2, dimY + tickHalf, alignmentDimensionPaint)
+                drawAlignmentLabelPill(canvas, (x1 + x2) / 2f, dimY - dimOffset, text, labelTextSize)
+            }
+        }
+    }
+
+    private fun drawAlignmentLabelPill(
+        canvas: Canvas,
+        centerX: Float,
+        centerY: Float,
+        text: String,
+        textSize: Float
+    ) {
+        alignmentLabelTextPaint.textSize = textSize
+        val textWidth = alignmentLabelTextPaint.measureText(text)
+        val padX = 6f * scale
+        val padY = 3f * scale
+        val fm = alignmentLabelTextPaint.fontMetrics
+        val textHeight = fm.descent - fm.ascent
+        val rect = RectF(
+            centerX - textWidth / 2f - padX,
+            centerY - textHeight / 2f - padY,
+            centerX + textWidth / 2f + padX,
+            centerY + textHeight / 2f + padY
+        )
+        val corner = 4f * scale
+        canvas.drawRoundRect(rect, corner, corner, alignmentLabelBgPaint)
+        canvas.drawText(
+            text,
+            centerX,
+            centerY - (fm.ascent + fm.descent) / 2f,
+            alignmentLabelTextPaint
+        )
     }
 
     private fun drawGrid(canvas: Canvas, template: InvoiceTemplate, pageRect: RectF) {
