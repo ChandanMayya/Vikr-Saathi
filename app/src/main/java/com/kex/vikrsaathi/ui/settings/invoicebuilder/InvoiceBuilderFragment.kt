@@ -35,6 +35,11 @@ class InvoiceBuilderFragment : Fragment() {
     private lateinit var drawerSwitchLivePreview: MaterialSwitch
     private lateinit var drawerSwitchSnapGrid: MaterialSwitch
     private lateinit var drawerSwitchShowGrid: MaterialSwitch
+    private lateinit var drawerSwitchSnapGuides: MaterialSwitch
+    private lateinit var drawerSwitchShowGuides: MaterialSwitch
+    private lateinit var drawerButtonAddVerticalGuide: MaterialButton
+    private lateinit var drawerButtonAddHorizontalGuide: MaterialButton
+    private lateinit var drawerButtonDeleteGuide: MaterialButton
     private lateinit var drawerButtonExportJson: MaterialButton
     private lateinit var drawerButtonImportJson: MaterialButton
     private lateinit var drawerButtonVersionHistory: MaterialButton
@@ -103,6 +108,25 @@ class InvoiceBuilderFragment : Fragment() {
                 viewModel.onBoundsChangeFinished(elementId, bounds)
                 refreshCanvas()
             }
+
+            override fun onGuideSelected(guideId: String) {
+                viewModel.selectGuide(guideId)
+                updateGuideUi()
+            }
+
+            override fun onGuideDragStarted(guideId: String) {
+                viewModel.onGuideDragStarted(guideId)
+            }
+
+            override fun onGuidePositionChanged(guideId: String, positionPt: Float) {
+                viewModel.updateGuidePosition(guideId, positionPt)
+            }
+
+            override fun onGuideDragFinished(guideId: String, positionPt: Float) {
+                viewModel.onGuideDragFinished(guideId, positionPt)
+                refreshCanvas()
+                updateGuideUi()
+            }
         }
 
         viewModel.template.observe(viewLifecycleOwner) {
@@ -150,6 +174,20 @@ class InvoiceBuilderFragment : Fragment() {
             binding.templateCanvas.showGrid = enabled == true
             syncDrawerToggles()
         }
+        viewModel.snapToGuides.observe(viewLifecycleOwner) { enabled ->
+            binding.templateCanvas.snapToGuides = enabled == true
+            syncDrawerToggles()
+        }
+        viewModel.showGuides.observe(viewLifecycleOwner) { enabled ->
+            binding.templateCanvas.showGuides = enabled == true
+            syncDrawerToggles()
+        }
+        viewModel.selectedGuideId.observe(viewLifecycleOwner) {
+            if (!binding.templateCanvas.isGestureActive) {
+                refreshCanvas()
+            }
+            updateGuideUi()
+        }
         viewModel.validationIssues.observe(viewLifecycleOwner) { issues ->
             binding.templateCanvas.validationElementIds = viewModel.validationElementIds()
             if (issues.isEmpty()) {
@@ -184,20 +222,30 @@ class InvoiceBuilderFragment : Fragment() {
         binding.buttonSendBackward.setOnClickListener { viewModel.sendBackward() }
         binding.buttonBringToFront.setOnClickListener { viewModel.bringToFront() }
         binding.buttonSendToBack.setOnClickListener { viewModel.sendToBack() }
+        binding.buttonDeleteGuide.setOnClickListener { viewModel.removeSelectedGuide() }
         binding.buttonSaveTemplate.setOnClickListener { viewModel.saveTemplate() }
         binding.buttonPreviewTemplate.setOnClickListener { previewPdf() }
         binding.fabAddElement.setOnClickListener { openAddElementSheet() }
 
         updateMultiSelectButton()
         updateSelectionUi()
+        updateGuideUi()
     }
 
     private fun refreshCanvas() {
         binding.templateCanvas.setTemplate(
             viewModel.template.value,
             viewModel.selectedElementIds.value.orEmpty(),
-            viewModel.multiSelectMode.value == true
+            viewModel.multiSelectMode.value == true,
+            viewModel.selectedGuideId.value
         )
+    }
+
+    private fun updateGuideUi() {
+        val hasGuide = viewModel.selectedGuideId.value != null
+        setActionEnabled(binding.buttonDeleteGuide, hasGuide)
+        drawerButtonDeleteGuide.isEnabled = hasGuide
+        drawerButtonDeleteGuide.alpha = if (hasGuide) 1f else 0.4f
     }
 
     private fun updateSelectionUi() {
@@ -242,6 +290,11 @@ class InvoiceBuilderFragment : Fragment() {
         drawerSwitchLivePreview = view.findViewById(R.id.drawerSwitchLivePreview)
         drawerSwitchSnapGrid = view.findViewById(R.id.drawerSwitchSnapGrid)
         drawerSwitchShowGrid = view.findViewById(R.id.drawerSwitchShowGrid)
+        drawerSwitchSnapGuides = view.findViewById(R.id.drawerSwitchSnapGuides)
+        drawerSwitchShowGuides = view.findViewById(R.id.drawerSwitchShowGuides)
+        drawerButtonAddVerticalGuide = view.findViewById(R.id.drawerButtonAddVerticalGuide)
+        drawerButtonAddHorizontalGuide = view.findViewById(R.id.drawerButtonAddHorizontalGuide)
+        drawerButtonDeleteGuide = view.findViewById(R.id.drawerButtonDeleteGuide)
         drawerButtonExportJson = view.findViewById(R.id.drawerButtonExportJson)
         drawerButtonImportJson = view.findViewById(R.id.drawerButtonImportJson)
         drawerButtonVersionHistory = view.findViewById(R.id.drawerButtonVersionHistory)
@@ -280,6 +333,25 @@ class InvoiceBuilderFragment : Fragment() {
         drawerSwitchShowGrid.setOnCheckedChangeListener { _, checked ->
             if (!suppressDrawerListeners) viewModel.setShowGrid(checked)
         }
+        drawerSwitchSnapGuides.setOnCheckedChangeListener { _, checked ->
+            if (!suppressDrawerListeners) viewModel.setSnapToGuides(checked)
+        }
+        drawerSwitchShowGuides.setOnCheckedChangeListener { _, checked ->
+            if (!suppressDrawerListeners) viewModel.setShowGuides(checked)
+        }
+
+        drawerButtonAddVerticalGuide.setOnClickListener {
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            viewModel.addVerticalGuide()
+        }
+        drawerButtonAddHorizontalGuide.setOnClickListener {
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            viewModel.addHorizontalGuide()
+        }
+        drawerButtonDeleteGuide.setOnClickListener {
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            viewModel.removeSelectedGuide()
+        }
 
         drawerButtonExportJson.setOnClickListener {
             binding.drawerLayout.closeDrawer(GravityCompat.END)
@@ -299,7 +371,10 @@ class InvoiceBuilderFragment : Fragment() {
         drawerSwitchLivePreview.isChecked = viewModel.livePreview.value == true
         drawerSwitchSnapGrid.isChecked = viewModel.snapToGrid.value == true
         drawerSwitchShowGrid.isChecked = viewModel.showGrid.value == true
+        drawerSwitchSnapGuides.isChecked = viewModel.snapToGuides.value == true
+        drawerSwitchShowGuides.isChecked = viewModel.showGuides.value == true
         suppressDrawerListeners = false
+        updateGuideUi()
     }
 
     private fun openAddElementSheet() {

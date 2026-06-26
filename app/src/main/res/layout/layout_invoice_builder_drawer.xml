@@ -44,6 +44,54 @@
             android:layout_marginTop="8dp"
             android:text="@string/show_grid" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/guides_section"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textStyle="bold" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/drawerSwitchSnapGuides"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/snap_to_guides" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/drawerSwitchShowGuides"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/show_guides" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/drawerButtonAddVerticalGuide"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/add_vertical_guide" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/drawerButtonAddHorizontalGuide"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/add_horizontal_guide" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/drawerButtonDeleteGuide"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:enabled="false"
+            android:text="@string/delete_guide"
+            android:textColor="?attr/colorError" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"

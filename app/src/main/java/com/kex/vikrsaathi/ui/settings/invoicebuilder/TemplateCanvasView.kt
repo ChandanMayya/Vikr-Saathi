@@ -14,12 +14,16 @@ import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.ViewConfiguration
 import com.kex.vikrsaathi.data.model.template.ElementBounds
+import com.kex.vikrsaathi.data.model.template.GuideOrientation
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.TemplateElement
+import com.kex.vikrsaathi.data.model.template.TemplateGuide
 import com.kex.vikrsaathi.domain.template.ElementBoundsHelper
 import com.kex.vikrsaathi.domain.template.GridSnapper
+import com.kex.vikrsaathi.domain.template.GuideSnapper
 import com.kex.vikrsaathi.domain.template.TemplateRenderer
 import com.kex.vikrsaathi.domain.template.TemplateRenderContext
+import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.round
@@ -36,6 +40,10 @@ class TemplateCanvasView @JvmOverloads constructor(
         fun onLockedElementTapped()
         fun onElementBoundsChangeStarted(elementId: String, isResize: Boolean)
         fun onElementBoundsChangeFinished(elementId: String, bounds: ElementBounds)
+        fun onGuideSelected(guideId: String)
+        fun onGuideDragStarted(guideId: String)
+        fun onGuidePositionChanged(guideId: String, positionPt: Float)
+        fun onGuideDragFinished(guideId: String, positionPt: Float)
     }
 
     var listener: Listener? = null
@@ -53,6 +61,12 @@ class TemplateCanvasView @JvmOverloads constructor(
             invalidate()
         }
     var snapToGrid: Boolean = true
+    var snapToGuides: Boolean = true
+    var showGuides: Boolean = true
+        set(value) {
+            field = value
+            invalidate()
+        }
     var multiSelectMode: Boolean = false
         set(value) {
             field = value
@@ -70,6 +84,7 @@ class TemplateCanvasView @JvmOverloads constructor(
 
     private var template: InvoiceTemplate? = null
     private var selectedIds: Set<String> = emptySet()
+    private var selectedGuideId: String? = null
     private var renderContext: TemplateRenderContext? = null
 
     private var fitScale = 1f
@@ -83,6 +98,8 @@ class TemplateCanvasView @JvmOverloads constructor(
         get() = fitScale * zoomFactor
 
     private var activeElementId: String? = null
+    private var activeGuideId: String? = null
+    private var liveGuidePositionPt: Float? = null
     private var mode = TouchMode.NONE
     private var downTouchX = 0f
     private var downTouchY = 0f
@@ -199,20 +216,33 @@ class TemplateCanvasView @JvmOverloads constructor(
         color = Color.parseColor("#616161")
         textSize = 14f
     }
+    private val guidePaint = Paint().apply {
+        color = Color.parseColor("#0288D1")
+        style = Paint.Style.STROKE
+        strokeWidth = 1.5f
+        pathEffect = DashPathEffect(floatArrayOf(10f, 6f), 0f)
+    }
+    private val selectedGuidePaint = Paint().apply {
+        color = Color.parseColor("#E91E63")
+        style = Paint.Style.STROKE
+        strokeWidth = 2.5f
+    }
 
     private val templateRenderer = TemplateRenderer()
 
-    private enum class TouchMode { NONE, DRAG, RESIZE, PAN }
+    private enum class TouchMode { NONE, DRAG, RESIZE, PAN, GUIDE_DRAG }
 
     fun setTemplate(
         template: InvoiceTemplate?,
         selectedElementIds: Set<String>,
-        multiSelectMode: Boolean = false
+        multiSelectMode: Boolean = false,
+        selectedGuideId: String? = null
     ) {
         if (isGestureActive) return
         this.template = template
         this.selectedIds = selectedElementIds
         this.multiSelectMode = multiSelectMode
+        this.selectedGuideId = selectedGuideId
         updateOffsets()
         invalidate()
     }
@@ -308,6 +338,8 @@ class TemplateCanvasView @JvmOverloads constructor(
         }
         mode = TouchMode.NONE
         activeElementId = null
+        activeGuideId = null
+        liveGuidePositionPt = null
         dragTargetIds = emptySet()
         dragStartElementBounds = emptyMap()
         dragStartUnion = null
@@ -354,11 +386,21 @@ class TemplateCanvasView @JvmOverloads constructor(
 
     private fun resolvedLiveUnion(pageWidth: Int, pageHeight: Int): ElementBounds? {
         val start = dragStartUnion ?: return null
-        return clampUnionDrag(
+        var union = clampUnionDrag(
             start.copy(x = start.x + dragPageOffsetX, y = start.y + dragPageOffsetY),
             pageWidth,
             pageHeight
         )
+        if (snapToGuides) {
+            val guides = template?.guides.orEmpty()
+            union = GuideSnapper.snapBounds(union, guides, true)
+        }
+        return union
+    }
+
+    private fun applySnap(bounds: ElementBounds): ElementBounds {
+        val gridSnapped = GridSnapper.snapBounds(bounds, snapToGrid)
+        return GuideSnapper.snapBounds(gridSnapped, template?.guides.orEmpty(), snapToGuides)
     }
 
     private fun applyDragTouch(
@@ -378,11 +420,7 @@ class TemplateCanvasView @JvmOverloads constructor(
         }
         dragPageOffsetX = newOffsetX
         dragPageOffsetY = newOffsetY
-        liveUnion = clampUnionDrag(
-            start.copy(x = start.x + newOffsetX, y = start.y + newOffsetY),
-            pageWidth,
-            pageHeight
-        )
+        liveUnion = resolvedLiveUnion(pageWidth, pageHeight)
         return true
     }
 
@@ -415,11 +453,12 @@ class TemplateCanvasView @JvmOverloads constructor(
         }
         val start = dragStartElementBounds[element.id] ?: return element.bounds
         val t = template ?: return start
+        val union = resolvedLiveUnion(t.pageWidthPt, t.pageHeightPt) ?: return start
+        val dragStart = dragStartUnion ?: return start
+        val dx = union.x - dragStart.x
+        val dy = union.y - dragStart.y
         return clampUnionDrag(
-            start.copy(
-                x = start.x + dragPageOffsetX,
-                y = start.y + dragPageOffsetY
-            ),
+            start.copy(x = start.x + dx, y = start.y + dy),
             t.pageWidthPt,
             t.pageHeightPt
         )
@@ -458,6 +497,7 @@ class TemplateCanvasView @JvmOverloads constructor(
             drawLivePreview(canvas, t)
         } else {
             drawBuilder(canvas, t)
+            drawGuides(canvas, t)
         }
 
         canvas.restore()
@@ -522,6 +562,41 @@ class TemplateCanvasView @JvmOverloads constructor(
                 )
             }
         }
+    }
+
+    private fun drawGuides(canvas: Canvas, template: InvoiceTemplate) {
+        if (!showGuides || template.guides.isEmpty()) return
+        template.guides.forEach { guide ->
+            val position = guidePositionForDraw(guide)
+            val paint = if (guide.id == selectedGuideId || guide.id == activeGuideId) {
+                selectedGuidePaint
+            } else {
+                guidePaint
+            }
+            when (guide.orientation) {
+                GuideOrientation.VERTICAL -> canvas.drawLine(
+                    position,
+                    0f,
+                    position,
+                    template.pageHeightPt.toFloat(),
+                    paint
+                )
+                GuideOrientation.HORIZONTAL -> canvas.drawLine(
+                    0f,
+                    position,
+                    template.pageWidthPt.toFloat(),
+                    position,
+                    paint
+                )
+            }
+        }
+    }
+
+    private fun guidePositionForDraw(guide: TemplateGuide): Float {
+        if (guide.id == activeGuideId && liveGuidePositionPt != null) {
+            return liveGuidePositionPt!!
+        }
+        return guide.positionPt
     }
 
     private fun drawSelectionOverlay(canvas: Canvas, template: InvoiceTemplate) {
@@ -660,15 +735,43 @@ class TemplateCanvasView @JvmOverloads constructor(
                     dragStartElementBounds = emptyMap()
                     dragStartUnion = null
                     liveUnion = null
-                    mode = if (zoomFactor > 1.05f) TouchMode.PAN else TouchMode.NONE
-                    if (!multiSelectMode && mode == TouchMode.NONE) {
-                        listener?.onClearSelection()
+                    val guideHit = if (showGuides) findGuideAt(event.x, event.y, t) else null
+                    if (guideHit != null) {
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                        activeGuideId = guideHit.id
+                        liveGuidePositionPt = guideHit.positionPt
+                        mode = TouchMode.GUIDE_DRAG
+                        listener?.onGuideSelected(guideHit.id)
+                    } else {
+                        activeGuideId = null
+                        liveGuidePositionPt = null
+                        mode = if (zoomFactor > 1.05f) TouchMode.PAN else TouchMode.NONE
+                        if (!multiSelectMode && mode == TouchMode.NONE) {
+                            listener?.onClearSelection()
+                        }
                     }
                 }
                 return true
             }
 
             MotionEvent.ACTION_MOVE -> {
+                if (mode == TouchMode.GUIDE_DRAG) {
+                    val guideId = activeGuideId ?: return true
+                    val guide = t.guides.find { it.id == guideId } ?: return true
+                    if (!hasDragged) {
+                        val dist = hypot(event.x - downTouchX, event.y - downTouchY)
+                        if (dist < dragThresholdPx) return true
+                        hasDragged = true
+                        isGestureActive = true
+                        listener?.onGuideDragStarted(guideId)
+                    }
+                    val position = guidePositionFromTouch(event.x, event.y, guide, t)
+                    liveGuidePositionPt = position
+                    listener?.onGuidePositionChanged(guideId, position)
+                    invalidate()
+                    return true
+                }
+
                 if (mode == TouchMode.PAN) {
                     if (!hasDragged) {
                         val dist = hypot(event.x - downTouchX, event.y - downTouchY)
@@ -711,8 +814,10 @@ class TemplateCanvasView @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 parent?.requestDisallowInterceptTouchEvent(false)
                 val elementId = activeElementId
+                val guideId = activeGuideId
                 val hitId = downHitId
                 val wasPan = mode == TouchMode.PAN
+                val wasGuideDrag = mode == TouchMode.GUIDE_DRAG
 
                 if (!hasDragged) {
                     when {
@@ -720,15 +825,24 @@ class TemplateCanvasView @JvmOverloads constructor(
                         hitId != null && !multiSelectMode && t.elements.find { it.id == hitId }?.locked == true ->
                             listener?.onLockedElementTapped()
                         hitId == null && multiSelectMode -> listener?.onClearSelection()
+                        wasGuideDrag && guideId != null -> listener?.onGuideSelected(guideId)
                     }
                     cancelActiveElementGesture()
+                } else if (wasGuideDrag && guideId != null) {
+                    val guide = t.guides.find { it.id == guideId }
+                    val position = liveGuidePositionPt
+                        ?: guide?.let { guidePositionFromTouch(event.x, event.y, it, t) }
+                    cancelActiveElementGesture()
+                    if (position != null) {
+                        listener?.onGuideDragFinished(guideId, position)
+                    }
                 } else if (!wasPan && elementId != null) {
                     template?.let {
                         applyDragTouch(event.x, event.y, it.pageWidthPt, it.pageHeightPt)
                     }
                     val bounds = template?.let { resolvedLiveUnion(it.pageWidthPt, it.pageHeightPt) }
                     if (bounds != null) {
-                        val snapped = GridSnapper.snapBounds(bounds, snapToGrid)
+                        val snapped = applySnap(bounds)
                         cancelActiveElementGesture()
                         listener?.onElementBoundsChangeFinished(elementId, snapped)
                     } else {
@@ -760,6 +874,41 @@ class TemplateCanvasView @JvmOverloads constructor(
         return sum / event.pointerCount
     }
 
+    private fun findGuideAt(screenX: Float, screenY: Float, template: InvoiceTemplate): TemplateGuide? {
+        return template.guides
+            .sortedByDescending { it.positionPt }
+            .firstOrNull { guide ->
+                when (guide.orientation) {
+                    GuideOrientation.VERTICAL -> {
+                        val guideX = offsetX + guide.positionPt * scale
+                        abs(screenX - guideX) <= GUIDE_HIT_TOLERANCE_PX &&
+                            screenY in offsetY..(offsetY + template.pageHeightPt * scale)
+                    }
+                    GuideOrientation.HORIZONTAL -> {
+                        val guideY = offsetY + guide.positionPt * scale
+                        abs(screenY - guideY) <= GUIDE_HIT_TOLERANCE_PX &&
+                            screenX in offsetX..(offsetX + template.pageWidthPt * scale)
+                    }
+                }
+            }
+    }
+
+    private fun guidePositionFromTouch(
+        screenX: Float,
+        screenY: Float,
+        guide: TemplateGuide,
+        template: InvoiceTemplate
+    ): Float {
+        return when (guide.orientation) {
+            GuideOrientation.VERTICAL -> {
+                ((screenX - offsetX) / scale).coerceIn(0f, template.pageWidthPt.toFloat())
+            }
+            GuideOrientation.HORIZONTAL -> {
+                ((screenY - offsetY) / scale).coerceIn(0f, template.pageHeightPt.toFloat())
+            }
+        }
+    }
+
     private fun findElementAt(screenX: Float, screenY: Float, template: InvoiceTemplate): TemplateElement? {
         return template.elements
             .filter { it.visible }
@@ -774,5 +923,6 @@ class TemplateCanvasView @JvmOverloads constructor(
         private const val MIN_ZOOM = 0.5f
         private const val MAX_ZOOM = 4f
         private const val TOUCH_SMOOTHING_ALPHA = 0.22f
+        private const val GUIDE_HIT_TOLERANCE_PX = 18f
     }
 }

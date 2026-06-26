@@ -82,6 +82,18 @@ data class TableColumn(
     val align: TextAlign = TextAlign.LEFT
 )
 
+enum class GuideOrientation {
+    HORIZONTAL,
+    VERTICAL
+}
+
+data class TemplateGuide(
+    val id: String,
+    val orientation: GuideOrientation,
+    /** Page Y for horizontal guides, page X for vertical guides (points). */
+    val positionPt: Float
+)
+
 data class TemplateElement(
     val id: String,
     val kind: ElementKind,
@@ -109,6 +121,7 @@ data class InvoiceTemplate(
     val marginRight: Float = 40f,
     val marginBottom: Float = 40f,
     val elements: List<TemplateElement> = emptyList(),
+    val guides: List<TemplateGuide> = emptyList(),
     val version: Int = 1,
     val updatedAt: Long = System.currentTimeMillis()
 ) {

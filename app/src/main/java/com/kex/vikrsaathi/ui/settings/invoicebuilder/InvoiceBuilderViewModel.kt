@@ -11,10 +11,12 @@ import com.kex.vikrsaathi.data.model.template.ElementBinding
 import com.kex.vikrsaathi.data.model.template.ElementBounds
 import com.kex.vikrsaathi.data.model.template.ElementKind
 import com.kex.vikrsaathi.data.model.template.ElementStyle
+import com.kex.vikrsaathi.data.model.template.GuideOrientation
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplateVersion
 import com.kex.vikrsaathi.data.model.template.TableColumn
 import com.kex.vikrsaathi.data.model.template.TemplateElement
+import com.kex.vikrsaathi.data.model.template.TemplateGuide
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
@@ -22,6 +24,7 @@ import com.kex.vikrsaathi.domain.template.ElementBoundsHelper
 import com.kex.vikrsaathi.domain.template.ElementSelectionHelper
 import com.kex.vikrsaathi.domain.template.ElementZOrder
 import com.kex.vikrsaathi.domain.template.GridSnapper
+import com.kex.vikrsaathi.domain.template.GuideSnapper
 import com.kex.vikrsaathi.domain.template.SampleBillFactory
 import com.kex.vikrsaathi.domain.template.TemplateLayoutValidator
 import com.kex.vikrsaathi.domain.template.TemplateContextFactory
@@ -45,6 +48,7 @@ class InvoiceBuilderViewModel(
     private var dragIsResize = false
     private var dragStartBounds: Map<String, ElementBounds> = emptyMap()
     private var dragStartUnion: ElementBounds? = null
+    private var guideDragSnapshot: InvoiceTemplate? = null
 
     private val _template = MutableLiveData<InvoiceTemplate>()
     val template: LiveData<InvoiceTemplate> = _template
@@ -79,6 +83,15 @@ class InvoiceBuilderViewModel(
     private val _showGrid = MutableLiveData(false)
     val showGrid: LiveData<Boolean> = _showGrid
 
+    private val _snapToGuides = MutableLiveData(true)
+    val snapToGuides: LiveData<Boolean> = _snapToGuides
+
+    private val _showGuides = MutableLiveData(true)
+    val showGuides: LiveData<Boolean> = _showGuides
+
+    private val _selectedGuideId = MutableLiveData<String?>(null)
+    val selectedGuideId: LiveData<String?> = _selectedGuideId
+
     private val _versionHistory = MutableLiveData<List<InvoiceTemplateVersion>>(emptyList())
     val versionHistory: LiveData<List<InvoiceTemplateVersion>> = _versionHistory
 
@@ -89,6 +102,8 @@ class InvoiceBuilderViewModel(
         _livePreview.value = editorPreferences.livePreview
         _snapToGrid.value = editorPreferences.snapToGrid
         _showGrid.value = editorPreferences.showGrid
+        _snapToGuides.value = editorPreferences.snapToGuides
+        _showGuides.value = editorPreferences.showGuides
     }
 
     fun previewRenderContext(context: android.content.Context): TemplateRenderContext {
@@ -119,6 +134,7 @@ class InvoiceBuilderViewModel(
             history.clear()
             setTemplateInternal(loaded, recordHistory = false)
             _selectedElementIds.value = emptySet()
+            _selectedGuideId.value = null
             refreshHistoryState()
         }
     }
@@ -148,6 +164,7 @@ class InvoiceBuilderViewModel(
         }
         val expanded = ElementSelectionHelper.expandWithGroup(elements, elementId)
         if (_selectedElementIds.value == expanded) return
+        _selectedGuideId.value = null
         _selectedElementIds.value = expanded
     }
 
@@ -166,6 +183,78 @@ class InvoiceBuilderViewModel(
 
     fun clearSelection() {
         _selectedElementIds.value = emptySet()
+        _selectedGuideId.value = null
+    }
+
+    fun selectGuide(guideId: String?) {
+        if (_selectedGuideId.value == guideId) return
+        _selectedGuideId.value = guideId
+        if (guideId != null) {
+            _selectedElementIds.value = emptySet()
+        }
+    }
+
+    fun addVerticalGuide() {
+        mutate { current ->
+            val guide = TemplateGuide(
+                id = UUID.randomUUID().toString(),
+                orientation = GuideOrientation.VERTICAL,
+                positionPt = current.pageWidthPt / 2f
+            )
+            _selectedGuideId.value = guide.id
+            _selectedElementIds.value = emptySet()
+            current.copy(guides = current.guides + guide)
+        }
+    }
+
+    fun addHorizontalGuide() {
+        mutate { current ->
+            val guide = TemplateGuide(
+                id = UUID.randomUUID().toString(),
+                orientation = GuideOrientation.HORIZONTAL,
+                positionPt = current.pageHeightPt / 2f
+            )
+            _selectedGuideId.value = guide.id
+            _selectedElementIds.value = emptySet()
+            current.copy(guides = current.guides + guide)
+        }
+    }
+
+    fun removeSelectedGuide() {
+        val guideId = _selectedGuideId.value ?: return
+        mutate { current ->
+            current.copy(guides = current.guides.filter { it.id != guideId })
+        }
+        _selectedGuideId.value = null
+    }
+
+    fun onGuideDragStarted(guideId: String) {
+        guideDragSnapshot = _template.value?.copy()
+        selectGuide(guideId)
+    }
+
+    fun updateGuidePosition(guideId: String, positionPt: Float) {
+        val current = _template.value ?: return
+        setTemplateInternal(
+            current.copy(
+                guides = current.guides.map { guide ->
+                    if (guide.id == guideId) guide.copy(positionPt = positionPt) else guide
+                }
+            ),
+            recordHistory = false
+        )
+    }
+
+    fun onGuideDragFinished(guideId: String, positionPt: Float) {
+        val snapshot = guideDragSnapshot
+        guideDragSnapshot = null
+        val current = _template.value ?: return
+        val originalPosition = snapshot?.guides?.find { it.id == guideId }?.positionPt
+        updateGuidePosition(guideId, positionPt)
+        if (snapshot != null && originalPosition != positionPt) {
+            history.push(snapshot)
+            refreshHistoryState()
+        }
     }
 
     /** @deprecated Use selectedElementIds */
@@ -226,12 +315,19 @@ class InvoiceBuilderViewModel(
         dragStartUnion = null
         if (snapshot == null) return
 
-        val snapToGrid = _snapToGrid.value == true
         val ids = _selectedElementIds.value.orEmpty()
         val current = _template.value ?: return
+        val snapToGrid = _snapToGrid.value == true
+        val guides = current.guides
+        val snapGuides = _snapToGuides.value == true
+
+        fun snap(bounds: ElementBounds): ElementBounds {
+            val gridSnapped = GridSnapper.snapBounds(bounds, snapToGrid)
+            return GuideSnapper.snapBounds(gridSnapped, guides, snapGuides)
+        }
 
         val newElements = if (ids.size <= 1) {
-            val snapped = GridSnapper.snapBounds(bounds, snapToGrid)
+            val snapped = snap(bounds)
             val original = snapshot.elements.find { it.id == anchorId }?.bounds ?: return
             if (original == snapped) return
             current.elements.map {
@@ -239,7 +335,7 @@ class InvoiceBuilderViewModel(
             }
         } else if (wasResize) {
             val union = startUnion ?: return
-            val snappedUnion = GridSnapper.snapBounds(bounds, snapToGrid)
+            val snappedUnion = snap(bounds)
             if (union == snappedUnion) return
             ElementBoundsHelper.scaleSelection(
                 snapshot.elements,
@@ -250,14 +346,14 @@ class InvoiceBuilderViewModel(
                 current.pageHeightPt
             ).map { element ->
                 if (ids.contains(element.id)) {
-                    element.copy(bounds = GridSnapper.snapBounds(element.bounds, snapToGrid))
+                    element.copy(bounds = snap(element.bounds))
                 } else {
                     element
                 }
             }
         } else {
             val union = startUnion ?: return
-            val snappedUnion = GridSnapper.snapBounds(bounds, snapToGrid)
+            val snappedUnion = snap(bounds)
             val dx = snappedUnion.x - union.x
             val dy = snappedUnion.y - union.y
             if (dx == 0f && dy == 0f) return
@@ -270,7 +366,7 @@ class InvoiceBuilderViewModel(
                 current.pageHeightPt
             ).map { element ->
                 if (ids.contains(element.id)) {
-                    element.copy(bounds = GridSnapper.snapBounds(element.bounds, snapToGrid))
+                    element.copy(bounds = snap(element.bounds))
                 } else {
                     element
                 }
@@ -513,6 +609,16 @@ class InvoiceBuilderViewModel(
     fun setShowGrid(enabled: Boolean) {
         _showGrid.value = enabled
         editorPreferences.showGrid = enabled
+    }
+
+    fun setSnapToGuides(enabled: Boolean) {
+        _snapToGuides.value = enabled
+        editorPreferences.snapToGuides = enabled
+    }
+
+    fun setShowGuides(enabled: Boolean) {
+        _showGuides.value = enabled
+        editorPreferences.showGuides = enabled
     }
 
     fun getSelectedElement(): TemplateElement? {

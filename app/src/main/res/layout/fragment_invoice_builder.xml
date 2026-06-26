@@ -191,6 +191,16 @@
                         android:text="@string/bring_to_front" />
 
                     <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonDeleteGuide"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:enabled="false"
+                        android:text="@string/delete_guide"
+                        android:textColor="?attr/colorError" />
+
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonSendToBack"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="wrap_content"

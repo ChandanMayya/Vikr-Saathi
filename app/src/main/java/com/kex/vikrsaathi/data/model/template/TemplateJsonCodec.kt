@@ -21,6 +21,11 @@ object TemplateJsonCodec {
             put("elements", JSONArray().apply {
                 template.elements.forEach { put(elementToJson(it)) }
             })
+            if (template.guides.isNotEmpty()) {
+                put("guides", JSONArray().apply {
+                    template.guides.forEach { put(guideToJson(it)) }
+                })
+            }
         }.toString()
     }
 
@@ -30,6 +35,11 @@ object TemplateJsonCodec {
         val elementsArray = root.optJSONArray("elements") ?: JSONArray()
         for (i in 0 until elementsArray.length()) {
             elements.add(elementFromJson(elementsArray.getJSONObject(i)))
+        }
+        val guides = mutableListOf<TemplateGuide>()
+        val guidesArray = root.optJSONArray("guides") ?: JSONArray()
+        for (i in 0 until guidesArray.length()) {
+            guides.add(guideFromJson(guidesArray.getJSONObject(i)))
         }
         return InvoiceTemplate(
             id = id.takeIf { it > 0 } ?: root.optLong("id", 0),
@@ -42,6 +52,7 @@ object TemplateJsonCodec {
             marginRight = root.optDouble("marginRight", 40.0).toFloat(),
             marginBottom = root.optDouble("marginBottom", 40.0).toFloat(),
             elements = elements,
+            guides = guides,
             version = root.optInt("version", 1),
             updatedAt = root.optLong("updatedAt", System.currentTimeMillis())
         )
@@ -75,6 +86,22 @@ object TemplateJsonCodec {
                 )
             }
         }
+    }
+
+    private fun guideToJson(guide: TemplateGuide): JSONObject {
+        return JSONObject().apply {
+            put("id", guide.id)
+            put("orientation", guide.orientation.name)
+            put("positionPt", guide.positionPt.toDouble())
+        }
+    }
+
+    private fun guideFromJson(obj: JSONObject): TemplateGuide {
+        return TemplateGuide(
+            id = obj.getString("id"),
+            orientation = GuideOrientation.valueOf(obj.getString("orientation")),
+            positionPt = obj.getDouble("positionPt").toFloat()
+        )
     }
 
     private fun elementToJson(element: TemplateElement): JSONObject {
