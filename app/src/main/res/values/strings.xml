@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Vikr Saathi</string>
+    <string name="app_logo">Vikr Saathi logo</string>
 
     <string name="dashboard">Dashboard</string>
     <string name="dashboard_subtitle">Fast offline billing for your shop</string>
