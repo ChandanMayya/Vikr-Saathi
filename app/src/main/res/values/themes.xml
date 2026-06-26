@@ -61,6 +61,11 @@
         <item name="android:textStyle">bold</item>
     </style>
 
+    <!-- Editable numeric fields: center gravity resets cursor when digits are inserted -->
+    <style name="VikrSaathiBillLineEditableInput" parent="VikrSaathiBillLineInput">
+        <item name="android:gravity">center_vertical|end</item>
+    </style>
+
     <style name="VikrSaathiBillLineLabel">
         <item name="android:textAppearance">?attr/textAppearanceLabelSmall</item>
         <item name="android:textColor">?attr/colorOnSurfaceVariant</item>

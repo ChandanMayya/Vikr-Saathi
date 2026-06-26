@@ -118,7 +118,7 @@
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/editDiscount"
-                        style="@style/VikrSaathiBillLineInput"
+                        style="@style/VikrSaathiBillLineEditableInput"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
@@ -153,12 +153,11 @@
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/editQuantity"
-                    style="@style/VikrSaathiBillLineInput"
+                    style="@style/VikrSaathiBillLineEditableInput"
                     android:layout_width="match_parent"
                     android:layout_height="36dp"
                     android:layout_marginTop="6dp"
-                    android:inputType="numberSigned"
-                    android:text="1" />
+                    android:inputType="number" />
             </LinearLayout>
         </LinearLayout>
 
