@@ -30,4 +30,31 @@
     <color name="dashboard_bg">@color/orange_surface</color>
     <color name="text_primary_dark">#212121</color>
     <color name="text_secondary_dark">#5D4037</color>
+
+    <!-- Semantic surfaces (overridden in values-night) -->
+    <color name="surface_card">#FFFFFF</color>
+    <color name="surface_panel">#FFFFFF</color>
+    <color name="surface_muted">@color/orange_50</color>
+    <color name="surface_divider">@color/orange_100</color>
+    <color name="stroke_default">@color/orange_200</color>
+    <color name="stroke_subtle">@color/orange_100</color>
+    <color name="stroke_button">@color/orange_300</color>
+    <color name="text_accent">@color/orange_800</color>
+    <color name="text_accent_soft">@color/orange_700</color>
+    <color name="ripple_subtle">@color/orange_100</color>
+    <color name="input_surface">#FFFFFF</color>
+    <color name="input_stroke">@color/orange_200</color>
+
+    <!-- Switch (light) -->
+    <color name="switch_track_off">#E0E0E0</color>
+    <color name="switch_track_on">#FF9800</color>
+    <color name="switch_thumb_off">#FFFFFF</color>
+    <color name="switch_thumb_on">#FFFFFF</color>
+    <color name="switch_thumb_off_outline">#9E9E9E</color>
+
+    <!-- Disabled outlined buttons -->
+    <color name="button_disabled_text">#9E9E9E</color>
+    <color name="button_disabled_stroke">#BDBDBD</color>
+    <color name="button_disabled_destructive_text">#E57373</color>
+    <color name="button_disabled_destructive_stroke">#EF9A9A</color>
 </resources>

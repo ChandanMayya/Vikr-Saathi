@@ -17,10 +17,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:visibility="gone"
-            app:cardBackgroundColor="@color/white"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="12dp"
             app:cardElevation="2dp"
-            app:strokeColor="@color/orange_200"
+            app:strokeColor="@color/stroke_default"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -75,7 +75,7 @@
                         android:layout_marginEnd="4dp"
                         android:layout_weight="1"
                         android:text="@string/filter_date_from"
-                        app:strokeColor="@color/orange_300" />
+                        app:strokeColor="@color/stroke_button" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonDateTo"
@@ -85,7 +85,7 @@
                         android:layout_marginStart="4dp"
                         android:layout_weight="1"
                         android:text="@string/filter_date_to"
-                        app:strokeColor="@color/orange_300" />
+                        app:strokeColor="@color/stroke_button" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -135,7 +135,7 @@
                     android:layout_gravity="end"
                     android:layout_marginTop="4dp"
                     android:text="@string/clear_filters"
-                    android:textColor="@color/orange_700" />
+                    android:textColor="@color/text_accent_soft" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

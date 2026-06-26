@@ -15,10 +15,10 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/white"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="12dp"
             app:cardElevation="2dp"
-            app:strokeColor="@color/orange_200"
+            app:strokeColor="@color/stroke_default"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -32,7 +32,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/excel_upload_instructions_title"
                     android:textAppearance="?attr/textAppearanceTitleMedium"
-                    android:textColor="@color/orange_800"
+                    android:textColor="@color/text_accent"
                     android:textStyle="bold" />
 
                 <TextView
@@ -54,7 +54,7 @@
             android:layout_marginTop="16dp"
             android:text="@string/select_excel_file"
             app:icon="@android:drawable/ic_menu_upload"
-            app:strokeColor="@color/orange_300" />
+            app:strokeColor="@color/stroke_button" />
 
         <TextView
             android:id="@+id/textSelectedFile"
@@ -81,9 +81,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:visibility="gone"
-            app:cardBackgroundColor="@color/white"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="12dp"
-            app:strokeColor="@color/orange_200"
+            app:strokeColor="@color/stroke_default"
             app:strokeWidth="1dp">
 
             <TextView

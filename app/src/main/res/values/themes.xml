@@ -9,8 +9,17 @@
         <item name="colorOnSecondary">@color/black</item>
         <item name="colorPrimaryContainer">@color/orange_100</item>
         <item name="colorOnPrimaryContainer">@color/orange_900</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="colorOnSurface">@color/text_primary_dark</item>
+        <item name="colorSurfaceVariant">@color/orange_surface</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary_dark</item>
+        <item name="colorOutline">@color/stroke_default</item>
+        <item name="colorOutlineVariant">@color/stroke_subtle</item>
+        <item name="android:colorBackground">@color/orange_surface</item>
         <item name="android:statusBarColor">@color/orange_primary_dark</item>
         <item name="android:navigationBarColor">@color/orange_primary_dark</item>
+        <item name="materialSwitchStyle">@style/VikrSaathiSwitch</item>
+        <item name="materialButtonOutlinedStyle">@style/VikrSaathiOutlinedButton</item>
     </style>
 
     <style name="Theme.VikrSaathi.NoActionBar" parent="Theme.VikrSaathi" />
@@ -20,7 +29,7 @@
         <item name="cardElevation">6dp</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
-        <item name="rippleColor">@color/orange_200</item>
+        <item name="rippleColor">@color/ripple_subtle</item>
         <item name="strokeWidth">0dp</item>
     </style>
 
@@ -36,9 +45,9 @@
     <style name="VikrSaathiBillLineCard" parent="Widget.Material3.CardView.Outlined">
         <item name="cardCornerRadius">12dp</item>
         <item name="cardElevation">2dp</item>
-        <item name="strokeColor">@color/orange_200</item>
+        <item name="strokeColor">?attr/colorOutline</item>
         <item name="strokeWidth">1dp</item>
-        <item name="cardBackgroundColor">@color/white</item>
+        <item name="cardBackgroundColor">?attr/colorSurface</item>
     </style>
 
     <style name="VikrSaathiBillLineInput">
@@ -47,15 +56,31 @@
         <item name="android:minHeight">36dp</item>
         <item name="android:paddingStart">8dp</item>
         <item name="android:paddingEnd">8dp</item>
-        <item name="android:textColor">@color/text_primary_dark</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
         <item name="android:textSize">15sp</item>
         <item name="android:textStyle">bold</item>
     </style>
 
     <style name="VikrSaathiBillLineLabel">
         <item name="android:textAppearance">?attr/textAppearanceLabelSmall</item>
-        <item name="android:textColor">@color/text_secondary_dark</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
         <item name="android:textAllCaps">true</item>
         <item name="android:letterSpacing">0.05</item>
+    </style>
+
+    <style name="VikrSaathiSwitch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="thumbTint">@color/switch_thumb_tint</item>
+        <item name="trackTint">@color/switch_track_tint</item>
+        <item name="trackDecorationTint">@color/switch_track_decoration_tint</item>
+    </style>
+
+    <style name="VikrSaathiOutlinedButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textColor">@color/button_outlined_text</item>
+        <item name="strokeColor">@color/button_outlined_stroke</item>
+    </style>
+
+    <style name="VikrSaathiOutlinedButton.Destructive" parent="VikrSaathiOutlinedButton">
+        <item name="android:textColor">@color/button_outlined_text_destructive</item>
+        <item name="strokeColor">@color/button_outlined_stroke_destructive</item>
     </style>
 </resources>

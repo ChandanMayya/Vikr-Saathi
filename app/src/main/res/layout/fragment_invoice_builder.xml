@@ -48,7 +48,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonInspectElement"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/VikrSaathiOutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
@@ -58,7 +58,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonEditTableColumns"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/VikrSaathiOutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
@@ -110,7 +110,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonMultiSelect"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
@@ -119,17 +119,16 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonDelete"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton.Destructive"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
                         android:enabled="false"
-                        android:text="@string/delete_selected"
-                        android:textColor="?attr/colorError" />
+                        android:text="@string/delete_selected" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonGroup"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
@@ -138,7 +137,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonUngroup"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
@@ -147,7 +146,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonToggleLock"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
@@ -156,7 +155,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonDuplicate"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
@@ -165,7 +164,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonBringForward"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
@@ -174,7 +173,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonSendBackward"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
@@ -183,7 +182,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonBringToFront"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
@@ -192,17 +191,16 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonDeleteGuide"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton.Destructive"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
                         android:enabled="false"
-                        android:text="@string/delete_guide"
-                        android:textColor="?attr/colorError" />
+                        android:text="@string/delete_guide" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonSendToBack"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/VikrSaathiOutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:enabled="false"
@@ -218,7 +216,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonPreviewTemplate"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/VikrSaathiOutlinedButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="4dp"

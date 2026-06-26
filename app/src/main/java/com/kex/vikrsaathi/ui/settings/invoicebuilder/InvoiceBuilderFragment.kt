@@ -157,11 +157,9 @@ class InvoiceBuilderFragment : Fragment() {
         }
         viewModel.canUndo.observe(viewLifecycleOwner) { canUndo ->
             binding.buttonUndo.isEnabled = canUndo == true
-            binding.buttonUndo.alpha = if (canUndo == true) 1f else 0.4f
         }
         viewModel.canRedo.observe(viewLifecycleOwner) { canRedo ->
             binding.buttonRedo.isEnabled = canRedo == true
-            binding.buttonRedo.alpha = if (canRedo == true) 1f else 0.4f
         }
         viewModel.livePreview.observe(viewLifecycleOwner) { enabled ->
             binding.templateCanvas.showPreview = enabled == true
@@ -250,7 +248,6 @@ class InvoiceBuilderFragment : Fragment() {
         val hasGuide = viewModel.selectedGuideId.value != null
         setActionEnabled(binding.buttonDeleteGuide, hasGuide)
         drawerButtonDeleteGuide.isEnabled = hasGuide
-        drawerButtonDeleteGuide.alpha = if (hasGuide) 1f else 0.4f
     }
 
     private fun updateSelectionUi() {
@@ -282,13 +279,11 @@ class InvoiceBuilderFragment : Fragment() {
 
     private fun setActionEnabled(button: MaterialButton, enabled: Boolean) {
         button.isEnabled = enabled
-        button.alpha = if (enabled) 1f else 0.4f
     }
 
     private fun updateMultiSelectButton() {
         val enabled = viewModel.multiSelectMode.value == true
         binding.buttonMultiSelect.isChecked = enabled
-        binding.buttonMultiSelect.alpha = if (enabled) 1f else 0.85f
     }
 
     private fun bindDrawerViews(view: View) {

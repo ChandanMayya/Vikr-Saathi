@@ -75,7 +75,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/drawerButtonAddVerticalGuide"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/VikrSaathiOutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -83,7 +83,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/drawerButtonAddHorizontalGuide"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/VikrSaathiOutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -91,13 +91,12 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/drawerButtonDeleteGuide"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/VikrSaathiOutlinedButton.Destructive"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:enabled="false"
-            android:text="@string/delete_guide"
-            android:textColor="?attr/colorError" />
+            android:text="@string/delete_guide" />
 
         <View
             android:layout_width="match_parent"
@@ -107,14 +106,14 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/drawerButtonExportJson"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/VikrSaathiOutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/export_template" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/drawerButtonImportJson"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/VikrSaathiOutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -122,7 +121,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/drawerButtonVersionHistory"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/VikrSaathiOutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
