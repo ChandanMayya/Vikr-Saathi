@@ -60,6 +60,7 @@ class TemplateCanvasView @JvmOverloads constructor(
             field = value
             invalidate()
         }
+    var previewGesturesEnabled: Boolean = false
     var showGrid: Boolean = false
         set(value) {
             field = value
@@ -778,7 +779,10 @@ class TemplateCanvasView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (showPreview) return false
+        if (showPreview && !previewGesturesEnabled) return false
+        if (showPreview && previewGesturesEnabled) {
+            return handlePreviewTouchEvent(event)
+        }
         val t = template ?: return false
 
         if (event.pointerCount >= 2) {
@@ -1011,6 +1015,73 @@ class TemplateCanvasView @JvmOverloads constructor(
             sum += event.getY(i)
         }
         return sum / event.pointerCount
+    }
+
+    private fun handlePreviewTouchEvent(event: MotionEvent): Boolean {
+        if (template == null) return false
+
+        if (event.pointerCount >= 2) {
+            scaleGestureDetector.onTouchEvent(event)
+        }
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (event.pointerCount >= 2) {
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    isZoomGesture = true
+                    lastPinchFocusX = pinchFocusX(event)
+                    lastPinchFocusY = pinchFocusY(event)
+                }
+                return true
+            }
+
+            MotionEvent.ACTION_DOWN -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
+                downTouchX = event.x
+                downTouchY = event.y
+                hasDragged = false
+                isZoomGesture = false
+                mode = TouchMode.PAN
+                return true
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                if (event.pointerCount >= 2 && isZoomGesture) {
+                    val focusX = pinchFocusX(event)
+                    val focusY = pinchFocusY(event)
+                    panBy(focusX - lastPinchFocusX, focusY - lastPinchFocusY)
+                    lastPinchFocusX = focusX
+                    lastPinchFocusY = focusY
+                    clampPan()
+                    invalidate()
+                    return true
+                }
+                if (event.pointerCount == 1 && mode == TouchMode.PAN) {
+                    val dist = hypot(event.x - downTouchX, event.y - downTouchY)
+                    if (dist >= touchSlop || hasDragged) {
+                        hasDragged = true
+                        panBy(event.x - downTouchX, event.y - downTouchY)
+                        downTouchX = event.x
+                        downTouchY = event.y
+                        clampPan()
+                        invalidate()
+                    }
+                    return true
+                }
+            }
+
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (event.pointerCount <= 1) {
+                    isZoomGesture = false
+                }
+                mode = TouchMode.NONE
+                hasDragged = false
+                parent?.requestDisallowInterceptTouchEvent(false)
+                return true
+            }
+        }
+
+        return isZoomGesture || event.pointerCount > 1
     }
 
     private fun findGuideAt(screenX: Float, screenY: Float, template: InvoiceTemplate): TemplateGuide? {

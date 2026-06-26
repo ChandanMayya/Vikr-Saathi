@@ -8,7 +8,10 @@ import com.kex.vikrsaathi.data.entity.Customer
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.data.model.BillWithDetails
+import com.kex.vikrsaathi.data.draft.HeldBillRestore
+import com.kex.vikrsaathi.data.draft.HeldDraftSummary
 import com.kex.vikrsaathi.data.repository.BillRepository
+import com.kex.vikrsaathi.data.repository.BillDraftRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
@@ -23,6 +26,7 @@ class BillViewModel(
     private val customerRepository: CustomerRepository,
     private val itemRepository: ItemRepository,
     private val billRepository: BillRepository,
+    private val billDraftRepository: BillDraftRepository,
     private val settingsRepository: SettingsRepository,
     private val invoiceTemplateRepository: InvoiceTemplateRepository
 ) : ViewModel() {
@@ -49,6 +53,68 @@ class BillViewModel(
 
     val currentBillId: Long?
         get() = editingBillId
+
+    val isNewBillSession: Boolean
+        get() = editingBillId == null
+
+    fun holdBill(
+        buyerName: String,
+        buyerAddress: String,
+        buyerPhone: String,
+        onHeld: (HeldDraftSummary) -> Unit,
+        onEmpty: () -> Unit
+    ) {
+        val lines = _lineItems.value.orEmpty()
+        if (lines.isEmpty()) {
+            onEmpty()
+            return
+        }
+        viewModelScope.launch {
+            val name = buyerName.ifBlank {
+                _selectedCustomer.value?.name.orEmpty()
+            }.ifBlank { "Walk-in customer" }
+            val summary = billDraftRepository.holdBill(
+                customerId = _selectedCustomer.value?.id,
+                customerName = name,
+                buyerAddress = buyerAddress,
+                buyerPhone = buyerPhone,
+                lineItems = lines
+            )
+            clearBill()
+            onHeld(summary)
+        }
+    }
+
+    fun resumeHeldBill(
+        draftId: Long,
+        onRestored: (HeldBillRestore) -> Unit,
+        onMissing: () -> Unit
+    ) {
+        viewModelScope.launch {
+            val restored = billDraftRepository.consumeHeldBill(draftId)
+            if (restored == null || restored.lineItems.isEmpty()) {
+                onMissing()
+                return@launch
+            }
+            editingBillId = null
+            _selectedCustomer.value = restored.customerId?.let { customerRepository.getById(it) }
+            _lineItems.value = restored.lineItems
+            recalculate()
+            onRestored(restored)
+        }
+    }
+
+    fun hasUnsavedNewBillContent(
+        buyerName: String,
+        buyerAddress: String,
+        buyerPhone: String
+    ): Boolean {
+        if (!isNewBillSession) return false
+        if (_lineItems.value.orEmpty().isNotEmpty()) return true
+        return buyerName.isNotBlank() || buyerAddress.isNotBlank() || buyerPhone.isNotBlank()
+    }
+
+    fun canHoldCurrentBill(): Boolean = _lineItems.value.orEmpty().isNotEmpty()
 
     fun loadBill(billId: Long) {
         viewModelScope.launch {

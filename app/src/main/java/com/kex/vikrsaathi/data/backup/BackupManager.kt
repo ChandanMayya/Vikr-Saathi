@@ -21,6 +21,7 @@ import com.kex.vikrsaathi.util.BackupStorageHelper
 import com.kex.vikrsaathi.util.TemplateImageStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -41,7 +42,64 @@ class BackupManager(
         onProgress: BackupProgressListener
     ): BackupSaveResult = withContext(Dispatchers.IO) {
         require(options.hasAnySelected()) { "No export options selected" }
+        val json = buildBackupJson(options, onProgress)
+        onProgress("Saving to Vikr Saathi folder…", 95)
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val fileName = "vikr_saathi_backup_$timestamp.json"
+        val result = BackupStorageHelper.saveBackupJson(context, fileName, json)
+        onProgress("Backup complete", 100)
+        result
+    }
 
+    suspend fun buildBackupJson(
+        options: BackupExportOptions = BackupExportOptions(),
+        onProgress: BackupProgressListener = { _, _ -> }
+    ): String = withContext(Dispatchers.IO) {
+        collectBackupPayload(options, onProgress).let { payload ->
+            BackupJsonCodec.buildBackupJson(
+                options = options,
+                settings = settingsRepository,
+                customers = payload.customers,
+                items = payload.items,
+                bills = payload.bills,
+                templates = payload.templates,
+                templateVersions = payload.templateVersions,
+                templateImages = payload.templateImages
+            )
+        }
+    }
+
+    suspend fun importBackupSections(
+        json: String,
+        sections: Set<String>,
+        onProgress: BackupProgressListener
+    ): BackupImportResult = withContext(Dispatchers.IO) {
+        validateSchema(json)
+        val root = JSONObject(json)
+        val originalIncludes = root.optJSONArray("includes")?.let { array ->
+            buildSet {
+                for (i in 0 until array.length()) add(array.getString(i))
+            }
+        }.orEmpty()
+        val filteredIncludes = originalIncludes.intersect(sections)
+        val filteredRoot = JSONObject(json)
+        filteredRoot.put("includes", JSONArray(filteredIncludes.toList()))
+        importBackup(filteredRoot.toString(), onProgress)
+    }
+
+    private data class BackupPayload(
+        val customers: List<Customer>,
+        val items: List<Item>,
+        val bills: List<com.kex.vikrsaathi.data.model.BillWithDetails>,
+        val templates: List<InvoiceTemplateEntity>,
+        val templateVersions: List<InvoiceTemplateVersionEntity>,
+        val templateImages: List<TemplateImageBackup>
+    )
+
+    private suspend fun collectBackupPayload(
+        options: BackupExportOptions,
+        onProgress: BackupProgressListener
+    ): BackupPayload {
         onProgress("Preparing backup…", 5)
 
         val customers = if (options.includeCustomers) {
@@ -86,28 +144,12 @@ class BackupManager(
             emptyList()
         }
 
-        if (options.includeSettings) {
+        if (options.includeSettings || options.includeInvoiceConfig) {
             onProgress("Encoding shop settings and images…", 80)
         }
 
         onProgress("Building backup file…", 88)
-        val json = BackupJsonCodec.buildBackupJson(
-            options = options,
-            settings = settingsRepository,
-            customers = customers,
-            items = items,
-            bills = bills,
-            templates = templates,
-            templateVersions = templateVersions,
-            templateImages = templateImages
-        )
-
-        onProgress("Saving to Vikr Saathi folder…", 95)
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val fileName = "vikr_saathi_backup_$timestamp.json"
-        val result = BackupStorageHelper.saveBackupJson(context, fileName, json)
-        onProgress("Backup complete", 100)
-        result
+        return BackupPayload(customers, items, bills, templates, templateVersions, templateImages)
     }
 
     suspend fun readManifest(uri: Uri): BackupManifest = withContext(Dispatchers.IO) {
@@ -152,8 +194,20 @@ class BackupManager(
         if ("settings" in includes) {
             onProgress("Restoring shop settings…", 10)
             BackupJsonCodec.parseSettings(root)?.let { backup ->
-                restoreSettings(backup)
-                settingsRestored = true
+                if ("invoice_config" in includes) {
+                    restoreShopSettings(backup)
+                    settingsRestored = true
+                } else {
+                    restoreSettings(backup)
+                    settingsRestored = true
+                }
+            }
+        }
+
+        if ("invoice_config" in includes) {
+            onProgress("Restoring invoice configuration…", 12)
+            BackupJsonCodec.parseSettings(root)?.let { backup ->
+                restoreInvoiceConfig(backup)
             }
         }
 
@@ -306,14 +360,14 @@ class BackupManager(
     }
 
     private fun restoreSettings(backup: SettingsBackup) {
+        restoreShopSettings(backup)
+        restoreInvoiceConfig(backup)
+    }
+
+    private fun restoreShopSettings(backup: SettingsBackup) {
         settingsRepository.shopName = backup.shopName.ifBlank { settingsRepository.shopName }
         settingsRepository.currencySymbol = backup.currencySymbol.ifBlank { settingsRepository.currencySymbol }
         settingsRepository.defaultDiscount = backup.defaultDiscount
-        settingsRepository.invoicePrefix = backup.invoicePrefix
-        settingsRepository.invoiceSuffix = backup.invoiceSuffix
-        settingsRepository.invoiceSeparator = backup.invoiceSeparator.ifBlank { "/" }
-        settingsRepository.invoiceCounter = backup.invoiceCounter.coerceAtLeast(1)
-        settingsRepository.invoiceCounterMinDigits = backup.invoiceCounterMinDigits
 
         BackupJsonCodec.decodeBitmap(backup.headerImageBase64)?.let {
             settingsRepository.saveHeaderImage(it)
@@ -324,6 +378,14 @@ class BackupManager(
         BackupJsonCodec.decodeBitmap(backup.logoImageBase64)?.let {
             settingsRepository.saveShopLogoImage(it)
         }
+    }
+
+    private fun restoreInvoiceConfig(backup: SettingsBackup) {
+        settingsRepository.invoicePrefix = backup.invoicePrefix
+        settingsRepository.invoiceSuffix = backup.invoiceSuffix
+        settingsRepository.invoiceSeparator = backup.invoiceSeparator.ifBlank { "/" }
+        settingsRepository.invoiceCounter = backup.invoiceCounter.coerceAtLeast(1)
+        settingsRepository.invoiceCounterMinDigits = backup.invoiceCounterMinDigits
     }
 
     private fun collectTemplateImages(

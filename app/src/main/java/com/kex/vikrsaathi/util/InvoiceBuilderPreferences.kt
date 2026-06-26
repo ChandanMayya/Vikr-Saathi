@@ -30,6 +30,10 @@ class InvoiceBuilderPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_SNAP_TO_OBJECTS, true)
         set(value) = prefs.edit().putBoolean(KEY_SNAP_TO_OBJECTS, value).apply()
 
+    fun clear() {
+        prefs.edit().clear().apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "invoice_builder_prefs"
         private const val KEY_LIVE_PREVIEW = "live_preview"

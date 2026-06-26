@@ -38,4 +38,7 @@ interface ItemDao {
 
     @Query("SELECT COUNT(*) FROM items WHERE barcode = :barcode AND id != :excludeId")
     suspend fun countByBarcode(barcode: String, excludeId: Long = 0): Int
+
+    @Query("DELETE FROM items")
+    suspend fun deleteAll()
 }

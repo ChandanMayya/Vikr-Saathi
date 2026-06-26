@@ -40,4 +40,7 @@ interface InvoiceTemplateDao {
         clearDefaultFlags()
         markAsDefault(id)
     }
+
+    @Query("DELETE FROM invoice_templates")
+    suspend fun deleteAll()
 }

@@ -12,9 +12,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
 import androidx.core.os.bundleOf
 import androidx.core.view.GravityCompat
 import androidx.core.view.MenuProvider
@@ -90,8 +90,11 @@ class BillFragment : Fragment() {
         binding.recyclerBillItems.adapter = lineAdapter
 
         val billId = arguments?.getLong(ARG_BILL_ID, -1L) ?: -1L
+        val heldDraftId = arguments?.getLong(ARG_HELD_DRAFT_ID, -1L) ?: -1L
         if (billId > 0) {
             viewModel.loadBill(billId)
+        } else if (heldDraftId > 0) {
+            resumeHeldBill(heldDraftId)
         } else if (savedInstanceState == null) {
             viewModel.clearBill()
         }
@@ -100,13 +103,20 @@ class BillFragment : Fragment() {
         setupItemAutocomplete()
         setupDrawer()
         setupToolbarMenu()
+        setupBackNavigation()
         applyReadOnlyState()
 
         viewModel.selectedCustomer.observe(viewLifecycleOwner) { customer ->
             suppressCustomerSearch = true
-            binding.autoCompleteCustomer.setText(customer?.name.orEmpty(), false)
-            binding.editBuyerAddress.setText(customer?.formattedAddress().orEmpty())
-            binding.editBuyerPhone.setText(customer?.phone.orEmpty())
+            if (customer != null) {
+                binding.autoCompleteCustomer.setText(customer.name, false)
+                if (binding.editBuyerAddress.text.isNullOrBlank()) {
+                    binding.editBuyerAddress.setText(customer.formattedAddress())
+                }
+                if (binding.editBuyerPhone.text.isNullOrBlank()) {
+                    binding.editBuyerPhone.setText(customer.phone)
+                }
+            }
             binding.autoCompleteCustomer.dismissDropDown()
             binding.autoCompleteCustomer.post { suppressCustomerSearch = false }
         }
@@ -131,29 +141,150 @@ class BillFragment : Fragment() {
             )
         }
         binding.buttonSaveBill.setOnClickListener { saveBill() }
-        binding.buttonGeneratePdf.setOnClickListener { generatePdf(print = false) }
-        binding.buttonPrint.setOnClickListener { generatePdf(print = true) }
     }
 
     private fun setupToolbarMenu() {
         requireActivity().addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                if (isReadOnly) {
-                    menuInflater.inflate(R.menu.menu_bill_view, menu)
+                when {
+                    isReadOnly -> menuInflater.inflate(R.menu.menu_bill_view, menu)
+                    isNewBillDrawerEnabled() -> menuInflater.inflate(R.menu.menu_bill_edit, menu)
                 }
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                if (menuItem.itemId == R.id.action_bill_options) {
-                    binding.drawerLayout.openDrawer(GravityCompat.END)
-                    return true
+                return when (menuItem.itemId) {
+                    R.id.action_bill_options -> {
+                        binding.drawerLayout.openDrawer(GravityCompat.END)
+                        true
+                    }
+                    else -> false
                 }
-                return false
             }
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
+    private fun isNewBillDrawerEnabled(): Boolean {
+        val billId = arguments?.getLong(ARG_BILL_ID, -1L) ?: -1L
+        return !isReadOnly && billId <= 0 && viewModel.isNewBillSession
+    }
+
+    private fun setupBackNavigation() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (!handleLeaveNewBill()) {
+                        isEnabled = false
+                        requireActivity().onBackPressedDispatcher.onBackPressed()
+                        isEnabled = true
+                    }
+                }
+            }
+        )
+    }
+
+    private fun handleLeaveNewBill(): Boolean {
+        if (!isNewBillDrawerEnabled()) return false
+        if (!viewModel.hasUnsavedNewBillContent(
+                binding.autoCompleteCustomer.text.toString().trim(),
+                binding.editBuyerAddress.text.toString().trim(),
+                binding.editBuyerPhone.text.toString().trim()
+            )
+        ) {
+            return false
+        }
+        showLeaveNewBillDialog(navigateAwayOnComplete = true)
+        return true
+    }
+
+    private fun showLeaveNewBillDialog(navigateAwayOnComplete: Boolean) {
+        val canHold = viewModel.canHoldCurrentBill()
+        val dialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.leave_new_bill_title)
+            .setMessage(R.string.leave_new_bill_message)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.discard_bill) { _, _ ->
+                viewModel.clearBill()
+                if (navigateAwayOnComplete) {
+                    findNavController().navigateUp()
+                }
+            }
+
+        if (canHold) {
+            dialog.setNeutralButton(R.string.hold_bill) { _, _ ->
+                holdCurrentBill(
+                    navigateAwayOnComplete = navigateAwayOnComplete,
+                    closeDrawer = false
+                )
+            }
+        }
+        dialog.show()
+    }
+
+    private fun holdCurrentBill(
+        navigateAwayOnComplete: Boolean = false,
+        closeDrawer: Boolean = true
+    ) {
+        if (!isNewBillDrawerEnabled()) return
+        binding.root.clearFocus()
+        viewModel.holdBill(
+            buyerName = binding.autoCompleteCustomer.text.toString().trim(),
+            buyerAddress = binding.editBuyerAddress.text.toString().trim(),
+            buyerPhone = binding.editBuyerPhone.text.toString().trim(),
+            onHeld = { summary ->
+                if (closeDrawer) {
+                    binding.drawerLayout.closeDrawer(GravityCompat.END)
+                }
+                binding.autoCompleteCustomer.setText("", false)
+                binding.editBuyerAddress.setText("")
+                binding.editBuyerPhone.setText("")
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.hold_bill_success, summary.customerName, summary.itemCount),
+                    Toast.LENGTH_LONG
+                ).show()
+                if (navigateAwayOnComplete) {
+                    findNavController().navigateUp()
+                }
+            },
+            onEmpty = {
+                Toast.makeText(requireContext(), R.string.hold_bill_empty, Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    private fun resumeHeldBill(draftId: Long) {
+        viewModel.resumeHeldBill(
+            draftId = draftId,
+            onRestored = { restored ->
+                suppressCustomerSearch = true
+                binding.autoCompleteCustomer.setText(restored.customerName, false)
+                binding.editBuyerAddress.setText(restored.buyerAddress)
+                binding.editBuyerPhone.setText(restored.buyerPhone)
+                binding.autoCompleteCustomer.post { suppressCustomerSearch = false }
+                requireActivity().invalidateOptionsMenu()
+                updateTitle()
+            },
+            onMissing = {
+                Toast.makeText(requireContext(), R.string.held_bill_missing, Toast.LENGTH_SHORT).show()
+                viewModel.clearBill()
+            }
+        )
+    }
+
+    private fun openHeldBills() {
+        binding.drawerLayout.closeDrawer(GravityCompat.END)
+        findNavController().navigate(R.id.action_bill_to_held_bills)
+    }
+
     private fun setupDrawer() {
+        binding.billDrawer.buttonHoldBill.setOnClickListener {
+            holdCurrentBill(closeDrawer = true)
+        }
+        binding.billDrawer.buttonRestoreBill.setOnClickListener {
+            openHeldBills()
+        }
         binding.billDrawer.buttonEnableEditBill.setOnClickListener {
             binding.drawerLayout.closeDrawer(GravityCompat.END)
             isReadOnly = false
@@ -177,7 +308,16 @@ class BillFragment : Fragment() {
         binding.buttonAddNewCustomer.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.layoutAddItem.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.buttonSaveBill.visibility = if (isReadOnly) View.GONE else View.VISIBLE
+        updateDrawerVisibility()
         updateTitle()
+    }
+
+    private fun updateDrawerVisibility() {
+        val showNewBillOptions = isNewBillDrawerEnabled()
+        binding.billDrawer.layoutNewBillOptions.visibility =
+            if (showNewBillOptions) View.VISIBLE else View.GONE
+        binding.billDrawer.buttonEnableEditBill.visibility =
+            if (isReadOnly) View.VISIBLE else View.GONE
     }
 
     private fun updateTitle() {
@@ -348,59 +488,18 @@ class BillFragment : Fragment() {
             Toast.makeText(requireContext(), R.string.add_items_first, Toast.LENGTH_SHORT).show()
             return
         }
-        viewModel.saveBill {
-            updateTitle()
-            Toast.makeText(requireContext(), R.string.bill_saved, Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun generatePdf(print: Boolean) {
-        fun openPdf(file: java.io.File) {
-            val uri = FileProvider.getUriForFile(
-                requireContext(),
-                "${requireContext().packageName}.fileprovider",
-                file
-            )
-            if (print) {
-                val printIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/pdf"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                try {
-                    startActivity(Intent.createChooser(printIntent, getString(R.string.print)))
-                } catch (_: Exception) {
-                    Toast.makeText(requireContext(), R.string.pdf_saved, Toast.LENGTH_LONG).show()
-                }
+        val isNewBillSave = viewModel.isNewBillSession
+        viewModel.saveBill { id ->
+            if (isNewBillSave) {
+                findNavController().navigate(
+                    R.id.action_bill_to_preview,
+                    bundleOf(BillPreviewFragment.ARG_BILL_ID to id)
+                )
             } else {
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, "application/pdf")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                try {
-                    startActivity(intent)
-                } catch (_: Exception) {
-                    Toast.makeText(requireContext(), R.string.pdf_saved, Toast.LENGTH_LONG).show()
-                }
+                updateTitle()
+                requireActivity().invalidateOptionsMenu()
+                Toast.makeText(requireContext(), R.string.bill_saved, Toast.LENGTH_SHORT).show()
             }
-        }
-
-        fun exportForBill(billId: Long) {
-            viewModel.exportBillPdf(requireContext(), billId) { file ->
-                if (file == null) {
-                    Toast.makeText(requireContext(), R.string.pdf_generation_failed, Toast.LENGTH_SHORT).show()
-                } else {
-                    openPdf(file)
-                }
-            }
-        }
-
-        val existingId = viewModel.currentBillId ?: arguments?.getLong(ARG_BILL_ID, -1L)?.takeIf { it > 0 }
-        if (existingId != null) {
-            exportForBill(existingId)
-        } else {
-            binding.root.clearFocus()
-            viewModel.saveBill { id -> exportForBill(id) }
         }
     }
 
@@ -413,5 +512,6 @@ class BillFragment : Fragment() {
     companion object {
         const val ARG_BILL_ID = "billId"
         const val ARG_READ_ONLY = "readOnly"
+        const val ARG_HELD_DRAFT_ID = "heldDraftId"
     }
 }

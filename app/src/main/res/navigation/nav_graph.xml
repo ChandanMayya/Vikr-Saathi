@@ -40,9 +40,43 @@
             android:name="readOnly"
             android:defaultValue="false"
             app:argType="boolean" />
+        <argument
+            android:name="heldDraftId"
+            android:defaultValue="-1L"
+            app:argType="long" />
         <action
             android:id="@+id/action_bill_to_items"
             app:destination="@id/itemFragment" />
+        <action
+            android:id="@+id/action_bill_to_held_bills"
+            app:destination="@id/heldBillsFragment" />
+        <action
+            android:id="@+id/action_bill_to_preview"
+            app:destination="@id/billPreviewFragment"
+            app:popUpTo="@id/billFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/heldBillsFragment"
+        android:name="com.kex.vikrsaathi.ui.bill.HeldBillsFragment"
+        android:label="@string/held_bills"
+        tools:layout="@layout/fragment_held_bills">
+        <action
+            android:id="@+id/action_held_bills_to_bill"
+            app:destination="@id/billFragment"
+            app:popUpTo="@id/billFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/billPreviewFragment"
+        android:name="com.kex.vikrsaathi.ui.bill.BillPreviewFragment"
+        android:label="@string/bill_preview"
+        tools:layout="@layout/fragment_bill_preview">
+        <argument
+            android:name="billId"
+            app:argType="long" />
     </fragment>
 
     <fragment
@@ -87,6 +121,9 @@
         <action
             android:id="@+id/action_settings_to_backup"
             app:destination="@id/backupFragment" />
+        <action
+            android:id="@+id/action_settings_to_reset"
+            app:destination="@id/resetFragment" />
     </fragment>
 
     <fragment
@@ -94,6 +131,12 @@
         android:name="com.kex.vikrsaathi.ui.settings.backup.BackupFragment"
         android:label="@string/backup_page_title"
         tools:layout="@layout/fragment_backup" />
+
+    <fragment
+        android:id="@+id/resetFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.reset.ResetFragment"
+        android:label="@string/reset_page_title"
+        tools:layout="@layout/fragment_reset" />
 
     <fragment
         android:id="@+id/invoiceTemplatesFragment"

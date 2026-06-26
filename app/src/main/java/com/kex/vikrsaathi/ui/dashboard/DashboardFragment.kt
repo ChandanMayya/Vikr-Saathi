@@ -32,8 +32,6 @@ class DashboardFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val app = requireActivity().application as VikrSaathiApp
-        viewModel.refresh(app.settingsRepository)
 
         viewModel.shopName.observe(viewLifecycleOwner) { name ->
             binding.textShopName.text = name
@@ -58,6 +56,11 @@ class DashboardFragment : Fragment() {
         binding.cardSettings.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_settings)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refresh()
     }
 
     override fun onDestroyView() {

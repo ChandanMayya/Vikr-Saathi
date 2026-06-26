@@ -35,4 +35,7 @@ interface CustomerDao {
 
     @Query("SELECT * FROM customers WHERE phone LIKE '%' || :query || '%' ORDER BY name ASC LIMIT 20")
     suspend fun searchByPhone(query: String): List<Customer>
+
+    @Query("DELETE FROM customers")
+    suspend fun deleteAll()
 }

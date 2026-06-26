@@ -19,4 +19,7 @@ interface BillItemDao {
 
     @Query("DELETE FROM bill_items WHERE billId = :billId")
     suspend fun deleteItemsForBill(billId: Long)
+
+    @Query("DELETE FROM bill_items")
+    suspend fun deleteAll()
 }

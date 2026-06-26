@@ -62,6 +62,29 @@ class SettingsRepository(context: Context) {
 
     fun saveShopLogoImage(bitmap: Bitmap) = saveImage(bitmap, LOGO_FILE)
 
+    fun resetToDefaults(context: Context) {
+        resetShopBrandingToDefaults(context)
+        resetInvoiceConfigToDefaults()
+    }
+
+    fun resetShopBrandingToDefaults(context: Context) {
+        shopName = DEFAULT_SHOP_NAME
+        currencySymbol = DEFAULT_CURRENCY
+        defaultDiscount = 0.0
+        File(filesDir, HEADER_FILE).delete()
+        File(filesDir, SIGNATURE_FILE).delete()
+        File(filesDir, LOGO_FILE).delete()
+        copyAssetHeaderIfNeeded(context)
+    }
+
+    fun resetInvoiceConfigToDefaults() {
+        invoicePrefix = ""
+        invoiceSuffix = ""
+        invoiceSeparator = "/"
+        invoiceCounter = 1
+        invoiceCounterMinDigits = 2
+    }
+
     fun copyAssetHeaderIfNeeded(context: Context) {
         if (File(filesDir, HEADER_FILE).exists()) return
         try {

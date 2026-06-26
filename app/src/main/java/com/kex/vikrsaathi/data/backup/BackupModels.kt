@@ -3,12 +3,14 @@ package com.kex.vikrsaathi.data.backup
 data class BackupExportOptions(
     val includeSales: Boolean = true,
     val includeSettings: Boolean = true,
+    val includeInvoiceConfig: Boolean = false,
     val includeTemplates: Boolean = true,
     val includeItems: Boolean = true,
     val includeCustomers: Boolean = true
 ) {
     fun hasAnySelected(): Boolean =
-        includeSales || includeSettings || includeTemplates || includeItems || includeCustomers
+        includeSales || includeSettings || includeInvoiceConfig ||
+            includeTemplates || includeItems || includeCustomers
 }
 
 data class BackupManifest(

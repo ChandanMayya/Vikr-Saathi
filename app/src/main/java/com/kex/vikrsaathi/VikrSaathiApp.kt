@@ -2,12 +2,15 @@ package com.kex.vikrsaathi
 
 import android.app.Application
 import com.kex.vikrsaathi.data.database.AppDatabase
+import com.kex.vikrsaathi.data.repository.BillDraftRepository
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
 import com.kex.vikrsaathi.data.backup.BackupManager
+import com.kex.vikrsaathi.data.reset.ResetHistoryStore
+import com.kex.vikrsaathi.data.reset.ResetManager
 import com.kex.vikrsaathi.util.BillsHistoryPreferences
 import com.kex.vikrsaathi.util.InvoiceBuilderPreferences
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +32,7 @@ class VikrSaathiApp : Application() {
             settingsRepository
         )
     }
+    val billDraftRepository by lazy { BillDraftRepository(database.billDraftDao()) }
     val settingsRepository by lazy { SettingsRepository(this) }
     val invoiceTemplateRepository by lazy {
         InvoiceTemplateRepository(
@@ -47,6 +51,18 @@ class VikrSaathiApp : Application() {
             itemRepository = itemRepository,
             billRepository = billRepository,
             invoiceTemplateRepository = invoiceTemplateRepository
+        )
+    }
+    val resetHistoryStore by lazy { ResetHistoryStore(this) }
+    val resetManager by lazy {
+        ResetManager(
+            context = this,
+            database = database,
+            backupManager = backupManager,
+            settingsRepository = settingsRepository,
+            invoiceTemplateRepository = invoiceTemplateRepository,
+            invoiceBuilderPreferences = invoiceBuilderPreferences,
+            historyStore = resetHistoryStore
         )
     }
 

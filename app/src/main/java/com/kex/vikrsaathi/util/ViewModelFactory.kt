@@ -3,7 +3,9 @@ package com.kex.vikrsaathi.util
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.kex.vikrsaathi.VikrSaathiApp
+import com.kex.vikrsaathi.ui.bill.BillPreviewViewModel
 import com.kex.vikrsaathi.ui.bill.BillViewModel
+import com.kex.vikrsaathi.ui.bill.HeldBillsViewModel
 import com.kex.vikrsaathi.ui.bills.BillsHistoryViewModel
 import com.kex.vikrsaathi.ui.bills.ExcelUploadViewModel
 import com.kex.vikrsaathi.ui.customer.CustomerViewModel
@@ -12,6 +14,7 @@ import com.kex.vikrsaathi.ui.item.ItemViewModel
 import com.kex.vikrsaathi.ui.settings.SettingsViewModel
 import com.kex.vikrsaathi.ui.settings.InvoiceTemplatesViewModel
 import com.kex.vikrsaathi.ui.settings.backup.BackupViewModel
+import com.kex.vikrsaathi.ui.settings.reset.ResetViewModel
 import com.kex.vikrsaathi.ui.settings.invoicebuilder.InvoiceBuilderViewModel
 
 class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Factory {
@@ -30,9 +33,18 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.customerRepository,
                     app.itemRepository,
                     app.billRepository,
+                    app.billDraftRepository,
                     app.settingsRepository,
                     app.invoiceTemplateRepository
                 ) as T
+            modelClass.isAssignableFrom(BillPreviewViewModel::class.java) ->
+                BillPreviewViewModel(
+                    app.billRepository,
+                    app.settingsRepository,
+                    app.invoiceTemplateRepository
+                ) as T
+            modelClass.isAssignableFrom(HeldBillsViewModel::class.java) ->
+                HeldBillsViewModel(app.billDraftRepository) as T
             modelClass.isAssignableFrom(BillsHistoryViewModel::class.java) ->
                 BillsHistoryViewModel(
                     app.billRepository,
@@ -58,6 +70,8 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                 ) as T
             modelClass.isAssignableFrom(BackupViewModel::class.java) ->
                 BackupViewModel(app.backupManager) as T
+            modelClass.isAssignableFrom(ResetViewModel::class.java) ->
+                ResetViewModel(app.resetManager) as T
             else -> throw IllegalArgumentException("Unknown ViewModel: ${modelClass.name}")
         }
     }

@@ -1,9 +1,11 @@
 package com.kex.vikrsaathi.ui.settings
 
 import android.graphics.BitmapFactory
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
-import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,6 +29,9 @@ class SettingsFragment : Fragment() {
     }
 
     private var pendingImageTarget: ImageTarget? = null
+    private var suppressAutoSave = false
+    private val autoSaveHandler = Handler(Looper.getMainLooper())
+    private var autoSaveRunnable: Runnable? = null
 
     private val imagePicker = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -65,6 +70,7 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        suppressAutoSave = true
         viewModel.shopName.observe(viewLifecycleOwner) {
             if (binding.editShopName.text.isNullOrEmpty()) binding.editShopName.setText(it)
         }
@@ -86,16 +92,35 @@ class SettingsFragment : Fragment() {
         binding.editInvoiceSeparator.setText(viewModel.invoiceSeparator())
         binding.editInvoiceCounter.setText(viewModel.invoiceCounter().toString())
         updateInvoicePreview()
+        suppressAutoSave = false
 
-        val invoiceWatcher = object : TextWatcher {
+        val autoSaveWatcher = object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-            override fun afterTextChanged(s: Editable?) = updateInvoicePreview()
+            override fun afterTextChanged(s: Editable?) {
+                updateInvoicePreview()
+                scheduleAutoSave()
+            }
         }
-        binding.editInvoicePrefix.addTextChangedListener(invoiceWatcher)
-        binding.editInvoiceSuffix.addTextChangedListener(invoiceWatcher)
-        binding.editInvoiceSeparator.addTextChangedListener(invoiceWatcher)
-        binding.editInvoiceCounter.addTextChangedListener(invoiceWatcher)
+        binding.editShopName.addTextChangedListener(autoSaveWatcher)
+        binding.editCurrencySymbol.addTextChangedListener(autoSaveWatcher)
+        binding.editDefaultDiscount.addTextChangedListener(autoSaveWatcher)
+        binding.editInvoicePrefix.addTextChangedListener(autoSaveWatcher)
+        binding.editInvoiceSuffix.addTextChangedListener(autoSaveWatcher)
+        binding.editInvoiceSeparator.addTextChangedListener(autoSaveWatcher)
+        binding.editInvoiceCounter.addTextChangedListener(autoSaveWatcher)
+
+        binding.editInvoiceCounter.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) return@setOnFocusChangeListener
+            val counter = binding.editInvoiceCounter.text.toString().trim().toIntOrNull()
+            if (counter == null || counter < 1) {
+                suppressAutoSave = true
+                binding.editInvoiceCounter.setText(viewModel.invoiceCounter().toString())
+                suppressAutoSave = false
+                updateInvoicePreview()
+                Toast.makeText(requireContext(), R.string.invalid_invoice_counter, Toast.LENGTH_SHORT).show()
+            }
+        }
 
         binding.buttonChangeHeader.setOnClickListener {
             pendingImageTarget = ImageTarget.HEADER
@@ -110,31 +135,47 @@ class SettingsFragment : Fragment() {
             imagePicker.launch("image/*")
         }
         binding.buttonInvoiceTemplates.setOnClickListener {
+            persistSettings()
             findNavController().navigate(R.id.action_settings_to_invoice_templates)
         }
         binding.buttonBackupRestore.setOnClickListener {
+            persistSettings()
             findNavController().navigate(R.id.action_settings_to_backup)
         }
-        binding.buttonSaveSettings.setOnClickListener {
-            viewModel.saveShopName(binding.editShopName.text.toString().trim())
-            viewModel.saveCurrency(binding.editCurrencySymbol.text.toString().trim())
-            viewModel.saveDefaultDiscount(
-                binding.editDefaultDiscount.text.toString().toDoubleOrNull() ?: 0.0
-            )
-            val counter = binding.editInvoiceCounter.text.toString().trim().toIntOrNull()
-            if (counter == null || counter < 1) {
-                Toast.makeText(requireContext(), R.string.invalid_invoice_counter, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            viewModel.saveInvoiceConfig(
-                prefix = binding.editInvoicePrefix.text.toString().trim(),
-                suffix = binding.editInvoiceSuffix.text.toString().trim(),
-                separator = binding.editInvoiceSeparator.text.toString().trim().ifEmpty { "/" },
-                counter = counter
-            )
-            updateInvoicePreview()
-            Toast.makeText(requireContext(), R.string.settings_saved, Toast.LENGTH_SHORT).show()
+        binding.buttonResetData.setOnClickListener {
+            persistSettings()
+            findNavController().navigate(R.id.action_settings_to_reset)
         }
+    }
+
+    override fun onPause() {
+        persistSettings()
+        super.onPause()
+    }
+
+    private fun scheduleAutoSave() {
+        if (suppressAutoSave) return
+        autoSaveRunnable?.let { autoSaveHandler.removeCallbacks(it) }
+        autoSaveRunnable = Runnable { persistSettings() }
+        autoSaveHandler.postDelayed(autoSaveRunnable!!, 400)
+    }
+
+    private fun persistSettings() {
+        if (suppressAutoSave) return
+        val counter = binding.editInvoiceCounter.text.toString().trim().toIntOrNull()
+        if (counter == null || counter < 1) return
+
+        viewModel.saveShopName(binding.editShopName.text.toString().trim())
+        viewModel.saveCurrency(binding.editCurrencySymbol.text.toString().trim())
+        viewModel.saveDefaultDiscount(
+            binding.editDefaultDiscount.text.toString().toDoubleOrNull() ?: 0.0
+        )
+        viewModel.saveInvoiceConfig(
+            prefix = binding.editInvoicePrefix.text.toString().trim(),
+            suffix = binding.editInvoiceSuffix.text.toString().trim(),
+            separator = binding.editInvoiceSeparator.text.toString().trim().ifEmpty { "/" },
+            counter = counter
+        )
     }
 
     private fun updateInvoicePreview() {
@@ -149,6 +190,8 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        autoSaveRunnable?.let { autoSaveHandler.removeCallbacks(it) }
+        autoSaveRunnable = null
         super.onDestroyView()
         _binding = null
     }

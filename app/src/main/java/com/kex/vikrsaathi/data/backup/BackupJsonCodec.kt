@@ -52,6 +52,7 @@ object BackupJsonCodec {
             if (options.includeItems) add("items")
             if (options.includeSales) add("sales")
             if (options.includeSettings) add("settings")
+            if (options.includeInvoiceConfig) add("invoice_config")
             if (options.includeTemplates) add("templates")
         }
 
@@ -60,7 +61,7 @@ object BackupJsonCodec {
             put("exportedAt", System.currentTimeMillis())
             put("includes", JSONArray(includes))
 
-            if (options.includeSettings) {
+            if (options.includeSettings || options.includeInvoiceConfig) {
                 put("settings", encodeSettings(settings))
             }
             if (options.includeCustomers) {

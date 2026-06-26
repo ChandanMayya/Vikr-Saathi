@@ -192,34 +192,11 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonGeneratePdf"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="4dp"
-                    android:layout_weight="1"
-                    android:text="@string/generate_pdf" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonPrint"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:layout_weight="1"
-                    android:text="@string/print" />
-            </LinearLayout>
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonSaveBill"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="16dp"
                 android:layout_marginBottom="16dp"
                 android:text="@string/save_bill" />
         </LinearLayout>

@@ -17,10 +17,34 @@
         android:textAppearance="?attr/textAppearanceTitleMedium"
         android:textStyle="bold" />
 
+    <LinearLayout
+        android:id="@+id/layoutNewBillOptions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonHoldBill"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/hold_bill" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonRestoreBill"
+            style="@style/VikrSaathiOutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/restore_bill" />
+    </LinearLayout>
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/buttonEnableEditBill"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="@string/enable_edit_bill" />
+        android:text="@string/enable_edit_bill"
+        android:visibility="gone" />
 </LinearLayout>

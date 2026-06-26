@@ -39,4 +39,8 @@ object TemplateImageStore {
             }
             .toMap()
     }
+
+    fun clearAll(context: Context) {
+        storageDir(context).listFiles()?.forEach { it.delete() }
+    }
 }

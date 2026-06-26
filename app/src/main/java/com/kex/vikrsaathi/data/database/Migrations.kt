@@ -62,3 +62,56 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         )
     }
 }
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS bill_drafts (
+                id INTEGER PRIMARY KEY NOT NULL,
+                customerId INTEGER,
+                customerName TEXT NOT NULL,
+                buyerAddress TEXT NOT NULL,
+                buyerPhone TEXT NOT NULL,
+                lineItemsJson TEXT NOT NULL,
+                grandTotal REAL NOT NULL,
+                itemCount INTEGER NOT NULL,
+                heldAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+}
+
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS bill_drafts_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                customerId INTEGER,
+                customerName TEXT NOT NULL,
+                buyerAddress TEXT NOT NULL,
+                buyerPhone TEXT NOT NULL,
+                lineItemsJson TEXT NOT NULL,
+                grandTotal REAL NOT NULL,
+                itemCount INTEGER NOT NULL,
+                heldAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO bill_drafts_new (
+                customerId, customerName, buyerAddress, buyerPhone,
+                lineItemsJson, grandTotal, itemCount, heldAt
+            )
+            SELECT customerId, customerName, buyerAddress, buyerPhone,
+                lineItemsJson, grandTotal, itemCount, heldAt
+            FROM bill_drafts
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE bill_drafts")
+        db.execSQL("ALTER TABLE bill_drafts_new RENAME TO bill_drafts")
+    }
+}
