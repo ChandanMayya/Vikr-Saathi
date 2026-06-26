@@ -51,6 +51,10 @@ interface BillDao {
     @Query("SELECT * FROM bills ORDER BY date DESC")
     fun getAllBillsWithDetails(): LiveData<List<BillWithDetails>>
 
+    @Transaction
+    @Query("SELECT * FROM bills ORDER BY date DESC")
+    suspend fun getAllBillsWithDetailsSync(): List<BillWithDetails>
+
     @Query("SELECT COUNT(*) FROM bills WHERE billNumber = :billNumber")
     suspend fun countByBillNumber(billNumber: String): Int
 }

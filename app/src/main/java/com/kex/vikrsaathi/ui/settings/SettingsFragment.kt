@@ -112,6 +112,9 @@ class SettingsFragment : Fragment() {
         binding.buttonInvoiceTemplates.setOnClickListener {
             findNavController().navigate(R.id.action_settings_to_invoice_templates)
         }
+        binding.buttonBackupRestore.setOnClickListener {
+            findNavController().navigate(R.id.action_settings_to_backup)
+        }
         binding.buttonSaveSettings.setOnClickListener {
             viewModel.saveShopName(binding.editShopName.text.toString().trim())
             viewModel.saveCurrency(binding.editCurrencySymbol.text.toString().trim())

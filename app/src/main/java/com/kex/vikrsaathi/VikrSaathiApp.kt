@@ -7,6 +7,7 @@ import com.kex.vikrsaathi.data.repository.CustomerRepository
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.data.backup.BackupManager
 import com.kex.vikrsaathi.util.BillsHistoryPreferences
 import com.kex.vikrsaathi.util.InvoiceBuilderPreferences
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,17 @@ class VikrSaathiApp : Application() {
     }
     val invoiceBuilderPreferences by lazy { InvoiceBuilderPreferences(this) }
     val billsHistoryPreferences by lazy { BillsHistoryPreferences(this) }
+    val backupManager by lazy {
+        BackupManager(
+            context = this,
+            database = database,
+            settingsRepository = settingsRepository,
+            customerRepository = customerRepository,
+            itemRepository = itemRepository,
+            billRepository = billRepository,
+            invoiceTemplateRepository = invoiceTemplateRepository
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()

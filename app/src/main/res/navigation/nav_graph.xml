@@ -84,7 +84,16 @@
         <action
             android:id="@+id/action_settings_to_invoice_templates"
             app:destination="@id/invoiceTemplatesFragment" />
+        <action
+            android:id="@+id/action_settings_to_backup"
+            app:destination="@id/backupFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/backupFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.backup.BackupFragment"
+        android:label="@string/backup_page_title"
+        tools:layout="@layout/fragment_backup" />
 
     <fragment
         android:id="@+id/invoiceTemplatesFragment"

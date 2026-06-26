@@ -14,6 +14,9 @@ interface InvoiceTemplateDao {
     @Query("SELECT * FROM invoice_templates ORDER BY isDefault DESC, name ASC")
     fun getAllTemplates(): LiveData<List<InvoiceTemplateEntity>>
 
+    @Query("SELECT * FROM invoice_templates ORDER BY isDefault DESC, name ASC")
+    suspend fun getAllTemplatesSync(): List<InvoiceTemplateEntity>
+
     @Query("SELECT * FROM invoice_templates WHERE isDefault = 1 LIMIT 1")
     suspend fun getDefaultTemplate(): InvoiceTemplateEntity?
 

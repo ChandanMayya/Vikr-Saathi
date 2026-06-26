@@ -24,6 +24,9 @@ interface ItemDao {
     @Query("SELECT * FROM items ORDER BY name ASC")
     fun getAllItems(): LiveData<List<Item>>
 
+    @Query("SELECT * FROM items ORDER BY name ASC")
+    suspend fun getAllItemsSync(): List<Item>
+
     @Query("SELECT * FROM items WHERE id = :id")
     suspend fun getItemById(id: Long): Item?
 

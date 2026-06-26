@@ -11,6 +11,7 @@ import com.kex.vikrsaathi.ui.dashboard.DashboardViewModel
 import com.kex.vikrsaathi.ui.item.ItemViewModel
 import com.kex.vikrsaathi.ui.settings.SettingsViewModel
 import com.kex.vikrsaathi.ui.settings.InvoiceTemplatesViewModel
+import com.kex.vikrsaathi.ui.settings.backup.BackupViewModel
 import com.kex.vikrsaathi.ui.settings.invoicebuilder.InvoiceBuilderViewModel
 
 class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Factory {
@@ -55,6 +56,8 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.customerRepository,
                     app.itemRepository
                 ) as T
+            modelClass.isAssignableFrom(BackupViewModel::class.java) ->
+                BackupViewModel(app.backupManager) as T
             else -> throw IllegalArgumentException("Unknown ViewModel: ${modelClass.name}")
         }
     }

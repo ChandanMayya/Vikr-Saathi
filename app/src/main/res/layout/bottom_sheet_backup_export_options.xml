@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/backup_export_options_title"
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/backup_export_options_hint"
+        android:textAppearance="?attr/textAppearanceBodySmall" />
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkExportSales"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/backup_include_sales" />
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkExportSettings"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/backup_include_settings" />
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkExportTemplates"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/backup_include_templates" />
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkExportItems"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/backup_include_items" />
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/checkExportCustomers"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/backup_include_customers" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonStartExport"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/backup_start_export" />
+</LinearLayout>

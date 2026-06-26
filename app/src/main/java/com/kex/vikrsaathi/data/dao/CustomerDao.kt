@@ -24,6 +24,9 @@ interface CustomerDao {
     @Query("SELECT * FROM customers ORDER BY name ASC")
     fun getAllCustomers(): LiveData<List<Customer>>
 
+    @Query("SELECT * FROM customers ORDER BY name ASC")
+    suspend fun getAllCustomersSync(): List<Customer>
+
     @Query("SELECT * FROM customers WHERE id = :id")
     suspend fun getCustomerById(id: Long): Customer?
 

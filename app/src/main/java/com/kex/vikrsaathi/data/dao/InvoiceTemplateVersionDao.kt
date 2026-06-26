@@ -13,6 +13,9 @@ interface InvoiceTemplateVersionDao {
     )
     suspend fun getVersionsForTemplate(templateId: Long): List<InvoiceTemplateVersionEntity>
 
+    @Query("SELECT * FROM invoice_template_versions ORDER BY templateId ASC, versionNumber DESC")
+    suspend fun getAllVersions(): List<InvoiceTemplateVersionEntity>
+
     @Query("SELECT * FROM invoice_template_versions WHERE id = :id")
     suspend fun getById(id: Long): InvoiceTemplateVersionEntity?
 
