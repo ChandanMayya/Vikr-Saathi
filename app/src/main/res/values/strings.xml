@@ -252,6 +252,9 @@
     <string name="template_name_hint">Template name</string>
     <string name="create">Create</string>
     <string name="template_saved">Template saved</string>
+    <string name="leave_invoice_builder_title">Leave invoice builder?</string>
+    <string name="leave_invoice_builder_message">You have unsaved changes to this template. Save before leaving, or leave without saving?</string>
+    <string name="leave_without_saving">Leave without saving</string>
     <string name="select_element_first">Select an element on the canvas first</string>
     <string name="builder_options">Editor options</string>
     <string name="add_element">Add element</string>
@@ -275,6 +278,16 @@
     <string name="alignment">Alignment</string>
     <string name="horizontal_align">Horizontal</string>
     <string name="vertical_align">Vertical</string>
+    <string name="image_scale_mode">Image scaling</string>
+    <string name="image_bounds_adjust_title">Adjust layout box?</string>
+    <string name="image_bounds_adjust_message">The image aspect ratio does not match this layout box. Resize it to %1$.0f × %2$.0f pt so the full image is visible? Content below will move down if needed.</string>
+    <string name="image_bounds_adjust_settings_message">This image does not fit the current invoice layout in %1$d template(s). Resize the layout box to match the image?</string>
+    <string name="image_bounds_adjust_settings_detail">This image does not fit the current invoice layout in %1$d template(s). Resize the layout box to about %2$.0f × %3$.0f pt?</string>
+    <string name="adjust_layout">Resize box</string>
+    <string name="keep_layout">Keep current size</string>
+    <string name="image_bounds_sync_done">Updated %1$d image layout box(es) in your invoice templates.</string>
+    <string name="image_bounds_adjust_bulk_message">%1$d selected image layout box(es) do not match their image aspect ratio. Resize them?</string>
+    <string name="image_bounds_adjust_bulk_detail">%1$d selected image layout box(es) do not match their image aspect ratio. Resize to about %2$.0f × %3$.0f pt?</string>
     <string name="position_size">Position &amp; size (points)</string>
     <string name="width">Width</string>
     <string name="height">Height</string>

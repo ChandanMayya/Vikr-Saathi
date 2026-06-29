@@ -113,7 +113,13 @@ object SalesReportPdfGenerator {
             val w = bitmap.width * scale
             val h = bitmap.height * scale
             val left = MARGIN + (contentWidth - w) / 2f
-            canvas.drawBitmap(bitmap, null, RectF(left, y, left + w, y + h), null)
+            val dest = RectF(left, y, left + w, y + h)
+            val targetW = (w * PdfRenderQuality.IMAGE_SCALE).toInt().coerceAtLeast(1)
+            val targetH = (h * PdfRenderQuality.IMAGE_SCALE).toInt().coerceAtLeast(1)
+            val highRes = Bitmap.createScaledBitmap(bitmap, targetW, targetH, true)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            canvas.drawBitmap(highRes, null, dest, paint)
+            if (highRes !== bitmap) highRes.recycle()
             y += h + 12f
         }
 

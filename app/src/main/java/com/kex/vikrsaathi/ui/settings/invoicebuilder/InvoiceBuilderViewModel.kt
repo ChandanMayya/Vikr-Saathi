@@ -12,6 +12,7 @@ import com.kex.vikrsaathi.data.model.template.ElementBounds
 import com.kex.vikrsaathi.data.model.template.ElementKind
 import com.kex.vikrsaathi.data.model.template.ElementStyle
 import com.kex.vikrsaathi.data.model.template.GuideOrientation
+import com.kex.vikrsaathi.data.model.template.ImageScaleMode
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplateVersion
 import com.kex.vikrsaathi.data.model.template.TableColumn
@@ -27,6 +28,8 @@ import com.kex.vikrsaathi.domain.template.GridSnapper
 import com.kex.vikrsaathi.domain.template.GuideSnapper
 import com.kex.vikrsaathi.domain.template.ObjectAlignmentSnapper
 import com.kex.vikrsaathi.domain.template.SampleBillFactory
+import com.kex.vikrsaathi.domain.template.TemplateImageBitmapResolver
+import com.kex.vikrsaathi.domain.template.TemplateImageBoundsHelper
 import com.kex.vikrsaathi.domain.template.TemplateLayoutValidator
 import com.kex.vikrsaathi.domain.template.TemplateContextFactory
 import com.kex.vikrsaathi.domain.template.TemplateRenderContext
@@ -102,6 +105,8 @@ class InvoiceBuilderViewModel(
     private val _restoreResult = MutableLiveData<Boolean>()
     val restoreResult: LiveData<Boolean> = _restoreResult
 
+    private var savedSnapshot: String? = null
+
     init {
         _livePreview.value = editorPreferences.livePreview
         _snapToGrid.value = editorPreferences.snapToGrid
@@ -138,6 +143,7 @@ class InvoiceBuilderViewModel(
                 ?: templateRepository.getDefaultTemplate()
             history.clear()
             setTemplateInternal(loaded, recordHistory = false)
+            markSaved(loaded)
             _selectedElementIds.value = emptySet()
             _selectedGuideId.value = null
             refreshHistoryState()
@@ -400,6 +406,57 @@ class InvoiceBuilderViewModel(
         }
     }
 
+    fun previewImageBoundsAdjustments(
+        context: Context,
+        elementIds: Set<String>
+    ): List<Pair<TemplateElement, ElementBounds>> {
+        val template = _template.value ?: return emptyList()
+        return elementIds.mapNotNull { id ->
+            val element = template.elements.find { it.id == id } ?: return@mapNotNull null
+            if (element.kind != ElementKind.IMAGE) return@mapNotNull null
+            val bitmap = TemplateImageBitmapResolver.resolve(
+                context = context,
+                element = element,
+                settingsRepository = settingsRepository,
+                templateId = template.id
+            ) ?: return@mapNotNull null
+            val suggested = TemplateImageBoundsHelper.suggestedBoundsForImage(
+                bounds = element.bounds,
+                imageWidth = bitmap.width,
+                imageHeight = bitmap.height,
+                scaleMode = element.style.imageScaleMode
+            ) ?: return@mapNotNull null
+            element to suggested
+        }
+    }
+
+    fun applyImageBoundsAdjustments(adjustments: List<Pair<TemplateElement, ElementBounds>>) {
+        if (adjustments.isEmpty()) return
+        mutate { current ->
+            adjustments.fold(current) { template, (element, bounds) ->
+                TemplateImageBoundsHelper.resizeElementAndShiftBelow(
+                    template,
+                    element.id,
+                    bounds
+                )
+            }
+        }
+    }
+
+    fun applyElementWithOptionalLayoutShift(updated: TemplateElement, shiftLayoutBelow: Boolean) {
+        mutate { current ->
+            if (shiftLayoutBelow) {
+                TemplateImageBoundsHelper.resizeElementAndShiftBelow(current, updated.id, updated.bounds)
+            } else {
+                current.copy(
+                    elements = current.elements.map {
+                        if (it.id == updated.id) updated else it
+                    }
+                )
+            }
+        }
+    }
+
     fun updateTableColumns(elementId: String, columns: List<TableColumn>) {
         mutate { current ->
             current.copy(
@@ -512,6 +569,15 @@ class InvoiceBuilderViewModel(
                                 fontFamily = updates.fontFamily ?: updated.style.fontFamily,
                                 textAlign = updates.textAlign ?: updated.style.textAlign,
                                 verticalAlign = updates.verticalAlign ?: updated.style.verticalAlign
+                            )
+                        )
+                    }
+                    if (element.kind == ElementKind.IMAGE) {
+                        updated = updated.copy(
+                            style = updated.style.copy(
+                                textAlign = updates.textAlign ?: updated.style.textAlign,
+                                verticalAlign = updates.verticalAlign ?: updated.style.verticalAlign,
+                                imageScaleMode = updates.imageScaleMode ?: updated.style.imageScaleMode
                             )
                         )
                     }
@@ -667,16 +733,25 @@ class InvoiceBuilderViewModel(
         return _validationIssues.value.orEmpty().mapNotNull { it.elementId }.toSet()
     }
 
-    fun saveTemplate() {
+    fun hasUnsavedChanges(): Boolean {
+        val current = _template.value ?: return false
+        val saved = savedSnapshot ?: return false
+        return templateSnapshot(current) != saved
+    }
+
+    fun saveTemplate(onSaved: (() -> Unit)? = null) {
         val current = _template.value ?: return
         viewModelScope.launch {
             templateRepository.update(current)
-            _template.value = current.copy(
+            val saved = current.copy(
                 version = current.version + 1,
                 updatedAt = System.currentTimeMillis()
             )
+            _template.value = saved
+            markSaved(saved)
             loadVersionHistory()
             _saveResult.value = true
+            onSaved?.invoke()
         }
     }
 
@@ -759,6 +834,16 @@ class InvoiceBuilderViewModel(
         _canRedo.value = history.canRedo
     }
 
+    private fun templateSnapshot(template: InvoiceTemplate): String {
+        return TemplateJsonCodec.toJson(
+            template.copy(id = 0, version = 0, updatedAt = 0)
+        )
+    }
+
+    private fun markSaved(template: InvoiceTemplate) {
+        savedSnapshot = templateSnapshot(template)
+    }
+
     private fun createDefaultElement(kind: ElementKind, zIndex: Int): TemplateElement {
         val id = UUID.randomUUID().toString()
         return when (kind) {
@@ -777,6 +862,7 @@ class InvoiceBuilderViewModel(
                 binding = ElementBinding.DYNAMIC,
                 bounds = ElementBounds(40f, 40f + zIndex * 8, 150f, 60f),
                 zIndex = zIndex,
+                style = ElementStyle(imageScaleMode = ImageScaleMode.FIT_WIDTH),
                 content = mapOf("bindingKey" to DataBindingKey.HEADER_IMAGE.name)
             )
             ElementKind.LINE -> TemplateElement(

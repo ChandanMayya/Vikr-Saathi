@@ -19,6 +19,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.databinding.ActivityBarcodeScannerBinding
+import com.kex.vikrsaathi.util.SystemBarInsets
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -35,6 +36,7 @@ class BarcodeScannerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityBarcodeScannerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SystemBarInsets.applyFullscreenBottomControls(this, binding.root)
 
         continuousMode = intent.getBooleanExtra(EXTRA_CONTINUOUS, false)
 

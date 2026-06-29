@@ -50,6 +50,20 @@ enum class VerticalAlign {
     BOTTOM
 }
 
+/** How an image element scales within its layout bounds. */
+enum class ImageScaleMode {
+    /** Scale down/up to fit entirely inside the box; may leave empty space. */
+    FIT,
+    /** Scale to cover the box; excess is cropped. */
+    FILL,
+    /** Stretch to the box width and height (may distort). */
+    STRETCH,
+    /** Match box width; height follows aspect ratio. */
+    FIT_WIDTH,
+    /** Match box height; width follows aspect ratio. */
+    FIT_HEIGHT
+}
+
 enum class FontFamily {
     DEFAULT,
     SERIF,
@@ -72,7 +86,8 @@ data class ElementStyle(
     val textAlign: TextAlign = TextAlign.LEFT,
     val verticalAlign: VerticalAlign = VerticalAlign.TOP,
     val color: String = "#000000",
-    val fontFamily: FontFamily = FontFamily.DEFAULT
+    val fontFamily: FontFamily = FontFamily.DEFAULT,
+    val imageScaleMode: ImageScaleMode = ImageScaleMode.FIT
 )
 
 data class TableColumn(

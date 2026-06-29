@@ -53,7 +53,7 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.itemRepository
                 ) as T
             modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
-                SettingsViewModel(app.settingsRepository) as T
+                SettingsViewModel(app.settingsRepository, app.invoiceTemplateRepository) as T
             modelClass.isAssignableFrom(InvoiceTemplatesViewModel::class.java) ->
                 InvoiceTemplatesViewModel(app.invoiceTemplateRepository) as T
             modelClass.isAssignableFrom(InvoiceBuilderViewModel::class.java) ->

@@ -47,4 +47,28 @@
         android:layout_marginTop="16dp"
         android:text="@string/enable_edit_bill"
         android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/layoutViewBillOptions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonDrawerDownloadPdf"
+            style="@style/VikrSaathiOutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/download_pdf" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonDrawerPrintBill"
+            style="@style/VikrSaathiOutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/print" />
+    </LinearLayout>
 </LinearLayout>

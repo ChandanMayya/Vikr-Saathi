@@ -33,6 +33,7 @@ import com.kex.vikrsaathi.databinding.DialogCustomerFormBinding
 import com.kex.vikrsaathi.databinding.FragmentBillBinding
 import com.kex.vikrsaathi.ui.scanner.BarcodeScannerActivity
 import com.kex.vikrsaathi.ui.scanner.BarcodeScanBus
+import com.kex.vikrsaathi.util.FileShareHelper
 import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.util.ViewModelFactory
 
@@ -141,6 +142,17 @@ class BillFragment : Fragment() {
             )
         }
         binding.buttonSaveBill.setOnClickListener { saveBill() }
+
+        binding.buttonViewBillDownloadPdf.setOnClickListener { exportBillPdf(print = false) }
+        binding.buttonViewBillPrint.setOnClickListener { exportBillPdf(print = true) }
+        binding.billDrawer.buttonDrawerDownloadPdf.setOnClickListener {
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            exportBillPdf(print = false)
+        }
+        binding.billDrawer.buttonDrawerPrintBill.setOnClickListener {
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            exportBillPdf(print = true)
+        }
     }
 
     private fun setupToolbarMenu() {
@@ -308,6 +320,7 @@ class BillFragment : Fragment() {
         binding.buttonAddNewCustomer.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.layoutAddItem.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.buttonSaveBill.visibility = if (isReadOnly) View.GONE else View.VISIBLE
+        binding.layoutViewBillActions.visibility = if (isReadOnly) View.VISIBLE else View.GONE
         updateDrawerVisibility()
         updateTitle()
     }
@@ -317,6 +330,8 @@ class BillFragment : Fragment() {
         binding.billDrawer.layoutNewBillOptions.visibility =
             if (showNewBillOptions) View.VISIBLE else View.GONE
         binding.billDrawer.buttonEnableEditBill.visibility =
+            if (isReadOnly) View.VISIBLE else View.GONE
+        binding.billDrawer.layoutViewBillOptions.visibility =
             if (isReadOnly) View.VISIBLE else View.GONE
     }
 
@@ -501,6 +516,42 @@ class BillFragment : Fragment() {
                 Toast.makeText(requireContext(), R.string.bill_saved, Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun exportBillPdf(print: Boolean) {
+        if (!isReadOnly) return
+        val billId = arguments?.getLong(ARG_BILL_ID, -1L) ?: -1L
+        if (billId <= 0) return
+
+        setViewBillPdfActionsEnabled(false)
+        viewModel.exportBillPdf(requireContext(), billId) { file ->
+            setViewBillPdfActionsEnabled(true)
+            if (file == null) {
+                Toast.makeText(requireContext(), R.string.pdf_generation_failed, Toast.LENGTH_SHORT).show()
+                return@exportBillPdf
+            }
+            if (print) {
+                FileShareHelper.shareFile(
+                    requireContext(),
+                    file,
+                    "application/pdf",
+                    getString(R.string.print)
+                )
+            } else {
+                try {
+                    FileShareHelper.openFile(requireContext(), file, "application/pdf")
+                } catch (_: Exception) {
+                    Toast.makeText(requireContext(), R.string.pdf_saved, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun setViewBillPdfActionsEnabled(enabled: Boolean) {
+        binding.buttonViewBillDownloadPdf.isEnabled = enabled
+        binding.buttonViewBillPrint.isEnabled = enabled
+        binding.billDrawer.buttonDrawerDownloadPdf.isEnabled = enabled
+        binding.billDrawer.buttonDrawerPrintBill.isEnabled = enabled
     }
 
     override fun onDestroyView() {

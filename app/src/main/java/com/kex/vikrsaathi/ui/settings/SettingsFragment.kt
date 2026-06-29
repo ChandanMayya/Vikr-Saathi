@@ -1,5 +1,6 @@
 package com.kex.vikrsaathi.ui.settings
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.Handler
@@ -16,7 +17,9 @@ import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
+import com.kex.vikrsaathi.data.model.template.DataBindingKey
 import com.kex.vikrsaathi.databinding.FragmentSettingsBinding
+import com.kex.vikrsaathi.ui.settings.invoicebuilder.ImageBoundsAdjustDialog
 import com.kex.vikrsaathi.util.ViewModelFactory
 
 class SettingsFragment : Fragment() {
@@ -38,21 +41,28 @@ class SettingsFragment : Fragment() {
     ) { uri ->
         val target = pendingImageTarget ?: return@registerForActivityResult
         uri ?: return@registerForActivityResult
-        val bitmap = requireContext().contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it)
+        val bitmap = requireContext().contentResolver.openInputStream(uri)?.use { stream ->
+            val options = BitmapFactory.Options().apply {
+                inScaled = false
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            BitmapFactory.decodeStream(stream, null, options)
         } ?: return@registerForActivityResult
         when (target) {
             ImageTarget.HEADER -> {
                 viewModel.saveHeaderImage(bitmap)
                 binding.imageHeaderPreview.setImageBitmap(bitmap)
+                offerTemplateLayoutSync(DataBindingKey.HEADER_IMAGE, bitmap)
             }
             ImageTarget.LOGO -> {
                 viewModel.saveShopLogoImage(bitmap)
                 binding.imageLogoPreview.setImageBitmap(bitmap)
+                offerTemplateLayoutSync(DataBindingKey.SHOP_LOGO, bitmap)
             }
             ImageTarget.SIGNATURE -> {
                 viewModel.saveSignatureImage(bitmap)
                 binding.imageSignaturePreview.setImageBitmap(bitmap)
+                offerTemplateLayoutSync(DataBindingKey.SIGNATURE_IMAGE, bitmap)
             }
         }
         pendingImageTarget = null
@@ -187,6 +197,27 @@ class SettingsFragment : Fragment() {
             separator = binding.editInvoiceSeparator.text.toString().trim().ifEmpty { "/" }
         )
         binding.textInvoicePreview.text = getString(R.string.invoice_number_preview, preview)
+    }
+
+    private fun offerTemplateLayoutSync(bindingKey: DataBindingKey, bitmap: Bitmap) {
+        viewModel.checkImageLayoutSync(bindingKey, bitmap) { templateCount, sampleBounds ->
+            if (!isAdded) return@checkImageLayoutSync
+            ImageBoundsAdjustDialog.confirmSettingsSyncIfNeeded(
+                fragment = this,
+                affectedTemplateCount = templateCount,
+                sampleBounds = sampleBounds
+            ) { adjust ->
+                if (!adjust) return@confirmSettingsSyncIfNeeded
+                viewModel.syncImageLayoutForBinding(bindingKey, bitmap) { updated ->
+                    if (!isAdded) return@syncImageLayoutForBinding
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.image_bounds_sync_done, updated),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
     }
 
     override fun onDestroyView() {

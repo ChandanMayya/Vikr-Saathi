@@ -128,6 +128,7 @@ object TemplateJsonCodec {
                 put("verticalAlign", element.style.verticalAlign.name)
                 put("color", element.style.color)
                 put("fontFamily", element.style.fontFamily.name)
+                put("imageScaleMode", element.style.imageScaleMode.name)
             })
             put("content", JSONObject(element.content))
         }
@@ -162,7 +163,10 @@ object TemplateJsonCodec {
                 textAlign = TextAlign.valueOf(styleObj.optString("textAlign", "LEFT")),
                 verticalAlign = VerticalAlign.valueOf(styleObj.optString("verticalAlign", "TOP")),
                 color = styleObj.optString("color", "#000000"),
-                fontFamily = FontFamily.valueOf(styleObj.optString("fontFamily", "DEFAULT"))
+                fontFamily = FontFamily.valueOf(styleObj.optString("fontFamily", "DEFAULT")),
+                imageScaleMode = ImageScaleMode.valueOf(
+                    styleObj.optString("imageScaleMode", ImageScaleMode.FIT.name)
+                )
             ),
             content = content
         )

@@ -4,10 +4,12 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
 import com.kex.vikrsaathi.data.model.template.ElementBinding
 import com.kex.vikrsaathi.data.model.template.ElementKind
 import com.kex.vikrsaathi.data.model.template.FontFamily
+import com.kex.vikrsaathi.data.model.template.ImageScaleMode
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.TableColumn
 import com.kex.vikrsaathi.data.model.template.TemplateElement
@@ -46,10 +48,64 @@ class TemplateRenderer(
         } ?: return
 
         val bounds = element.bounds
-        val scaled = scaleBitmap(bitmap, bounds.width.toInt(), bounds.height.toInt())
-        val drawX = alignedContentX(scaled.width.toFloat(), bounds, element.style.textAlign)
-        val drawY = alignedContentY(scaled.height.toFloat(), bounds, element.style.verticalAlign)
-        canvas.drawBitmap(scaled, drawX, drawY, null)
+        val clipBounds = RectF(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height)
+        val dest = computeImageDestRect(
+            bitmap = bitmap,
+            bounds = bounds,
+            scaleMode = element.style.imageScaleMode,
+            textAlign = element.style.textAlign,
+            verticalAlign = element.style.verticalAlign
+        )
+        val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        val renderScale = context.imageRenderScale.coerceAtLeast(1f)
+        val targetW = (dest.width() * renderScale).toInt().coerceAtLeast(1)
+        val targetH = (dest.height() * renderScale).toInt().coerceAtLeast(1)
+        val scaled = Bitmap.createScaledBitmap(bitmap, targetW, targetH, true)
+
+        canvas.save()
+        canvas.clipRect(clipBounds)
+        canvas.drawBitmap(scaled, null, dest, bitmapPaint)
+        canvas.restore()
+
+        if (scaled !== bitmap) scaled.recycle()
+    }
+
+    private fun computeImageDestRect(
+        bitmap: Bitmap,
+        bounds: com.kex.vikrsaathi.data.model.template.ElementBounds,
+        scaleMode: ImageScaleMode,
+        textAlign: TextAlign,
+        verticalAlign: VerticalAlign
+    ): RectF {
+        val bitmapW = bitmap.width.toFloat()
+        val bitmapH = bitmap.height.toFloat()
+        if (bitmapW <= 0f || bitmapH <= 0f) {
+            return RectF(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height)
+        }
+
+        val (drawW, drawH) = when (scaleMode) {
+            ImageScaleMode.FIT -> {
+                val ratio = minOf(bounds.width / bitmapW, bounds.height / bitmapH)
+                bitmapW * ratio to bitmapH * ratio
+            }
+            ImageScaleMode.FILL -> {
+                val ratio = maxOf(bounds.width / bitmapW, bounds.height / bitmapH)
+                bitmapW * ratio to bitmapH * ratio
+            }
+            ImageScaleMode.STRETCH -> bounds.width to bounds.height
+            ImageScaleMode.FIT_WIDTH -> {
+                val ratio = bounds.width / bitmapW
+                bitmapW * ratio to bitmapH * ratio
+            }
+            ImageScaleMode.FIT_HEIGHT -> {
+                val ratio = bounds.height / bitmapH
+                bitmapW * ratio to bitmapH * ratio
+            }
+        }
+
+        val left = alignedContentX(drawW, bounds, textAlign)
+        val top = alignedContentY(drawH, bounds, verticalAlign)
+        return RectF(left, top, left + drawW, top + drawH)
     }
 
     private fun drawText(canvas: Canvas, element: TemplateElement, context: TemplateRenderContext) {
@@ -265,17 +321,6 @@ class TemplateRenderer(
 
     private fun parseColor(hex: String): Int {
         return runCatching { Color.parseColor(hex) }.getOrDefault(Color.BLACK)
-    }
-
-    private fun scaleBitmap(source: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
-        if (maxWidth <= 0 || maxHeight <= 0) return source
-        val ratio = minOf(
-            maxWidth.toFloat() / source.width,
-            maxHeight.toFloat() / source.height
-        )
-        val width = (source.width * ratio).toInt().coerceAtLeast(1)
-        val height = (source.height * ratio).toInt().coerceAtLeast(1)
-        return Bitmap.createScaledBitmap(source, width, height, true)
     }
 
     private fun truncate(text: String, max: Int): String {

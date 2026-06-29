@@ -25,6 +25,7 @@ object DefaultInvoiceTemplate {
                     binding = ElementBinding.DYNAMIC,
                     bounds = ElementBounds(40f, 30f, 515f, 100f),
                     zIndex = 1,
+                    style = ElementStyle(imageScaleMode = ImageScaleMode.FIT_WIDTH),
                     content = mapOf("bindingKey" to DataBindingKey.HEADER_IMAGE.name)
                 ),
                 TemplateElement(
@@ -152,6 +153,7 @@ object DefaultInvoiceTemplate {
                     binding = ElementBinding.DYNAMIC,
                     bounds = ElementBounds(40f, 736f, 150f, 60f),
                     zIndex = 13,
+                    style = ElementStyle(imageScaleMode = ImageScaleMode.FIT_WIDTH),
                     content = mapOf("bindingKey" to DataBindingKey.SIGNATURE_IMAGE.name)
                 ),
                 TemplateElement(

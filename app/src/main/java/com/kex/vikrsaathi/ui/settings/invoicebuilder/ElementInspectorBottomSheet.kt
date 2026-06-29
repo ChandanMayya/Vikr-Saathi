@@ -12,15 +12,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.kex.vikrsaathi.R
+import com.kex.vikrsaathi.VikrSaathiApp
+import com.kex.vikrsaathi.data.model.template.DataBindingKey
 import com.kex.vikrsaathi.data.model.template.ElementBinding
 import com.kex.vikrsaathi.data.model.template.ElementBounds
 import com.kex.vikrsaathi.data.model.template.ElementKind
 import com.kex.vikrsaathi.data.model.template.ElementStyle
 import com.kex.vikrsaathi.data.model.template.FontFamily
+import com.kex.vikrsaathi.data.model.template.ImageScaleMode
 import com.kex.vikrsaathi.data.model.template.TemplateElement
 import com.kex.vikrsaathi.data.model.template.TextAlign
 import com.kex.vikrsaathi.data.model.template.VerticalAlign
 import com.kex.vikrsaathi.databinding.BottomSheetElementInspectorBinding
+import com.kex.vikrsaathi.domain.template.TemplateImageBitmapResolver
+import com.kex.vikrsaathi.domain.template.TemplateImageBoundsHelper
 import com.kex.vikrsaathi.util.TemplateImageStore
 
 class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
@@ -38,11 +43,12 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
         val fontFamily: FontFamily? = null,
         val textAlign: TextAlign? = null,
         val verticalAlign: VerticalAlign? = null,
+        val imageScaleMode: ImageScaleMode? = null,
         val locked: Boolean? = null
     )
 
     interface Callback {
-        fun onApply(element: TemplateElement)
+        fun onApply(element: TemplateElement, shiftLayoutBelow: Boolean = false)
         fun onApplyBulk(elementIds: Set<String>, updates: BulkInspectorUpdates)
         fun onDelete(elementIds: Set<String>)
     }
@@ -60,6 +66,7 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
     private var selectedDataField: String? = null
     private var selectedHorizontalAlign = TextAlign.LEFT.name
     private var selectedVerticalAlign = VerticalAlign.TOP.name
+    private var selectedImageScaleMode = ImageScaleMode.FIT.name
     private var selectedFontFamily = FontFamily.DEFAULT.name
 
     private val isBulkMode get() = bulkElements.orEmpty().size > 1
@@ -67,12 +74,33 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
     private val imagePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (isBulkMode) return@registerForActivityResult
         uri ?: return@registerForActivityResult
-        val bitmap = requireContext().contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it)
+        val bitmap = requireContext().contentResolver.openInputStream(uri)?.use { stream ->
+            val options = BitmapFactory.Options().apply {
+                inScaled = false
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            BitmapFactory.decodeStream(stream, null, options)
         } ?: return@registerForActivityResult
         pendingStaticBitmap = bitmap
         binding.imageStaticPreview.setImageBitmap(bitmap)
         binding.textStaticImageHint.isVisible = false
+        element?.let { current ->
+            if (current.kind == ElementKind.IMAGE) {
+                offerStaticImageFieldAdjust(current, bitmap)
+            }
+        }
+    }
+
+    private fun offerStaticImageFieldAdjust(current: TemplateElement, bitmap: Bitmap) {
+        ImageBoundsAdjustDialog.confirmElementBoundsIfNeeded(
+            fragment = this,
+            element = current,
+            imageWidth = bitmap.width,
+            imageHeight = bitmap.height
+        ) { adjusted, _ ->
+            binding.editWidth.setText(adjusted.bounds.width.toString())
+            binding.editHeight.setText(adjusted.bounds.height.toString())
+        }
     }
 
     override fun onCreateView(
@@ -120,8 +148,29 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
         hideKindSpecificFields()
 
         val allText = elements.all { it.kind == ElementKind.TEXT }
+        val allImage = elements.all { it.kind == ElementKind.IMAGE }
         binding.layoutTextStyle.isVisible = allText
-        binding.layoutAlignment.isVisible = false
+        binding.layoutAlignment.isVisible = allText || allImage
+        binding.layoutImageScale.isVisible = allImage
+
+        if (allImage) {
+            setupAlignmentDropdowns(elements.first())
+            if (elements.map { it.style.textAlign }.distinct().size != 1) {
+                binding.spinnerHorizontalAlign.setText("", false)
+                selectedHorizontalAlign = elements.first().style.textAlign.name
+            }
+            if (elements.map { it.style.verticalAlign }.distinct().size != 1) {
+                binding.spinnerVerticalAlign.setText("", false)
+                selectedVerticalAlign = elements.first().style.verticalAlign.name
+            }
+            setupImageScaleDropdown(elements.first())
+            if (elements.map { it.style.imageScaleMode }.distinct().size != 1) {
+                binding.spinnerImageScale.setText("", false)
+                selectedImageScaleMode = elements.first().style.imageScaleMode.name
+            }
+        } else {
+            binding.layoutAlignment.isVisible = false
+        }
 
         binding.editPosX.setText(mixedFloatText(elements) { it.bounds.x })
         binding.editPosY.setText(mixedFloatText(elements) { it.bounds.y })
@@ -146,6 +195,7 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
         setupBindingTypeDropdown(current)
         setupDataFieldDropdown(current)
         setupAlignmentDropdowns(current)
+        setupImageScaleDropdown(current)
         setupFontFamilyDropdown(current)
         loadCurrentValues(current)
     }
@@ -240,6 +290,23 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
         binding.spinnerVerticalAlign.setOnClickListener { binding.spinnerVerticalAlign.showDropDown() }
     }
 
+    private fun setupImageScaleDropdown(current: TemplateElement) {
+        val options = StyleOptionLabels.imageScaleModes()
+        val labels = options.map { it.label }
+        binding.spinnerImageScale.setAdapter(
+            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, labels)
+        )
+        selectedImageScaleMode = current.style.imageScaleMode.name
+        binding.spinnerImageScale.setText(
+            StyleOptionLabels.labelForImageScaleMode(selectedImageScaleMode),
+            false
+        )
+        binding.spinnerImageScale.setOnItemClickListener { _, _, position, _ ->
+            selectedImageScaleMode = options[position].value
+        }
+        binding.spinnerImageScale.setOnClickListener { binding.spinnerImageScale.showDropDown() }
+    }
+
     private fun setupFontFamilyDropdown(current: TemplateElement) {
         val options = StyleOptionLabels.fontFamilies()
         val labels = options.map { it.label }
@@ -295,11 +362,13 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
         binding.layoutPrefix.isVisible = isText && isDynamic
         binding.layoutTextStyle.isVisible = isText
         binding.layoutAlignment.isVisible = isText || isImage
+        binding.layoutImageScale.isVisible = isImage
     }
 
     private fun applyBulkChanges(elements: List<TemplateElement>) {
         val ids = elements.map { it.id }.toSet()
         val allText = elements.all { it.kind == ElementKind.TEXT }
+        val allImage = elements.all { it.kind == ElementKind.IMAGE }
         val colorInput = binding.editFontColor.text.toString().trim()
         val resolvedColor = if (allText && colorInput.isNotBlank()) {
             parseColorOrDefault(colorInput, "#000000")
@@ -319,6 +388,21 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
                 italic = if (allText) binding.switchItalic.isChecked else null,
                 underline = if (allText) binding.switchUnderline.isChecked else null,
                 color = resolvedColor,
+                textAlign = if (allImage) {
+                    runCatching { TextAlign.valueOf(selectedHorizontalAlign) }.getOrNull()
+                } else {
+                    null
+                },
+                verticalAlign = if (allImage) {
+                    runCatching { VerticalAlign.valueOf(selectedVerticalAlign) }.getOrNull()
+                } else {
+                    null
+                },
+                imageScaleMode = if (allImage) {
+                    runCatching { ImageScaleMode.valueOf(selectedImageScaleMode) }.getOrNull()
+                } else {
+                    null
+                },
                 locked = binding.switchLocked.isChecked
             )
         )
@@ -376,7 +460,7 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
                 width = binding.editWidth.text.toString().toFloatOrNull() ?: original.bounds.width,
                 height = binding.editHeight.text.toString().toFloatOrNull() ?: original.bounds.height
             ),
-            style = ElementStyle(
+            style = original.style.copy(
                 fontSize = binding.editFontSize.text.toString().toFloatOrNull() ?: original.style.fontSize,
                 bold = binding.switchBold.isChecked,
                 italic = binding.switchItalic.isChecked,
@@ -387,12 +471,49 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
                     .getOrDefault(original.style.verticalAlign),
                 color = resolvedColor,
                 fontFamily = runCatching { FontFamily.valueOf(selectedFontFamily) }
-                    .getOrDefault(original.style.fontFamily)
+                    .getOrDefault(original.style.fontFamily),
+                imageScaleMode = if (original.kind == ElementKind.IMAGE) {
+                    runCatching { ImageScaleMode.valueOf(selectedImageScaleMode) }
+                        .getOrDefault(original.style.imageScaleMode)
+                } else {
+                    original.style.imageScaleMode
+                }
             ),
             content = content
         )
-        callback?.onApply(updated)
-        dismiss()
+        confirmBoundsAndApply(updated)
+    }
+
+    private fun confirmBoundsAndApply(element: TemplateElement) {
+        val bitmap = resolveElementBitmap(element)
+        if (bitmap == null || element.kind != ElementKind.IMAGE) {
+            callback?.onApply(element, false)
+            dismiss()
+            return
+        }
+        ImageBoundsAdjustDialog.confirmElementBoundsIfNeeded(
+            fragment = this,
+            element = element,
+            imageWidth = bitmap.width,
+            imageHeight = bitmap.height
+        ) { adjusted, shiftLayout ->
+            callback?.onApply(adjusted, shiftLayout)
+            dismiss()
+        }
+    }
+
+    private fun resolveElementBitmap(element: TemplateElement): Bitmap? {
+        if (element.kind != ElementKind.IMAGE) return null
+        if (element.binding == ElementBinding.STATIC && pendingStaticBitmap != null) {
+            return pendingStaticBitmap
+        }
+        val app = requireActivity().application as VikrSaathiApp
+        return TemplateImageBitmapResolver.resolve(
+            context = requireContext(),
+            element = element,
+            settingsRepository = app.settingsRepository,
+            templateId = templateId
+        )
     }
 
     private fun parseColorOrDefault(input: String, fallback: String): String {

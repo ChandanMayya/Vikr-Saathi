@@ -27,7 +27,11 @@ object TemplateImageStore {
         if (imagePath.isBlank()) return null
         val file = File(storageDir(context), imagePath)
         if (!file.exists()) return null
-        return BitmapFactory.decodeFile(file.absolutePath)
+        val options = android.graphics.BitmapFactory.Options().apply {
+            inScaled = false
+            inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+        }
+        return android.graphics.BitmapFactory.decodeFile(file.absolutePath, options)
     }
 
     fun loadForTemplate(context: Context, template: InvoiceTemplate): Map<String, Bitmap> {

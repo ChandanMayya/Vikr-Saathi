@@ -6,10 +6,12 @@ import com.kex.vikrsaathi.data.dao.InvoiceTemplateDao
 import com.kex.vikrsaathi.data.dao.InvoiceTemplateVersionDao
 import com.kex.vikrsaathi.data.entity.InvoiceTemplateEntity
 import com.kex.vikrsaathi.data.entity.InvoiceTemplateVersionEntity
+import com.kex.vikrsaathi.data.model.template.DataBindingKey
 import com.kex.vikrsaathi.data.model.template.DefaultInvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplateVersion
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
+import com.kex.vikrsaathi.domain.template.TemplateImageBoundsHelper
 
 class InvoiceTemplateRepository(
     private val dao: InvoiceTemplateDao,
@@ -55,6 +57,69 @@ class InvoiceTemplateRepository(
         )
         dao.insert(updated.toEntity())
         saveVersionSnapshot(updated)
+    }
+
+    suspend fun countTemplatesNeedingImageBoundsSync(
+        bindingKey: DataBindingKey,
+        imageWidth: Int,
+        imageHeight: Int
+    ): Int {
+        if (imageWidth <= 0 || imageHeight <= 0) return 0
+        return dao.getAllTemplatesSync().count { entity ->
+            val template = entity.toDomain()
+            TemplateImageBoundsHelper.matchingImageElements(template, bindingKey.name).any { element ->
+                TemplateImageBoundsHelper.needsBoundsAdjustment(
+                    bounds = element.bounds,
+                    imageWidth = imageWidth,
+                    imageHeight = imageHeight,
+                    scaleMode = element.style.imageScaleMode
+                )
+            }
+        }
+    }
+
+    suspend fun sampleSuggestedBoundsForBinding(
+        bindingKey: DataBindingKey,
+        imageWidth: Int,
+        imageHeight: Int
+    ): com.kex.vikrsaathi.data.model.template.ElementBounds? {
+        if (imageWidth <= 0 || imageHeight <= 0) return null
+        for (entity in dao.getAllTemplatesSync()) {
+            val template = entity.toDomain()
+            for (element in TemplateImageBoundsHelper.matchingImageElements(template, bindingKey.name)) {
+                val suggested = TemplateImageBoundsHelper.suggestedBoundsForImage(
+                    bounds = element.bounds,
+                    imageWidth = imageWidth,
+                    imageHeight = imageHeight,
+                    scaleMode = element.style.imageScaleMode
+                )
+                if (suggested != null) return suggested
+            }
+        }
+        return null
+    }
+
+    suspend fun syncImageBindingBounds(
+        bindingKey: DataBindingKey,
+        imageWidth: Int,
+        imageHeight: Int
+    ): Int {
+        if (imageWidth <= 0 || imageHeight <= 0) return 0
+        var updatedElements = 0
+        for (entity in dao.getAllTemplatesSync()) {
+            val template = entity.toDomain()
+            val (updatedTemplate, changeCount) = TemplateImageBoundsHelper.applySuggestedBoundsToTemplate(
+                template = template,
+                bindingKeyName = bindingKey.name,
+                imageWidth = imageWidth,
+                imageHeight = imageHeight
+            )
+            if (changeCount > 0) {
+                update(updatedTemplate)
+                updatedElements += changeCount
+            }
+        }
+        return updatedElements
     }
 
     suspend fun duplicateTemplate(sourceId: Long, newName: String): Long {

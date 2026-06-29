@@ -1,6 +1,7 @@
 package com.kex.vikrsaathi.ui.settings.invoicebuilder
 
 import com.kex.vikrsaathi.data.model.template.FontFamily
+import com.kex.vikrsaathi.data.model.template.ImageScaleMode
 import com.kex.vikrsaathi.data.model.template.TextAlign
 import com.kex.vikrsaathi.data.model.template.VerticalAlign
 
@@ -35,4 +36,15 @@ object StyleOptionLabels {
 
     fun labelForFontFamily(name: String): String =
         fontFamilies().find { it.value == name }?.label ?: name
+
+    fun imageScaleModes(): List<Option> = listOf(
+        Option(ImageScaleMode.FIT.name, "Fit inside"),
+        Option(ImageScaleMode.FIT_WIDTH.name, "Fit to width"),
+        Option(ImageScaleMode.FIT_HEIGHT.name, "Fit to height"),
+        Option(ImageScaleMode.FILL.name, "Fill (crop)"),
+        Option(ImageScaleMode.STRETCH.name, "Stretch to box")
+    )
+
+    fun labelForImageScaleMode(name: String): String =
+        imageScaleModes().find { it.value == name }?.label ?: name
 }

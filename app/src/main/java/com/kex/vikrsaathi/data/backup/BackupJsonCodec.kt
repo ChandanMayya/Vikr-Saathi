@@ -31,7 +31,11 @@ object BackupJsonCodec {
         if (base64.isNullOrBlank()) return null
         return try {
             val bytes = Base64.decode(base64, Base64.NO_WRAP)
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            val options = BitmapFactory.Options().apply {
+                inScaled = false
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
         } catch (_: Exception) {
             null
         }

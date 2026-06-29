@@ -120,7 +120,11 @@ class SettingsRepository(context: Context) {
     private fun loadImage(fileName: String): Bitmap? {
         val file = File(filesDir, fileName)
         if (!file.exists()) return null
-        return BitmapFactory.decodeFile(file.absolutePath)
+        val options = BitmapFactory.Options().apply {
+            inScaled = false
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+        return BitmapFactory.decodeFile(file.absolutePath, options)
     }
 
     private fun saveImage(bitmap: Bitmap, fileName: String) {

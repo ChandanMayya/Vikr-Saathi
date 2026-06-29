@@ -17,7 +17,8 @@ data class TemplateRenderContext(
     val headerImage: Bitmap?,
     val signatureImage: Bitmap?,
     val shopLogoImage: Bitmap? = null,
-    val staticImages: Map<String, Bitmap> = emptyMap()
+    val staticImages: Map<String, Bitmap> = emptyMap(),
+    val imageRenderScale: Float = 1f
 )
 
 data class TableRowData(

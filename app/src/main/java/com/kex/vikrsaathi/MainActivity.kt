@@ -8,6 +8,8 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.kex.vikrsaathi.databinding.ActivityMainBinding
+import com.kex.vikrsaathi.ui.navigation.BackNavigationGuard
+import com.kex.vikrsaathi.util.SystemBarInsets
 
 class MainActivity : AppCompatActivity() {
 
@@ -20,6 +22,11 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
+        SystemBarInsets.applyMainActivity(
+            activity = this,
+            appBar = binding.appBarLayout,
+            content = binding.navHostFragment
+        )
 
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
@@ -34,7 +41,16 @@ class MainActivity : AppCompatActivity() {
     override fun onSupportNavigateUp(): Boolean {
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
-        return navHostFragment.navController.navigateUp(appBarConfiguration) ||
+        val navController = navHostFragment.navController
+        val currentFragment = navHostFragment.childFragmentManager.primaryNavigationFragment
+        if (currentFragment is BackNavigationGuard) {
+            var navigated = false
+            val intercepted = currentFragment.interceptBackNavigation {
+                navigated = navController.navigateUp(appBarConfiguration)
+            }
+            if (intercepted || navigated) return true
+        }
+        return navController.navigateUp(appBarConfiguration) ||
             super.onSupportNavigateUp()
     }
 }

@@ -22,7 +22,7 @@ object PdfGenerator {
         signatureImage: android.graphics.Bitmap?,
         shopLogoImage: android.graphics.Bitmap? = null
     ): File {
-        val renderContext = TemplateContextFactory.create(
+        val renderContext = TemplateContextFactory.createForPdf(
             context = context,
             template = template,
             bill = bill,

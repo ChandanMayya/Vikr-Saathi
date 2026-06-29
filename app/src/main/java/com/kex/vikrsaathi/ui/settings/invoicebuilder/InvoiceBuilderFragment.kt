@@ -7,6 +7,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.core.view.MenuProvider
@@ -16,15 +17,18 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.model.template.ElementKind
 import com.kex.vikrsaathi.databinding.FragmentInvoiceBuilderBinding
+import com.kex.vikrsaathi.ui.navigation.BackNavigationGuard
 import com.kex.vikrsaathi.util.ViewModelFactory
 
-class InvoiceBuilderFragment : Fragment() {
+class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
 
     private var _binding: FragmentInvoiceBuilderBinding? = null
     private val binding get() = _binding!!
@@ -75,6 +79,7 @@ class InvoiceBuilderFragment : Fragment() {
         bindDrawerViews(view)
         setupToolbarMenu()
         setupDrawer()
+        setupBackNavigation()
 
         val templateId = arguments?.getLong(ARG_TEMPLATE_ID, -1L) ?: -1L
         if (templateId > 0) {
@@ -233,6 +238,37 @@ class InvoiceBuilderFragment : Fragment() {
         updateMultiSelectButton()
         updateSelectionUi()
         updateGuideUi()
+    }
+
+    override fun interceptBackNavigation(navigate: () -> Unit): Boolean {
+        if (!viewModel.hasUnsavedChanges()) return false
+        showLeaveWithoutSavingDialog(navigate)
+        return true
+    }
+
+    private fun setupBackNavigation() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (!interceptBackNavigation { findNavController().navigateUp() }) {
+                        findNavController().navigateUp()
+                    }
+                }
+            }
+        )
+    }
+
+    private fun showLeaveWithoutSavingDialog(onLeave: () -> Unit) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.leave_invoice_builder_title)
+            .setMessage(R.string.leave_invoice_builder_message)
+            .setPositiveButton(R.string.save) { _, _ ->
+                viewModel.saveTemplate { onLeave() }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .setNeutralButton(R.string.leave_without_saving) { _, _ -> onLeave() }
+            .show()
     }
 
     private fun refreshCanvas() {
@@ -400,8 +436,11 @@ class InvoiceBuilderFragment : Fragment() {
         }
 
         val callback = object : ElementInspectorBottomSheet.Callback {
-            override fun onApply(element: com.kex.vikrsaathi.data.model.template.TemplateElement) {
-                viewModel.updateElement(element)
+            override fun onApply(
+                element: com.kex.vikrsaathi.data.model.template.TemplateElement,
+                shiftLayoutBelow: Boolean
+            ) {
+                viewModel.applyElementWithOptionalLayoutShift(element, shiftLayoutBelow)
             }
 
             override fun onApplyBulk(
@@ -409,6 +448,7 @@ class InvoiceBuilderFragment : Fragment() {
                 updates: ElementInspectorBottomSheet.BulkInspectorUpdates
             ) {
                 viewModel.applyBulkUpdates(elementIds, updates)
+                offerImageBoundsAdjustForElements(elementIds)
             }
 
             override fun onDelete(elementIds: Set<String>) {
@@ -426,6 +466,20 @@ class InvoiceBuilderFragment : Fragment() {
         }
         sheet.callback = callback
         sheet.show(parentFragmentManager, "element_inspector")
+    }
+
+    private fun offerImageBoundsAdjustForElements(elementIds: Set<String>) {
+        val adjustments = viewModel.previewImageBoundsAdjustments(requireContext(), elementIds)
+        if (adjustments.isEmpty()) return
+        ImageBoundsAdjustDialog.confirmBulkImageBoundsIfNeeded(
+            fragment = this,
+            adjustmentCount = adjustments.size,
+            sampleBounds = adjustments.first().second
+        ) { adjust ->
+            if (adjust) {
+                viewModel.applyImageBoundsAdjustments(adjustments)
+            }
+        }
     }
 
     private fun openTableColumnEditor() {
