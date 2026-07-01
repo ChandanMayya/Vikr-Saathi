@@ -25,6 +25,8 @@ import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.model.template.ElementKind
 import com.kex.vikrsaathi.databinding.FragmentInvoiceBuilderBinding
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.ui.navigation.BackNavigationGuard
 import com.kex.vikrsaathi.util.ViewModelFactory
 
@@ -78,6 +80,7 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
 
         bindDrawerViews(view)
         setupToolbarMenu()
+        installHelpMenu(HelpScreen.INVOICE_BUILDER)
         setupDrawer()
         setupBackNavigation()
 

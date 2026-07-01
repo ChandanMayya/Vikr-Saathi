@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="help">Help</string>
+
+    <!-- Dashboard -->
+    <string name="help_dashboard_title">Dashboard</string>
+    <string name="help_dashboard_overview">Your home screen. See today\'s sales at a glance and jump to common tasks quickly.</string>
+    <string name="help_dashboard_s1_title">Today\'s sales</string>
+    <string-array name="help_dashboard_s1">
+        <item>Total amount and bill count for today.</item>
+        <item>Top items chart shows your best sellers by quantity.</item>
+    </string-array>
+    <string name="help_dashboard_s2_title">Quick actions</string>
+    <string-array name="help_dashboard_s2">
+        <item>New Bill — create a sale invoice.</item>
+        <item>Customers — manage buyer details.</item>
+        <item>Items — manage products and prices.</item>
+        <item>Bills History — view, filter, and export past bills.</item>
+        <item>Settings — shop name, invoice layout, backup, and more.</item>
+    </string-array>
+
+    <!-- New Bill -->
+    <string name="help_new_bill_title">New Bill</string>
+    <string name="help_new_bill_overview">Create a new sales invoice. Add a customer, line items, and save. Works fully offline.</string>
+    <string name="help_new_bill_s1_title">Buyer details</string>
+    <string-array name="help_new_bill_s1">
+        <item>Buyer name — pick an existing customer or type a new name.</item>
+        <item>Address &amp; phone — optional; auto-filled when you select a customer.</item>
+        <item>Add new customer — save buyer details to your customer list.</item>
+    </string-array>
+    <string name="help_new_bill_s2_title">Adding items</string>
+    <string-array name="help_new_bill_s2">
+        <item>Add item — search and select from your item master.</item>
+        <item>Scan barcode — use the camera to find an item quickly.</item>
+        <item>Each line shows MRP, discount %, quantity, and line total.</item>
+        <item>Total discount and grand total update automatically.</item>
+    </string-array>
+    <string name="help_new_bill_s3_title">Actions</string>
+    <string-array name="help_new_bill_s3">
+        <item>Save bill — stores the invoice and assigns a bill number.</item>
+        <item>Menu (⋮) — hold bill for later, open held bills, or leave without saving.</item>
+        <item>Back — prompts to hold or discard if you have unsaved changes.</item>
+    </string-array>
+
+    <!-- Bill view -->
+    <string name="help_bill_view_title">View Bill</string>
+    <string name="help_bill_view_overview">Read-only view of a saved bill from Bills History. Download PDF or print from the menu.</string>
+    <string name="help_bill_view_s1_title">On this screen</string>
+    <string-array name="help_bill_view_s1">
+        <item>All fields are read-only — customer, items, and totals.</item>
+        <item>Header and signature images come from your invoice settings.</item>
+    </string-array>
+    <string name="help_bill_view_s2_title">Menu actions</string>
+    <string-array name="help_bill_view_s2">
+        <item>Download PDF — save or share the invoice file.</item>
+        <item>Print — open the PDF with a print app.</item>
+    </string-array>
+
+    <!-- Held bills -->
+    <string name="help_held_bills_title">Held Bills</string>
+    <string name="help_held_bills_overview">Bills you paused while creating a new sale. Resume to continue editing or delete if no longer needed.</string>
+    <string name="help_held_bills_s1_title">How to use</string>
+    <string-array name="help_held_bills_s1">
+        <item>Tap Resume to restore a held bill on the New Bill screen.</item>
+        <item>Delete removes the held draft permanently.</item>
+        <item>Hold a bill from New Bill menu when you need to serve another customer first.</item>
+    </string-array>
+
+    <!-- Bill preview -->
+    <string name="help_bill_preview_title">Bill Preview</string>
+    <string name="help_bill_preview_overview">Preview the invoice PDF right after saving a new bill.</string>
+    <string name="help_bill_preview_s1_title">Actions</string>
+    <string-array name="help_bill_preview_s1">
+        <item>View the rendered invoice using your default template.</item>
+        <item>Share or open the PDF from the on-screen actions.</item>
+    </string-array>
+
+    <!-- Customers -->
+    <string name="help_customers_title">Customers</string>
+    <string name="help_customers_overview">Maintain your buyer list. Saved customers can be picked quickly when creating bills.</string>
+    <string name="help_customers_s1_title">Customer list</string>
+    <string-array name="help_customers_s1">
+        <item>Tap a customer to edit name, address, and phone.</item>
+        <item>Delete removes the customer (existing bills keep the name used at sale time).</item>
+    </string-array>
+    <string name="help_customers_s2_title">Add / edit customer</string>
+    <string-array name="help_customers_s2">
+        <item>+ button — open the add customer form.</item>
+        <item>Name is required; address and phone are optional.</item>
+        <item>Save stores the customer for future bills.</item>
+    </string-array>
+
+    <!-- Items -->
+    <string name="help_items_title">Items</string>
+    <string name="help_items_overview">Your product master. Items added here appear when billing and can be scanned by barcode.</string>
+    <string name="help_items_s1_title">Item list</string>
+    <string-array name="help_items_s1">
+        <item>Each card shows name, MRP, discount, and selling price.</item>
+        <item>Tap to edit; delete removes the item from the master.</item>
+    </string-array>
+    <string name="help_items_s2_title">Add / edit item</string>
+    <string-array name="help_items_s2">
+        <item>+ button — add a new product.</item>
+        <item>Name and MRP are required. Barcode is optional for scanning.</item>
+        <item>Discount % applies when the item is added to a bill (unless selling price is set).</item>
+        <item>Selling price overrides discount calculation when provided.</item>
+    </string-array>
+
+    <!-- Bills history -->
+    <string name="help_bills_history_title">Bills History</string>
+    <string name="help_bills_history_overview">Browse all saved invoices. Filter, sort, open, duplicate, delete, or export reports.</string>
+    <string name="help_bills_history_s1_title">Filters &amp; sort</string>
+    <string-array name="help_bills_history_s1">
+        <item>Menu (⋮) — toggle search, date range, and counter filters.</item>
+        <item>Sort — by date (oldest first) or invoice number (ascending).</item>
+        <item>Clear filters resets active filter values.</item>
+    </string-array>
+    <string name="help_bills_history_s2_title">Bill actions &amp; reports</string>
+    <string-array name="help_bills_history_s2">
+        <item>Tap a bill to view it read-only.</item>
+        <item>Duplicate creates a new editable copy.</item>
+        <item>Delete removes the bill permanently.</item>
+        <item>Download PDF/Excel report exports filtered sales data.</item>
+        <item>Upload Excel backup imports sales from a backup file.</item>
+    </string-array>
+
+    <!-- Excel upload -->
+    <string name="help_excel_upload_title">Import Excel Backup</string>
+    <string name="help_excel_upload_overview">Restore sales data from an exported .xlsx backup file. Useful when moving to a new device.</string>
+    <string name="help_excel_upload_s1_title">Before you import</string>
+    <string-array name="help_excel_upload_s1">
+        <item>Use a file exported from Vikr Saathi or matching the required column format.</item>
+        <item>Duplicate bill numbers are skipped automatically.</item>
+        <item>Review the preview before confirming import.</item>
+    </string-array>
+
+    <!-- Settings hub -->
+    <string name="help_settings_title">Settings</string>
+    <string name="help_settings_overview">Configure your shop, invoices, backups, and data management.</string>
+    <string name="help_settings_s1_title">Sections</string>
+    <string-array name="help_settings_s1">
+        <item>General — shop name, currency, default discount.</item>
+        <item>Invoice Configuration — images, counter, and layout templates.</item>
+        <item>Backup &amp; Restore — export and import your full data.</item>
+        <item>Reset — clear data or restore from a JSON backup.</item>
+    </string-array>
+
+    <!-- General settings -->
+    <string name="help_general_settings_title">General Settings</string>
+    <string name="help_general_settings_overview">Basic shop preferences used across bills and reports.</string>
+    <string name="help_general_settings_s1_title">Fields</string>
+    <string-array name="help_general_settings_s1">
+        <item>Shop name — shown on dashboard toolbar and invoices.</item>
+        <item>Currency symbol — used for all amounts (e.g. ₹).</item>
+        <item>Default discount % — pre-filled when adding items to a bill.</item>
+        <item>Changes save automatically when you leave a field.</item>
+    </string-array>
+
+    <!-- Invoice configuration hub -->
+    <string name="help_invoice_config_title">Invoice Configuration</string>
+    <string name="help_invoice_config_overview">Customize how your printed and PDF invoices look and how numbers are assigned.</string>
+    <string name="help_invoice_config_s1_title">Options</string>
+    <string-array name="help_invoice_config_s1">
+        <item>Image Configuration — header and signature images.</item>
+        <item>Invoice Counter — prefix, suffix, and next number.</item>
+        <item>Invoice Layout — manage and edit invoice templates.</item>
+    </string-array>
+
+    <!-- Invoice image -->
+    <string name="help_invoice_image_title">Image Configuration</string>
+    <string name="help_invoice_image_overview">Set images that appear on every invoice — typically your shop header and authorised signature.</string>
+    <string name="help_invoice_image_s1_title">Images</string>
+    <string-array name="help_invoice_image_s1">
+        <item>Header image — banner or logo at the top of the invoice.</item>
+        <item>Signature image — shown near the bottom of the invoice.</item>
+        <item>Pick from gallery; changes apply to new PDFs immediately.</item>
+    </string-array>
+
+    <!-- Invoice counter -->
+    <string name="help_invoice_counter_title">Invoice Counter</string>
+    <string name="help_invoice_counter_overview">Control how bill numbers are generated for each new sale.</string>
+    <string name="help_invoice_counter_s1_title">Fields</string>
+    <string-array name="help_invoice_counter_s1">
+        <item>Prefix / suffix — text before and after the number (e.g. INV-001-A).</item>
+        <item>Next number — the counter used for the next new bill.</item>
+        <item>Minimum digits — pads the number (e.g. 3 → 001, 002).</item>
+    </string-array>
+
+    <!-- Invoice templates -->
+    <string name="help_invoice_templates_title">Invoice Templates</string>
+    <string name="help_invoice_templates_overview">Manage invoice layouts. One template is marked default for all new PDFs.</string>
+    <string name="help_invoice_templates_s1_title">Actions</string>
+    <string-array name="help_invoice_templates_s1">
+        <item>Tap a template to open the Invoice Builder and edit layout.</item>
+        <item>Set default — choose which template is used for bills.</item>
+        <item>Import JSON — load a template file (e.g. shared design).</item>
+        <item>New template — start from a blank or default layout.</item>
+    </string-array>
+
+    <!-- Invoice builder -->
+    <string name="help_invoice_builder_title">Invoice Builder</string>
+    <string name="help_invoice_builder_overview">Design your invoice visually — drag elements, bind bill data, and preview the PDF.</string>
+    <string name="help_invoice_builder_s1_title">Canvas &amp; toolbar</string>
+    <string-array name="help_invoice_builder_s1">
+        <item>Tap elements to select; drag to move or resize.</item>
+        <item>Undo / redo — step through layout changes.</item>
+        <item>Preview — generate a sample PDF.</item>
+        <item>Save — stores the template and creates a version snapshot.</item>
+        <item>Menu (⋮) — grid, guides, import/export JSON, version history.</item>
+    </string-array>
+    <string name="help_invoice_builder_s2_title">Table &amp; properties</string>
+    <string-array name="help_invoice_builder_s2">
+        <item>Select the items table to edit columns, borders, and total row.</item>
+        <item>Properties panel — text, images, alignment, and data bindings.</item>
+        <item>Live preview shows real sample bill data on the canvas.</item>
+    </string-array>
+
+    <!-- Backup -->
+    <string name="help_backup_title">Backup &amp; Restore</string>
+    <string name="help_backup_overview">Export all app data to a file or restore from a previous backup.</string>
+    <string name="help_backup_s1_title">Actions</string>
+    <string-array name="help_backup_s1">
+        <item>Export backup — saves customers, items, bills, settings, and templates.</item>
+        <item>Import backup — restores from a .json backup file on this device.</item>
+        <item>Files are saved under Documents → Vikr Saathi.</item>
+    </string-array>
+
+    <!-- Reset -->
+    <string name="help_reset_title">Reset Data</string>
+    <string name="help_reset_overview">Clear app data or restore from a full JSON backup. Use with caution.</string>
+    <string name="help_reset_s1_title">Options</string>
+    <string-array name="help_reset_s1">
+        <item>Reset all data — deletes bills, customers, items, and settings.</item>
+        <item>Restore from backup — replaces current data with a backup file.</item>
+        <item>Always export a backup before resetting.</item>
+    </string-array>
+</resources>

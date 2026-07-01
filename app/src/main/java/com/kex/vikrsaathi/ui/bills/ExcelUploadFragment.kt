@@ -14,6 +14,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentExcelUploadBinding
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.ViewModelFactory
 
 class ExcelUploadFragment : Fragment() {
@@ -50,6 +52,8 @@ class ExcelUploadFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        installHelpMenu(HelpScreen.EXCEL_UPLOAD)
 
         binding.buttonSelectExcelFile.setOnClickListener {
             filePicker.launch(arrayOf(

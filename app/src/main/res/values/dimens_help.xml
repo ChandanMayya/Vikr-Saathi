@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="help_glass_corner_radius">28dp</dimen>
+    <dimen name="help_glass_blur_radius">24dp</dimen>
+    <dimen name="help_backdrop_blur_radius">3dp</dimen>
+</resources>

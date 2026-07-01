@@ -4,11 +4,14 @@ import android.os.Bundle
 import android.view.View
 import androidx.navigation.fragment.findNavController
 import com.kex.vikrsaathi.R
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 
 class InvoiceConfigurationFragment : SettingsNavHubFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        installHelpMenu(HelpScreen.INVOICE_CONFIGURATION)
         bindNavHub(
             entries = listOf(
                 SettingsNavEntry(

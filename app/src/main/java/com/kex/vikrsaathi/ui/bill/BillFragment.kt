@@ -36,6 +36,8 @@ import com.kex.vikrsaathi.ui.scanner.BarcodeScanBus
 import com.kex.vikrsaathi.util.FileShareHelper
 import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.util.ViewModelFactory
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 
 class BillFragment : Fragment() {
 
@@ -104,6 +106,9 @@ class BillFragment : Fragment() {
         setupItemAutocomplete()
         setupDrawer()
         setupToolbarMenu()
+        installHelpMenu {
+            if (isReadOnly) HelpScreen.BILL_VIEW else HelpScreen.NEW_BILL
+        }
         setupBackNavigation()
         applyReadOnlyState()
 

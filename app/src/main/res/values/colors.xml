@@ -58,4 +58,14 @@
     <color name="button_disabled_stroke">#BDBDBD</color>
     <color name="button_disabled_destructive_text">#E57373</color>
     <color name="button_disabled_destructive_stroke">#EF9A9A</color>
+
+    <!-- Help glass panel -->
+    <color name="help_backdrop_overlay">#01000000</color>
+    <color name="help_glass_overlay">#05FFFFFF</color>
+    <color name="help_glass_shine">#8CFFFFFF</color>
+    <color name="help_glass_border_bright">#CCFFFFFF</color>
+    <color name="help_glass_border_soft">#40FFFFFF</color>
+    <color name="help_glass_icon_tint">#F57C00</color>
+    <color name="help_glass_close_bg">#BCFFFFFF</color>
+    <color name="help_section_surface">#C3FFFFFF</color>
 </resources>

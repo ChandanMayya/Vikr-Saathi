@@ -14,6 +14,8 @@ import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.model.template.DataBindingKey
 import com.kex.vikrsaathi.databinding.FragmentInvoiceImageSettingsBinding
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.ui.settings.invoicebuilder.ImageBoundsAdjustDialog
 import com.kex.vikrsaathi.util.ViewModelFactory
 
@@ -71,6 +73,8 @@ class InvoiceImageSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        installHelpMenu(HelpScreen.INVOICE_IMAGE)
 
         binding.imageHeaderPreview.setImageBitmap(viewModel.getHeaderImage())
         binding.imageLogoPreview.setImageBitmap(viewModel.getShopLogoImage())

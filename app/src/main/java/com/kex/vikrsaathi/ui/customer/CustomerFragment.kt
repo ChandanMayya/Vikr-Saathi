@@ -13,6 +13,8 @@ import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Customer
 import com.kex.vikrsaathi.databinding.DialogCustomerFormBinding
 import com.kex.vikrsaathi.databinding.FragmentCustomersBinding
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.ViewModelFactory
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
@@ -38,6 +40,7 @@ class CustomerFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        installHelpMenu(HelpScreen.CUSTOMERS)
         adapter = CustomerAdapter(
             onEdit = { showCustomerDialog(it) },
             onDelete = { confirmDelete(it) }

@@ -14,6 +14,8 @@ import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentDashboardBinding
 import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.util.ViewModelFactory
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 
 class DashboardFragment : Fragment() {
 
@@ -35,6 +37,8 @@ class DashboardFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        installHelpMenu(HelpScreen.DASHBOARD)
 
         val app = requireActivity().application as VikrSaathiApp
         updateToolbarTitle(app.settingsRepository.shopName)

@@ -23,6 +23,8 @@ import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.backup.BackupExportOptions
 import com.kex.vikrsaathi.data.backup.BackupManifest
 import com.kex.vikrsaathi.databinding.FragmentBackupBinding
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.FileShareHelper
 import com.kex.vikrsaathi.util.ViewModelFactory
 import java.text.DateFormat
@@ -79,6 +81,8 @@ class BackupFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        installHelpMenu(HelpScreen.BACKUP)
 
         binding.buttonExportBackup.setOnClickListener { showExportOptions() }
         binding.buttonImportBackup.setOnClickListener {

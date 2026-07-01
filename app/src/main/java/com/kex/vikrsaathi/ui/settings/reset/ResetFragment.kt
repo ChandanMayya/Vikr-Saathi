@@ -21,6 +21,8 @@ import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.reset.ResetHistoryEntry
 import com.kex.vikrsaathi.data.reset.ResetOptions
 import com.kex.vikrsaathi.databinding.FragmentResetBinding
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.ViewModelFactory
 
 class ResetFragment : Fragment(), ResetHistoryBottomSheet.Callback {
@@ -49,6 +51,7 @@ class ResetFragment : Fragment(), ResetHistoryBottomSheet.Callback {
         super.onViewCreated(view, savedInstanceState)
 
         setupToolbarMenu()
+        installHelpMenu(HelpScreen.RESET)
 
         binding.buttonAcceptDisclaimer.setOnClickListener {
             binding.layoutDisclaimer.visibility = View.GONE

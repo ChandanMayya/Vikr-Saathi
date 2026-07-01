@@ -15,6 +15,8 @@ import com.google.android.material.textfield.TextInputEditText
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentInvoiceTemplatesBinding
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.ui.settings.invoicebuilder.InvoiceBuilderFragment
 import com.kex.vikrsaathi.util.ViewModelFactory
 
@@ -40,6 +42,8 @@ class InvoiceTemplatesFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        installHelpMenu(HelpScreen.INVOICE_TEMPLATES)
 
         adapter = InvoiceTemplateAdapter(
             onSetDefault = { template ->

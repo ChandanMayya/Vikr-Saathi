@@ -31,6 +31,8 @@ import com.kex.vikrsaathi.util.BillsSortHelper
 import com.kex.vikrsaathi.util.FileShareHelper
 import com.kex.vikrsaathi.util.SalesReportFilter
 import com.kex.vikrsaathi.util.ViewModelFactory
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
@@ -93,6 +95,7 @@ class BillsHistoryFragment : Fragment() {
         binding.recyclerBills.adapter = adapter
 
         setupToolbarMenu()
+        installHelpMenu(HelpScreen.BILLS_HISTORY)
         setupDrawer()
         applyFilterVisibility()
         updateDateButtonLabels()

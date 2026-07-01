@@ -10,6 +10,8 @@ import androidx.fragment.app.viewModels
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentInvoiceCounterSettingsBinding
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.ViewModelFactory
 
 class InvoiceCounterSettingsFragment : Fragment() {
@@ -34,6 +36,8 @@ class InvoiceCounterSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        installHelpMenu(HelpScreen.INVOICE_COUNTER)
 
         autoSave.suppress = true
         binding.editInvoicePrefix.setText(viewModel.invoicePrefix())
