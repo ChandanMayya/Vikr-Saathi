@@ -8,7 +8,7 @@
   "marginTop": 40,
   "marginRight": 40,
   "marginBottom": 40,
-  "version": 8,
+  "version": 11,
   "updatedAt": 1782837167299,
   "elements": [
     {
@@ -200,8 +200,10 @@
       },
       "content": {
         "bindingKey": "BILL_ITEMS",
-        "columns": "[{\"key\":\"sl\",\"label\":\"Sl\",\"widthPercent\":7,\"align\":\"CENTER\"},{\"key\":\"name\",\"label\":\"Particulars\",\"widthPercent\":43,\"align\":\"LEFT\"},{\"key\":\"quantity\",\"label\":\"Qty\",\"widthPercent\":11,\"align\":\"CENTER\"},{\"key\":\"mrp\",\"label\":\"MRP\",\"widthPercent\":11,\"align\":\"CENTER\"},{\"key\":\"discount\",\"label\":\"Disc%\",\"widthPercent\":11,\"align\":\"CENTER\"},{\"key\":\"lineTotal\",\"label\":\"Price\",\"widthPercent\":17,\"align\":\"CENTER\"}]",
+        "columns": "[{\"key\":\"sl\",\"label\":\"Sl\",\"widthPercent\":6,\"align\":\"CENTER\"},{\"key\":\"name\",\"label\":\"Particulars\",\"widthPercent\":30,\"align\":\"LEFT\"},{\"key\":\"quantity\",\"label\":\"Qty\",\"widthPercent\":9,\"align\":\"CENTER\"},{\"key\":\"mrp\",\"label\":\"MRP\",\"widthPercent\":9,\"align\":\"RIGHT\"},{\"key\":\"discount\",\"label\":\"Disc%\",\"widthPercent\":9,\"align\":\"CENTER\"},{\"key\":\"discountAmount\",\"label\":\"Discount Amt\",\"widthPercent\":14,\"align\":\"RIGHT\"},{\"key\":\"lineTotal\",\"label\":\"Amount\",\"widthPercent\":23,\"align\":\"RIGHT\"}]",
         "showHeader": "true",
+        "showTotalRow": "true",
+        "totalRowLabel": "Total",
         "borderWidthDp": "1.5"
       }
     },

@@ -128,6 +128,12 @@ class BillFragment : Fragment() {
                 PriceCalculator.formatAmount(total, viewModel.currencySymbol)
             )
         }
+        viewModel.totalDiscount.observe(viewLifecycleOwner) { discount ->
+            binding.textTotalDiscount.text = getString(
+                R.string.total_discount,
+                PriceCalculator.formatAmount(discount, viewModel.currencySymbol)
+            )
+        }
         viewModel.totalInWords.observe(viewLifecycleOwner) { words ->
             binding.textTotalInWords.text = getString(R.string.total_in_words, words)
         }

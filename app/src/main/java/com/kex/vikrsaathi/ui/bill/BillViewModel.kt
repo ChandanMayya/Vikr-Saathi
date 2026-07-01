@@ -19,6 +19,7 @@ import android.content.Context
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.util.NumberToWords
 import com.kex.vikrsaathi.util.PdfGenerator
+import com.kex.vikrsaathi.util.PriceCalculator
 import java.io.File
 import kotlinx.coroutines.launch
 
@@ -39,6 +40,9 @@ class BillViewModel(
 
     private val _grandTotal = MutableLiveData(0.0)
     val grandTotal: LiveData<Double> = _grandTotal
+
+    private val _totalDiscount = MutableLiveData(0.0)
+    val totalDiscount: LiveData<Double> = _totalDiscount
 
     private val _totalInWords = MutableLiveData("")
     val totalInWords: LiveData<String> = _totalInWords
@@ -269,7 +273,12 @@ class BillViewModel(
     }
 
     private fun recalculate() {
-        val total = _lineItems.value.orEmpty().sumOf { it.lineTotal }
+        val lines = _lineItems.value.orEmpty()
+        val totalDiscount = lines.sumOf {
+            PriceCalculator.discountAmount(it.mrp, it.discount, it.quantity)
+        }
+        val total = lines.sumOf { it.lineTotal }
+        _totalDiscount.value = totalDiscount
         _grandTotal.value = total
         _totalInWords.value = NumberToWords.convert(total)
     }

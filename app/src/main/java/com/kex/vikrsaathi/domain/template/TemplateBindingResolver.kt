@@ -22,7 +22,8 @@ data class TemplateRenderContext(
 )
 
 data class TableRowData(
-    val values: Map<String, String>
+    val values: Map<String, String>,
+    val isTotalRow: Boolean = false
 )
 
 class TemplateBindingResolver {
@@ -53,8 +54,13 @@ class TemplateBindingResolver {
         }
     }
 
-    fun resolveTableRows(context: TemplateRenderContext): List<TableRowData> {
-        return context.bill.items.mapIndexed { index, item ->
+    fun resolveTableRows(
+        context: TemplateRenderContext,
+        columns: List<com.kex.vikrsaathi.data.model.template.TableColumn> = emptyList(),
+        showTotalRow: Boolean = false,
+        totalRowLabel: String = TableTotalRowSettings.DEFAULT_LABEL
+    ): List<TableRowData> {
+        val itemRows = context.bill.items.mapIndexed { index, item ->
             val line = BillLineItem(
                 itemId = item.itemId,
                 name = item.itemName,
@@ -62,18 +68,29 @@ class TemplateBindingResolver {
                 discount = item.discount,
                 quantity = item.quantity
             )
-            val name = line.name
             TableRowData(
                 mapOf(
                     "sl" to (index + 1).toString(),
-                    "name" to name,
+                    "name" to line.name,
                     "quantity" to line.quantity.toString(),
                     "mrp" to PriceCalculator.formatAmount(line.mrp, context.currencySymbol),
                     "discount" to String.format(Locale.getDefault(), "%.1f", line.discount),
-                    "lineTotal" to PriceCalculator.formatAmount(line.lineTotal, context.currencySymbol)
+                    "discountAmount" to PriceCalculator.formatAmount(
+                        PriceCalculator.discountAmount(line.mrp, line.discount, line.quantity),
+                        context.currencySymbol
+                    ),
+                    "lineTotal" to PriceCalculator.formatAmount(line.lineTotal, context.currencySymbol),
+                    "amount" to PriceCalculator.formatAmount(line.lineTotal, context.currencySymbol)
                 )
             )
         }
+
+        if (!showTotalRow || itemRows.isEmpty() || columns.isEmpty()) {
+            return itemRows
+        }
+
+        val totalValues = TableTotalRowBuilder.build(context, columns, totalRowLabel)
+        return itemRows + TableRowData(totalValues, isTotalRow = true)
     }
 
     fun parseBindingKey(raw: String?): DataBindingKey? {

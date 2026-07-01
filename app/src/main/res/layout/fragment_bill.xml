@@ -140,9 +140,17 @@
                     android:padding="16dp">
 
                     <TextView
+                        android:id="@+id/textTotalDiscount"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textColor="@color/text_secondary_dark" />
+
+                    <TextView
                         android:id="@+id/textGrandTotal"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
                         android:textAppearance="?attr/textAppearanceHeadlineSmall"
                         android:textColor="@color/text_accent"
                         android:textStyle="bold" />

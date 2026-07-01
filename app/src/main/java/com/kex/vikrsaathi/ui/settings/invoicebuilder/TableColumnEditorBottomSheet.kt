@@ -13,11 +13,18 @@ import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.databinding.BottomSheetTableColumnsBinding
 import com.kex.vikrsaathi.databinding.ItemTableColumnEditorBinding
 import com.kex.vikrsaathi.domain.template.TableBorderSettings
+import com.kex.vikrsaathi.domain.template.TableTotalRowSettings
 
 class TableColumnEditorBottomSheet : BottomSheetDialogFragment() {
 
     interface Callback {
-        fun onApply(elementId: String, columns: List<TableColumn>, borderWidthDp: Float)
+        fun onApply(
+            elementId: String,
+            columns: List<TableColumn>,
+            borderWidthDp: Float,
+            showTotalRow: Boolean,
+            totalRowLabel: String
+        )
     }
 
     private var _binding: BottomSheetTableColumnsBinding? = null
@@ -47,6 +54,15 @@ class TableColumnEditorBottomSheet : BottomSheetDialogFragment() {
         binding.editBorderWidth.setText(
             TableBorderSettings.parseBorderWidthDp(current.content).toString()
         )
+        binding.switchShowTotalRow.isChecked =
+            TableTotalRowSettings.showTotalRow(current.content)
+        binding.editTotalRowLabel.setText(
+            TableTotalRowSettings.totalRowLabel(current.content)
+        )
+        binding.layoutTotalRowLabel.isEnabled = binding.switchShowTotalRow.isChecked
+        binding.switchShowTotalRow.setOnCheckedChangeListener { _, checked ->
+            binding.layoutTotalRowLabel.isEnabled = checked
+        }
 
         adapter = ColumnAdapter(columns) { index ->
             columns.removeAt(index)
@@ -65,7 +81,9 @@ class TableColumnEditorBottomSheet : BottomSheetDialogFragment() {
             val borderWidthDp = binding.editBorderWidth.text.toString().toFloatOrNull()
                 ?.coerceIn(TableBorderSettings.MIN_DP, TableBorderSettings.MAX_DP)
                 ?: TableBorderSettings.DEFAULT_DP
-            callback?.onApply(current.id, parsed, borderWidthDp)
+            val showTotalRow = binding.switchShowTotalRow.isChecked
+            val totalRowLabel = binding.editTotalRowLabel.text.toString().trim()
+            callback?.onApply(current.id, parsed, borderWidthDp, showTotalRow, totalRowLabel)
             dismiss()
         }
     }

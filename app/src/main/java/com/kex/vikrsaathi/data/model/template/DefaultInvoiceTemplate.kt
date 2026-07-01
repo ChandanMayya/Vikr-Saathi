@@ -1,6 +1,7 @@
 package com.kex.vikrsaathi.data.model.template
 
 import com.kex.vikrsaathi.domain.template.TableBorderSettings
+import com.kex.vikrsaathi.domain.template.TableTotalRowSettings
 
 /**
  * Factory for the built-in template that mirrors the original hardcoded PDF layout.
@@ -8,12 +9,13 @@ import com.kex.vikrsaathi.domain.template.TableBorderSettings
 object DefaultInvoiceTemplate {
 
     private val defaultTableColumns = listOf(
-        TableColumn("sl", "Sl", 7f, TextAlign.CENTER),
-        TableColumn("name", "Particulars", 43f, TextAlign.LEFT),
-        TableColumn("quantity", "Qty", 11f, TextAlign.CENTER),
-        TableColumn("mrp", "MRP", 11f, TextAlign.CENTER),
-        TableColumn("discount", "Disc%", 11f, TextAlign.CENTER),
-        TableColumn("lineTotal", "Price", 17f, TextAlign.CENTER)
+        TableColumn("sl", "Sl", 6f, TextAlign.CENTER),
+        TableColumn("name", "Particulars", 30f, TextAlign.LEFT),
+        TableColumn("quantity", "Qty", 9f, TextAlign.CENTER),
+        TableColumn("mrp", "MRP", 9f, TextAlign.RIGHT),
+        TableColumn("discount", "Disc%", 9f, TextAlign.CENTER),
+        TableColumn("discountAmount", "Discount Amt", 14f, TextAlign.RIGHT),
+        TableColumn("lineTotal", "Amount", 23f, TextAlign.RIGHT)
     )
 
     fun create(): InvoiceTemplate {
@@ -123,6 +125,8 @@ object DefaultInvoiceTemplate {
                         "bindingKey" to DataBindingKey.BILL_ITEMS.name,
                         "columns" to columnsJson,
                         "showHeader" to "true",
+                        TableTotalRowSettings.SHOW_TOTAL_ROW_KEY to "true",
+                        TableTotalRowSettings.TOTAL_ROW_LABEL_KEY to TableTotalRowSettings.DEFAULT_LABEL,
                         TableBorderSettings.CONTENT_KEY to TableBorderSettings.formatBorderWidthDp(
                             TableBorderSettings.DEFAULT_DP
                         )

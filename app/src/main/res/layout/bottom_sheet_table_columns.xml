@@ -36,6 +36,28 @@
             android:inputType="numberDecimal" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchShowTotalRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/table_show_total_row" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layoutTotalRowLabel"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="@string/table_total_row_label">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editTotalRowLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text" />
+    </com.google.android.material.textfield.TextInputLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerColumns"
         android:layout_width="match_parent"

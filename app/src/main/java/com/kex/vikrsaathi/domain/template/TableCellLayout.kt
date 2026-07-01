@@ -9,10 +9,21 @@ import com.kex.vikrsaathi.data.model.template.TextAlign
 
 object TableCellLayout {
 
-    private const val CELL_HORIZONTAL_PADDING = 4f
+    private const val CELL_HORIZONTAL_PADDING = 6f
+    private const val CURRENCY_CELL_HORIZONTAL_PADDING = 10f
     private const val LINE_GAP = 2f
     private const val ROW_EXTRA_PADDING = 6f
-    private val wrapColumnKeys = setOf("name")
+    private val wrapColumnKeys = setOf("name", "discountAmount")
+    private val currencyColumnKeys = setOf(
+        "mrp",
+        "discountAmount",
+        "discAmt",
+        "discount_amount",
+        "lineTotal",
+        "amount",
+        "price",
+        "total"
+    )
 
     fun normalizeColumns(columns: List<TableColumn>): List<TableColumn> {
         val total = columns.sumOf { it.widthPercent.toDouble() }.toFloat()
@@ -75,7 +86,7 @@ object TableCellLayout {
             val colWidth = columnWidth(tableWidth, column)
             val text = values[column.key].orEmpty()
             if (shouldWrap(column.key)) {
-                wrapTextToLines(text, paint, colWidth).size
+                wrapTextToLines(text, paint, colWidth, column.key).size
             } else {
                 1
             }
@@ -97,13 +108,13 @@ object TableCellLayout {
             val colWidth = columnWidth(bounds.width, column)
             val text = values[column.key].orEmpty()
             val lines = if (shouldWrap(column.key)) {
-                wrapTextToLines(text, paint, colWidth)
+                wrapTextToLines(text, paint, colWidth, column.key)
             } else {
                 listOf(text)
             }
             var lineY = baselineY
             lines.forEach { line ->
-                val drawX = cellAlignedX(paint, line, x, colWidth, column.align)
+                val drawX = cellAlignedX(paint, line, x, colWidth, column.align, column.key)
                 canvas.drawText(line, drawX, lineY, paint)
                 lineY += lineHeight(paint)
             }
@@ -111,9 +122,14 @@ object TableCellLayout {
         }
     }
 
-    fun wrapTextToLines(text: String, paint: Paint, columnWidth: Float): List<String> {
+    fun wrapTextToLines(
+        text: String,
+        paint: Paint,
+        columnWidth: Float,
+        columnKey: String = ""
+    ): List<String> {
         if (text.isBlank()) return listOf("")
-        val maxWidth = (columnWidth - CELL_HORIZONTAL_PADDING).coerceAtLeast(1f)
+        val maxWidth = (columnWidth - horizontalPadding(columnKey) * 2f).coerceAtLeast(1f)
         if (paint.measureText(text) <= maxWidth) return listOf(text)
 
         val lines = mutableListOf<String>()
@@ -159,19 +175,28 @@ object TableCellLayout {
 
     private fun shouldWrap(columnKey: String): Boolean = columnKey in wrapColumnKeys
 
+    private fun horizontalPadding(columnKey: String): Float =
+        if (columnKey in currencyColumnKeys) CURRENCY_CELL_HORIZONTAL_PADDING else CELL_HORIZONTAL_PADDING
+
     private fun cellAlignedX(
         paint: Paint,
         text: String,
         columnLeft: Float,
         columnWidth: Float,
-        align: TextAlign
+        align: TextAlign,
+        columnKey: String = ""
     ): Float {
         val textWidth = paint.measureText(text)
-        val innerLeft = columnLeft + 2f
-        return when (align) {
+        val pad = horizontalPadding(columnKey)
+        val innerLeft = columnLeft + pad
+        val innerRight = columnLeft + columnWidth - pad
+        val innerWidth = (innerRight - innerLeft).coerceAtLeast(1f)
+        val rawX = when (align) {
             TextAlign.LEFT -> innerLeft
-            TextAlign.CENTER -> columnLeft + (columnWidth - textWidth) / 2f
-            TextAlign.RIGHT -> columnLeft + columnWidth - textWidth - 2f
+            TextAlign.CENTER -> innerLeft + (innerWidth - textWidth) / 2f
+            TextAlign.RIGHT -> innerRight - textWidth
         }
+        val maxX = (innerRight - textWidth).coerceAtLeast(innerLeft)
+        return rawX.coerceIn(innerLeft, maxX)
     }
 }

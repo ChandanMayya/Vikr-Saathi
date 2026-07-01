@@ -23,7 +23,7 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
             modelClass.isAssignableFrom(DashboardViewModel::class.java) ->
-                DashboardViewModel(app.settingsRepository) as T
+                DashboardViewModel(app.settingsRepository, app.billRepository) as T
             modelClass.isAssignableFrom(CustomerViewModel::class.java) ->
                 CustomerViewModel(app.customerRepository) as T
             modelClass.isAssignableFrom(ItemViewModel::class.java) ->

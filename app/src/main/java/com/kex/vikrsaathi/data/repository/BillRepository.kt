@@ -7,6 +7,9 @@ import com.kex.vikrsaathi.data.entity.Bill
 import com.kex.vikrsaathi.data.entity.BillItem
 import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.data.model.BillWithDetails
+import com.kex.vikrsaathi.data.model.DashboardTodayStats
+import com.kex.vikrsaathi.data.model.DashboardTopItem
+import com.kex.vikrsaathi.util.DayRange
 import com.kex.vikrsaathi.util.InvoiceNumberFormatter
 
 class BillRepository(
@@ -90,6 +93,20 @@ class BillRepository(
 
     suspend fun billNumberExists(billNumber: String): Boolean =
         billDao.countByBillNumber(billNumber) > 0
+
+    suspend fun getDashboardTodayStats(): DashboardTodayStats {
+        val (start, end) = DayRange.todayMillis()
+        val total = billDao.getTotalSalesBetween(start, end)
+        val billCount = billDao.getBillCountBetween(start, end)
+        val topItems = billDao.getTopSoldItemsBetween(start, end).map { row ->
+            DashboardTopItem(name = row.itemName, quantity = row.totalQuantity)
+        }
+        return DashboardTodayStats(
+            totalSales = total,
+            billCount = billCount,
+            topItems = topItems
+        )
+    }
 
     suspend fun importBillFromBackup(
         billNumber: String,

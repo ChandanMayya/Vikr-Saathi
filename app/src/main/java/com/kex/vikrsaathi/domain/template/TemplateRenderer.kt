@@ -21,8 +21,21 @@ class TemplateRenderer(
     private val bindingResolver: TemplateBindingResolver = TemplateBindingResolver()
 ) {
 
-    fun resolveTableRows(context: TemplateRenderContext): List<TableRowData> {
-        return bindingResolver.resolveTableRows(context)
+    fun resolveTableRows(
+        context: TemplateRenderContext,
+        tableElement: TemplateElement? = null
+    ): List<TableRowData> {
+        if (tableElement == null) {
+            return bindingResolver.resolveTableRows(context)
+        }
+        val columnsJson = tableElement.content["columns"].orEmpty()
+        val columns = TemplateJsonCodec.tableColumnsFromJson(columnsJson)
+        return bindingResolver.resolveTableRows(
+            context = context,
+            columns = columns,
+            showTotalRow = TableTotalRowSettings.showTotalRow(tableElement.content),
+            totalRowLabel = TableTotalRowSettings.totalRowLabel(tableElement.content)
+        )
     }
 
     fun render(canvas: Canvas, template: InvoiceTemplate, context: TemplateRenderContext) {
@@ -166,7 +179,12 @@ class TemplateRenderer(
         val columns = TemplateJsonCodec.tableColumnsFromJson(columnsJson)
         if (columns.isEmpty()) return
 
-        val rows = bindingResolver.resolveTableRows(context)
+        val rows = bindingResolver.resolveTableRows(
+            context = context,
+            columns = columns,
+            showTotalRow = TableTotalRowSettings.showTotalRow(element.content),
+            totalRowLabel = TableTotalRowSettings.totalRowLabel(element.content)
+        )
         val bounds = element.bounds
         val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -174,6 +192,11 @@ class TemplateRenderer(
             color = Color.BLACK
         }
         val cellPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 10f
+            color = Color.BLACK
+        }
+        val totalRowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textSize = 10f
             color = Color.BLACK
         }
@@ -201,7 +224,8 @@ class TemplateRenderer(
         }
 
         rows.forEach { row ->
-            val rowHeight = TableCellLayout.measureRowHeight(columns, row.values, bounds.width, cellPaint)
+            val rowPaint = if (row.isTotalRow) totalRowPaint else cellPaint
+            val rowHeight = TableCellLayout.measureRowHeight(columns, row.values, bounds.width, rowPaint)
             if (y + rowHeight > bounds.y + bounds.height) {
                 TableCellLayout.drawTableGrid(
                     canvas, columns, bounds, tableTop, y, rowSeparators, borderWidthPt
@@ -213,8 +237,8 @@ class TemplateRenderer(
                 columns,
                 row.values,
                 bounds,
-                TableCellLayout.rowBaselineY(y, cellPaint),
-                cellPaint
+                TableCellLayout.rowBaselineY(y, rowPaint),
+                rowPaint
             )
             y += rowHeight
             rowSeparators.add(y)

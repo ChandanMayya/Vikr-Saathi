@@ -36,6 +36,7 @@ import com.kex.vikrsaathi.domain.template.TemplateContextFactory
 import com.kex.vikrsaathi.domain.template.TemplateRenderContext
 import com.kex.vikrsaathi.domain.template.TemplateValidationIssue
 import com.kex.vikrsaathi.domain.template.TableBorderSettings
+import com.kex.vikrsaathi.domain.template.TableTotalRowSettings
 import com.kex.vikrsaathi.util.PdfGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -459,7 +460,13 @@ class InvoiceBuilderViewModel(
         }
     }
 
-    fun updateTableColumns(elementId: String, columns: List<TableColumn>, borderWidthDp: Float) {
+    fun updateTableColumns(
+        elementId: String,
+        columns: List<TableColumn>,
+        borderWidthDp: Float,
+        showTotalRow: Boolean,
+        totalRowLabel: String
+    ) {
         mutate { current ->
             current.copy(
                 elements = current.elements.map { element ->
@@ -468,6 +475,10 @@ class InvoiceBuilderViewModel(
                     content["columns"] = TemplateJsonCodec.tableColumnsToJson(columns)
                     content[TableBorderSettings.CONTENT_KEY] =
                         TableBorderSettings.formatBorderWidthDp(borderWidthDp)
+                    content[TableTotalRowSettings.SHOW_TOTAL_ROW_KEY] =
+                        showTotalRow.toString()
+                    content[TableTotalRowSettings.TOTAL_ROW_LABEL_KEY] =
+                        totalRowLabel.ifBlank { TableTotalRowSettings.DEFAULT_LABEL }
                     element.copy(content = content)
                 }
             )
@@ -893,6 +904,8 @@ class InvoiceBuilderViewModel(
                     "bindingKey" to DataBindingKey.BILL_ITEMS.name,
                     "showHeader" to "true",
                     "columns" to TemplateJsonCodec.tableColumnsToJson(defaultTableColumns()),
+                    TableTotalRowSettings.SHOW_TOTAL_ROW_KEY to "true",
+                    TableTotalRowSettings.TOTAL_ROW_LABEL_KEY to TableTotalRowSettings.DEFAULT_LABEL,
                     TableBorderSettings.CONTENT_KEY to TableBorderSettings.formatBorderWidthDp(
                         TableBorderSettings.DEFAULT_DP
                     )
@@ -910,12 +923,13 @@ class InvoiceBuilderViewModel(
 
     private fun defaultTableColumns(): List<TableColumn> {
         return listOf(
-            TableColumn("sl", "Sl", 7f, TextAlign.CENTER),
-            TableColumn("name", "Particulars", 43f, TextAlign.LEFT),
-            TableColumn("quantity", "Qty", 11f, TextAlign.CENTER),
-            TableColumn("mrp", "MRP", 11f, TextAlign.CENTER),
-            TableColumn("discount", "Disc%", 11f, TextAlign.CENTER),
-            TableColumn("lineTotal", "Price", 17f, TextAlign.CENTER)
+            TableColumn("sl", "Sl", 6f, TextAlign.CENTER),
+            TableColumn("name", "Particulars", 30f, TextAlign.LEFT),
+            TableColumn("quantity", "Qty", 9f, TextAlign.CENTER),
+            TableColumn("mrp", "MRP", 9f, TextAlign.RIGHT),
+            TableColumn("discount", "Disc%", 9f, TextAlign.CENTER),
+            TableColumn("discountAmount", "Discount Amt", 14f, TextAlign.RIGHT),
+            TableColumn("lineTotal", "Amount", 23f, TextAlign.RIGHT)
         )
     }
 }

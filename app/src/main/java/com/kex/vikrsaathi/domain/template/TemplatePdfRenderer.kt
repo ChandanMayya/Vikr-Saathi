@@ -27,7 +27,7 @@ object TemplatePdfRenderer {
         renderer.render(canvas, templateWithoutTables, context)
 
         tableElements.forEach { tableElement ->
-            val rows = renderer.resolveTableRows(context)
+            val rows = renderer.resolveTableRows(context, tableElement)
             var rowIndex = 0
             var startY = tableElement.bounds.y
 
@@ -85,6 +85,11 @@ object TemplatePdfRenderer {
             textSize = 10f
             color = Color.BLACK
         }
+        val totalRowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            isFakeBoldText = true
+            textSize = 10f
+            color = Color.BLACK
+        }
 
         val rowSeparators = mutableListOf<Float>()
         var y = startY
@@ -111,8 +116,10 @@ object TemplatePdfRenderer {
 
         var index = startRowIndex
         while (index < rows.size) {
+            val row = rows[index]
+            val rowPaint = if (row.isTotalRow) totalRowPaint else cellPaint
             val rowHeight = TableCellLayout.measureRowHeight(
-                columns, rows[index].values, bounds.width, cellPaint
+                columns, row.values, bounds.width, rowPaint
             )
             if (y + rowHeight > maxY) {
                 TableCellLayout.drawTableGrid(
@@ -123,10 +130,10 @@ object TemplatePdfRenderer {
             TableCellLayout.drawTableRow(
                 canvas,
                 columns,
-                rows[index].values,
+                row.values,
                 bounds,
-                TableCellLayout.rowBaselineY(y, cellPaint),
-                cellPaint
+                TableCellLayout.rowBaselineY(y, rowPaint),
+                rowPaint
             )
             y += rowHeight
             rowSeparators.add(y)

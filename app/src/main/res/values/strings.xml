@@ -5,6 +5,13 @@
 
     <string name="dashboard">Dashboard</string>
     <string name="dashboard_subtitle">Fast offline billing for your shop</string>
+    <string name="dashboard_today_sales">Today\'s Sales</string>
+    <string name="dashboard_bills_today">%1$d bills today</string>
+    <string name="dashboard_bills_today_none">No bills yet today</string>
+    <string name="dashboard_top_items_today">Top Items Today</string>
+    <string name="dashboard_top_items_empty">No items sold today</string>
+    <string name="dashboard_qty_sold">Qty %1$d</string>
+    <string name="dashboard_quick_actions">Quick Actions</string>
     <string name="new_bill">New Bill</string>
     <string name="hold_bill">Hold bill</string>
     <string name="restore_bill">Restore bill</string>
@@ -63,6 +70,7 @@
     <string name="add_new_customer">Add New Customer</string>
     <string name="scan_barcode">Scan Barcode</string>
     <string name="grand_total">Grand Total: %1$s</string>
+    <string name="total_discount">Total Discount: %1$s</string>
     <string name="total_in_words">Total in Words: %1$s</string>
     <string name="authorised_signature">Authorised Signature</string>
     <string name="generate_pdf">Generate PDF</string>
@@ -329,9 +337,11 @@
     <string name="template_import_failed">Could not import template</string>
     <string name="template_export_failed">Could not export template</string>
     <string name="table_columns">Table columns</string>
-    <string name="table_columns_hint">Key must match bill item fields (sl, name, quantity, mrp, discount, lineTotal).</string>
+    <string name="table_columns_hint">Key must match bill item fields (sl, name, quantity, mrp, discount, discountAmount, lineTotal).</string>
     <string name="table_border_width_dp">Border width (dp)</string>
     <string name="table_border_width_hint">Typical: 1 = thin, 2 = medium, 3+ = bold. Range 0.25–8.</string>
+    <string name="table_show_total_row">Show total row</string>
+    <string name="table_total_row_label">Total row label</string>
     <string name="add_column">Add column</string>
     <string name="column_key">Key</string>
     <string name="column_label">Label</string>

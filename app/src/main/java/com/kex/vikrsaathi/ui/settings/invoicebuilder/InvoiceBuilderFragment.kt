@@ -493,9 +493,17 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
             override fun onApply(
                 elementId: String,
                 columns: List<com.kex.vikrsaathi.data.model.template.TableColumn>,
-                borderWidthDp: Float
+                borderWidthDp: Float,
+                showTotalRow: Boolean,
+                totalRowLabel: String
             ) {
-                viewModel.updateTableColumns(elementId, columns, borderWidthDp)
+                viewModel.updateTableColumns(
+                    elementId,
+                    columns,
+                    borderWidthDp,
+                    showTotalRow,
+                    totalRowLabel
+                )
             }
         }
         sheet.show(parentFragmentManager, "table_columns")

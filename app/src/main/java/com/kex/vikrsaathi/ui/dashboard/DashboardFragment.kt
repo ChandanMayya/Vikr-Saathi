@@ -4,12 +4,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentDashboardBinding
+import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.util.ViewModelFactory
 
 class DashboardFragment : Fragment() {
@@ -33,12 +36,33 @@ class DashboardFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        viewModel.shopName.observe(viewLifecycleOwner) { name ->
-            binding.textShopName.text = name
-        }
+        val app = requireActivity().application as VikrSaathiApp
+        updateToolbarTitle(app.settingsRepository.shopName)
+
+        viewModel.shopName.observe(viewLifecycleOwner, ::updateToolbarTitle)
+
         viewModel.loading.observe(viewLifecycleOwner) { loading ->
-            binding.skeletonLoader.root.visibility = if (loading) View.VISIBLE else View.GONE
-            binding.dashboardGrid.visibility = if (loading) View.GONE else View.VISIBLE
+            binding.skeletonLoader.root.isVisible = loading
+            binding.layoutStats.isVisible = !loading
+            binding.textQuickActions.isVisible = !loading
+            binding.dashboardGrid.isVisible = !loading
+        }
+
+        viewModel.todayStats.observe(viewLifecycleOwner) { stats ->
+            val symbol = viewModel.currencySymbol.value.orEmpty().ifBlank { "₹" }
+            binding.textTodaySalesAmount.text =
+                PriceCalculator.formatAmount(stats.totalSales, symbol)
+            binding.textTodayBillCount.text = if (stats.billCount > 0) {
+                getString(R.string.dashboard_bills_today, stats.billCount)
+            } else {
+                getString(R.string.dashboard_bills_today_none)
+            }
+            val hasTopItems = stats.topItems.isNotEmpty()
+            binding.topItemsChart.isVisible = hasTopItems
+            binding.textTopItemsEmpty.isVisible = !hasTopItems
+            if (hasTopItems) {
+                binding.topItemsChart.setItems(stats.topItems)
+            }
         }
 
         binding.cardNewBill.setOnClickListener {
@@ -66,5 +90,9 @@ class DashboardFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun updateToolbarTitle(name: String) {
+        (requireActivity() as? AppCompatActivity)?.supportActionBar?.title = name
     }
 }
