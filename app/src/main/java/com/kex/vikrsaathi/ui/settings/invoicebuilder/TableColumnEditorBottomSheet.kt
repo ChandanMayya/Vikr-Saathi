@@ -14,6 +14,8 @@ import com.kex.vikrsaathi.databinding.BottomSheetTableColumnsBinding
 import com.kex.vikrsaathi.databinding.ItemTableColumnEditorBinding
 import com.kex.vikrsaathi.domain.template.TableBorderSettings
 import com.kex.vikrsaathi.domain.template.TableTotalRowSettings
+import com.kex.vikrsaathi.ui.help.HelpTopic
+import com.kex.vikrsaathi.ui.help.showContextualHelp
 
 class TableColumnEditorBottomSheet : BottomSheetDialogFragment() {
 
@@ -48,6 +50,11 @@ class TableColumnEditorBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val current = element ?: return
+
+        binding.buttonContextHelp.setOnClickListener {
+            showContextualHelp(HelpTopic.INVOICE_TABLE_COLUMNS)
+        }
+
         val columnsJson = current.content["columns"].orEmpty()
         columns.clear()
         columns.addAll(TemplateJsonCodec.tableColumnsFromJson(columnsJson))

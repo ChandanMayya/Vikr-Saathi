@@ -38,16 +38,6 @@
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
     </eightbitlab.com.blurview.BlurTarget>
 
-    <FrameLayout
-        android:id="@+id/helpOverlayHost"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@android:color/transparent"
-        android:clickable="true"
-        android:elevation="20dp"
-        android:focusable="true"
-        android:visibility="gone" />
-
     <include
         android:id="@+id/splashOverlay"
         layout="@layout/layout_splash_overlay"

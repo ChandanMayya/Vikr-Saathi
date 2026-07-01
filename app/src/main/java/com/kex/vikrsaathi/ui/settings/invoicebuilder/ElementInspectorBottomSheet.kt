@@ -27,6 +27,8 @@ import com.kex.vikrsaathi.databinding.BottomSheetElementInspectorBinding
 import com.kex.vikrsaathi.domain.template.TemplateImageBitmapResolver
 import com.kex.vikrsaathi.domain.template.TemplateImageBoundsHelper
 import com.kex.vikrsaathi.domain.template.TableBorderSettings
+import com.kex.vikrsaathi.ui.help.HelpTopic
+import com.kex.vikrsaathi.ui.help.showContextualHelp
 import com.kex.vikrsaathi.util.TemplateImageStore
 
 class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
@@ -123,6 +125,10 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
             setupBulkMode(bulk!!)
         } else if (current != null) {
             setupSingleMode(current)
+        }
+
+        binding.buttonContextHelp.setOnClickListener {
+            showContextualHelp(HelpTopic.INVOICE_ELEMENT_PROPERTIES)
         }
 
         binding.buttonApplyInspector.setOnClickListener {

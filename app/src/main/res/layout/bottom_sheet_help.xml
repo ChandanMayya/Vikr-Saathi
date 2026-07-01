@@ -47,83 +47,94 @@
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_help_glass_panel">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="20dp"
-                    android:paddingTop="20dp"
-                    android:paddingBottom="14dp">
-
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <FrameLayout
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="@drawable/bg_help_icon_circle">
-
-                            <ImageView
-                                android:layout_width="22dp"
-                                android:layout_height="22dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@null"
-                                android:src="@drawable/ic_help"
-                                app:tint="@color/help_glass_icon_tint" />
-                        </FrameLayout>
-
-                        <TextView
-                            android:id="@+id/textHelpTitle"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:layout_weight="1"
-                            android:letterSpacing="0.01"
-                            android:textAppearance="?attr/textAppearanceTitleLarge"
-                            android:textColor="@color/text_primary_dark"
-                            android:textStyle="bold" />
-
-                        <ImageButton
-                            android:id="@+id/buttonCloseHelp"
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="@drawable/bg_help_close_button"
-                            android:contentDescription="@string/close"
-                            android:padding="10dp"
-                            android:scaleType="centerInside"
-                            android:src="@android:drawable/ic_menu_close_clear_cancel"
-                            app:tint="@color/text_secondary_dark" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/textHelpOverview"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:lineSpacingExtra="4dp"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:textColor="@color/text_primary_dark" />
-
-                    <androidx.core.widget.NestedScrollView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:fillViewport="false"
-                        android:maxHeight="360dp"
-                        android:scrollbars="none">
+                        android:orientation="vertical"
+                        android:paddingHorizontal="20dp"
+                        android:paddingTop="20dp"
+                        android:paddingBottom="14dp">
 
                         <LinearLayout
-                            android:id="@+id/layoutHelpSections"
+                            android:id="@+id/helpHeader"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="vertical" />
-                    </androidx.core.widget.NestedScrollView>
-                </LinearLayout>
-            </FrameLayout>
-        </eightbitlab.com.blurview.BlurView>
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <FrameLayout
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="@drawable/bg_help_icon_circle">
+
+                                <ImageView
+                                    android:layout_width="22dp"
+                                    android:layout_height="22dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="@null"
+                                    android:src="@drawable/ic_help"
+                                    app:tint="@color/help_glass_icon_tint" />
+                            </FrameLayout>
+
+                            <TextView
+                                android:id="@+id/textHelpTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_weight="1"
+                                android:letterSpacing="0.01"
+                                android:textAppearance="?attr/textAppearanceTitleLarge"
+                                android:textColor="@color/text_primary_dark"
+                                android:textStyle="bold" />
+
+                            <ImageButton
+                                android:id="@+id/buttonCloseHelp"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="@drawable/bg_help_close_button"
+                                android:contentDescription="@string/close"
+                                android:padding="10dp"
+                                android:scaleType="centerInside"
+                                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                                app:tint="@color/text_secondary_dark" />
+                        </LinearLayout>
+
+                        <androidx.core.widget.NestedScrollView
+                            android:id="@+id/scrollHelpContent"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:fadeScrollbars="false"
+                            android:fillViewport="false"
+                            android:overScrollMode="ifContentScrolls"
+                            android:scrollbarStyle="outsideOverlay"
+                            android:scrollbars="vertical">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:paddingBottom="4dp">
+
+                                <TextView
+                                    android:id="@+id/textHelpOverview"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:lineSpacingExtra="4dp"
+                                    android:textAppearance="?attr/textAppearanceBodyLarge"
+                                    android:textColor="@color/text_primary_dark" />
+
+                                <LinearLayout
+                                    android:id="@+id/layoutHelpSections"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="16dp"
+                                    android:orientation="vertical" />
+                            </LinearLayout>
+                        </androidx.core.widget.NestedScrollView>
+                    </LinearLayout>
+                </FrameLayout>
+            </eightbitlab.com.blurview.BlurView>
         </FrameLayout>
     </FrameLayout>
 </FrameLayout>

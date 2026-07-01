@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="contextual_help">Context help</string>
+
+    <!-- Element properties (Invoice Builder) -->
+    <string name="help_topic_element_props_title">Element Properties</string>
+    <string name="help_topic_element_props_overview">Fine-tune the selected invoice element. Tap ? anytime while this panel is open.</string>
+    <string name="help_topic_element_props_s1_title">Lock &amp; binding</string>
+    <string-array name="help_topic_element_props_s1">
+        <item>Lock — prevents accidental moves on the canvas. Unlock to edit again.</item>
+        <item>Binding type — Static shows fixed text/image; Data field pulls live bill values.</item>
+        <item>Static text — words that never change (e.g. labels like “Total”).</item>
+        <item>Data field — links to shop name, buyer, line items, totals, invoice number, etc.</item>
+        <item>Static image — pick a picture from gallery for logos or stamps.</item>
+        <item>Text prefix — extra text placed before a data value (e.g. “Phone: ”).</item>
+    </string-array>
+    <string name="help_topic_element_props_s2_title">Text appearance</string>
+    <string-array name="help_topic_element_props_s2">
+        <item>Font size — height of text in points on the PDF.</item>
+        <item>Bold / Italic / Underline — standard text styling.</item>
+        <item>Font family — typeface used when the PDF is generated.</item>
+        <item>Font color — hex color (e.g. #212121). Leave blank for default black.</item>
+    </string-array>
+    <string name="help_topic_element_props_s3_title">Alignment &amp; images</string>
+    <string-array name="help_topic_element_props_s3">
+        <item>Horizontal align — left, center, or right within the element box.</item>
+        <item>Vertical align — top, middle, or bottom within the element box.</item>
+        <item>Image scale — fit inside the box, fill/crop, or stretch to bounds.</item>
+        <item>Table border width — line thickness around the items table (table elements only).</item>
+    </string-array>
+    <string name="help_topic_element_props_s4_title">Position &amp; size</string>
+    <string-array name="help_topic_element_props_s4">
+        <item>X / Y — distance from the top-left of the page in dp.</item>
+        <item>Width / Height — element box size on the invoice.</item>
+        <item>Apply changes — saves edits to the canvas. Dragging on canvas also updates position.</item>
+        <item>Delete element — removes the selection from the template.</item>
+        <item>Bulk edit — when several elements are selected, shared fields update all at once.</item>
+    </string-array>
+
+    <!-- Table columns editor -->
+    <string name="help_topic_table_columns_title">Table Columns</string>
+    <string name="help_topic_table_columns_overview">Configure the line-items table: which columns appear, their labels, and the total row.</string>
+    <string name="help_topic_table_columns_s1_title">Table settings</string>
+    <string-array name="help_topic_table_columns_s1">
+        <item>Border width — thickness of grid lines around cells (in dp).</item>
+        <item>Show total row — adds a summary row at the bottom of the table.</item>
+        <item>Total row label — text in the first column of the total row (e.g. “Total”).</item>
+    </string-array>
+    <string name="help_topic_table_columns_s2_title">Each column</string>
+    <string-array name="help_topic_table_columns_s2">
+        <item>Column key — internal field name (qty, mrp, amount, discountAmount, etc.).</item>
+        <item>Column label — heading printed in the table header row.</item>
+        <item>Column width — relative width share; wider columns get more space.</item>
+        <item>Remove (×) — deletes that column from the table.</item>
+        <item>Add column — inserts a new blank column row to configure.</item>
+        <item>Apply changes — saves columns and table settings to the template.</item>
+    </string-array>
+</resources>

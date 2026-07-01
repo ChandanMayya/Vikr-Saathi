@@ -3,4 +3,6 @@
     <dimen name="help_glass_corner_radius">28dp</dimen>
     <dimen name="help_glass_blur_radius">24dp</dimen>
     <dimen name="help_backdrop_blur_radius">3dp</dimen>
+    <item name="help_panel_max_height_fraction" format="float" type="dimen">0.72</item>
+    <dimen name="help_panel_min_scroll_height">120dp</dimen>
 </resources>

@@ -158,12 +158,13 @@
 
     <!-- Invoice configuration hub -->
     <string name="help_invoice_config_title">Invoice Configuration</string>
-    <string name="help_invoice_config_overview">Customize how your printed and PDF invoices look and how numbers are assigned.</string>
-    <string name="help_invoice_config_s1_title">Options</string>
+    <string name="help_invoice_config_overview">Hub for invoice images, bill numbering, and template layouts.</string>
+    <string name="help_invoice_config_s1_title">Sections</string>
     <string-array name="help_invoice_config_s1">
-        <item>Image Configuration — header and signature images.</item>
-        <item>Invoice Counter — prefix, suffix, and next number.</item>
-        <item>Invoice Layout — manage and edit invoice templates.</item>
+        <item>Image Configuration — header and signature images on every PDF.</item>
+        <item>Invoice Counter — prefix, suffix, and next bill number.</item>
+        <item>Invoice Layout — open templates and the visual Invoice Builder.</item>
+        <item>In the builder, use ? on the page toolbar for tools and ? inside properties for each field.</item>
     </string-array>
 
     <!-- Invoice image -->
@@ -188,31 +189,40 @@
 
     <!-- Invoice templates -->
     <string name="help_invoice_templates_title">Invoice Templates</string>
-    <string name="help_invoice_templates_overview">Manage invoice layouts. One template is marked default for all new PDFs.</string>
-    <string name="help_invoice_templates_s1_title">Actions</string>
+    <string name="help_invoice_templates_overview">List of invoice layouts. One template is used as the default for new bill PDFs.</string>
+    <string name="help_invoice_templates_s1_title">Basics</string>
     <string-array name="help_invoice_templates_s1">
-        <item>Tap a template to open the Invoice Builder and edit layout.</item>
-        <item>Set default — choose which template is used for bills.</item>
-        <item>Import JSON — load a template file (e.g. shared design).</item>
-        <item>New template — start from a blank or default layout.</item>
+        <item>Tap a template to open the Invoice Builder and edit its layout.</item>
+        <item>Set default — marks which template new bills use.</item>
+        <item>New template — create another layout from the built-in starting design.</item>
+        <item>Import JSON — load a shared template file from storage.</item>
+        <item>For field-by-field help while editing, use ? inside Element Properties or Table Columns.</item>
     </string-array>
 
     <!-- Invoice builder -->
     <string name="help_invoice_builder_title">Invoice Builder</string>
-    <string name="help_invoice_builder_overview">Design your invoice visually — drag elements, bind bill data, and preview the PDF.</string>
-    <string name="help_invoice_builder_s1_title">Canvas &amp; toolbar</string>
+    <string name="help_invoice_builder_overview">Visual editor for your invoice PDF. Drag elements on the canvas, then save the template.</string>
+    <string name="help_invoice_builder_s1_title">Canvas &amp; main actions</string>
     <string-array name="help_invoice_builder_s1">
-        <item>Tap elements to select; drag to move or resize.</item>
-        <item>Undo / redo — step through layout changes.</item>
-        <item>Preview — generate a sample PDF.</item>
-        <item>Save — stores the template and creates a version snapshot.</item>
+        <item>Tap an element to select it; drag to move or resize handles.</item>
+        <item>+ (FAB) — add text, image, or table elements.</item>
+        <item>Edit element — opens properties for the selection.</item>
+        <item>Table columns — edit the items table when a table is selected.</item>
+        <item>Preview PDF — sample output with demo bill data.</item>
+        <item>Save — stores the template and records a version snapshot.</item>
         <item>Menu (⋮) — grid, guides, import/export JSON, version history.</item>
     </string-array>
-    <string name="help_invoice_builder_s2_title">Table &amp; properties</string>
+    <string name="help_invoice_builder_s2_title">Selection toolbar</string>
     <string-array name="help_invoice_builder_s2">
-        <item>Select the items table to edit columns, borders, and total row.</item>
-        <item>Properties panel — text, images, alignment, and data bindings.</item>
-        <item>Live preview shows real sample bill data on the canvas.</item>
+        <item>Undo / Redo — step through recent layout changes.</item>
+        <item>Multi-select — tap several elements; bulk-edit shared properties.</item>
+        <item>Delete — remove selected element(s).</item>
+        <item>Group / Ungroup — move multiple elements together.</item>
+        <item>Lock / Unlock — block or allow canvas moves for the selection.</item>
+        <item>Duplicate — copy the selected element.</item>
+        <item>Bring forward / Send backward — change stacking order one step.</item>
+        <item>Bring to front / Send to back — move to the top or bottom layer.</item>
+        <item>Detailed property help — tap ? in the Element Properties or Table Columns panel.</item>
     </string-array>
 
     <!-- Backup -->

@@ -126,6 +126,27 @@ object HelpContentProvider {
         }
     }
 
+    fun getTopic(context: Context, topic: HelpTopic): HelpGuide {
+        return when (topic) {
+            HelpTopic.INVOICE_ELEMENT_PROPERTIES -> guide(
+                context,
+                R.string.help_topic_element_props_title,
+                R.string.help_topic_element_props_overview,
+                section(R.string.help_topic_element_props_s1_title, R.array.help_topic_element_props_s1),
+                section(R.string.help_topic_element_props_s2_title, R.array.help_topic_element_props_s2),
+                section(R.string.help_topic_element_props_s3_title, R.array.help_topic_element_props_s3),
+                section(R.string.help_topic_element_props_s4_title, R.array.help_topic_element_props_s4)
+            )
+            HelpTopic.INVOICE_TABLE_COLUMNS -> guide(
+                context,
+                R.string.help_topic_table_columns_title,
+                R.string.help_topic_table_columns_overview,
+                section(R.string.help_topic_table_columns_s1_title, R.array.help_topic_table_columns_s1),
+                section(R.string.help_topic_table_columns_s2_title, R.array.help_topic_table_columns_s2)
+            )
+        }
+    }
+
     private data class SectionRes(val titleRes: Int, val itemsRes: Int)
 
     private fun section(titleRes: Int, itemsRes: Int) = SectionRes(titleRes, itemsRes)
