@@ -12,19 +12,39 @@
         tools:layout="@layout/fragment_dashboard">
         <action
             android:id="@+id/action_dashboard_to_bill"
-            app:destination="@id/billFragment" />
+            app:destination="@id/billFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_dashboard_to_customers"
-            app:destination="@id/customerFragment" />
+            app:destination="@id/customerFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_dashboard_to_items"
-            app:destination="@id/itemFragment" />
+            app:destination="@id/itemFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_dashboard_to_bills_history"
-            app:destination="@id/billsHistoryFragment" />
+            app:destination="@id/billsHistoryFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_dashboard_to_settings"
-            app:destination="@id/settingsFragment" />
+            app:destination="@id/settingsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
@@ -46,13 +66,25 @@
             app:argType="long" />
         <action
             android:id="@+id/action_bill_to_items"
-            app:destination="@id/itemFragment" />
+            app:destination="@id/itemFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_bill_to_held_bills"
-            app:destination="@id/heldBillsFragment" />
+            app:destination="@id/heldBillsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_bill_to_preview"
             app:destination="@id/billPreviewFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out"
             app:popUpTo="@id/billFragment"
             app:popUpToInclusive="true" />
     </fragment>
@@ -65,6 +97,10 @@
         <action
             android:id="@+id/action_held_bills_to_bill"
             app:destination="@id/billFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out"
             app:popUpTo="@id/billFragment"
             app:popUpToInclusive="true" />
     </fragment>
@@ -98,10 +134,18 @@
         tools:layout="@layout/fragment_bills_history">
         <action
             android:id="@+id/action_bills_history_to_bill"
-            app:destination="@id/billFragment" />
+            app:destination="@id/billFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_bills_history_to_excel_upload"
-            app:destination="@id/excelUploadFragment" />
+            app:destination="@id/excelUploadFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
@@ -117,16 +161,32 @@
         tools:layout="@layout/fragment_settings_nav_hub">
         <action
             android:id="@+id/action_settings_to_general"
-            app:destination="@id/generalSettingsFragment" />
+            app:destination="@id/generalSettingsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_settings_to_invoice_configuration"
-            app:destination="@id/invoiceConfigurationFragment" />
+            app:destination="@id/invoiceConfigurationFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_settings_to_backup"
-            app:destination="@id/backupFragment" />
+            app:destination="@id/backupFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_settings_to_reset"
-            app:destination="@id/resetFragment" />
+            app:destination="@id/resetFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
@@ -142,13 +202,25 @@
         tools:layout="@layout/fragment_settings_nav_hub">
         <action
             android:id="@+id/action_invoice_configuration_to_image"
-            app:destination="@id/invoiceImageSettingsFragment" />
+            app:destination="@id/invoiceImageSettingsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_invoice_configuration_to_counter"
-            app:destination="@id/invoiceCounterSettingsFragment" />
+            app:destination="@id/invoiceCounterSettingsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
             android:id="@+id/action_invoice_configuration_to_layout"
-            app:destination="@id/invoiceTemplatesFragment" />
+            app:destination="@id/invoiceTemplatesFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
@@ -182,7 +254,11 @@
         tools:layout="@layout/fragment_invoice_templates">
         <action
             android:id="@+id/action_invoice_templates_to_builder"
-            app:destination="@id/invoiceBuilderFragment" />
+            app:destination="@id/invoiceBuilderFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
