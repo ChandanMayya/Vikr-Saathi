@@ -27,6 +27,7 @@ import com.kex.vikrsaathi.databinding.FragmentBillsHistoryBinding
 import com.kex.vikrsaathi.ui.bill.BillFragment
 import com.kex.vikrsaathi.util.BillsFilterHelper
 import com.kex.vikrsaathi.util.BillsHistoryPreferences
+import com.kex.vikrsaathi.util.BillsSortHelper
 import com.kex.vikrsaathi.util.FileShareHelper
 import com.kex.vikrsaathi.util.SalesReportFilter
 import com.kex.vikrsaathi.util.ViewModelFactory
@@ -175,6 +176,28 @@ class BillsHistoryFragment : Fragment() {
             applyFilterVisibility()
             applyFilters()
         }
+        binding.historyDrawer.switchSortByDateAsc.setOnCheckedChangeListener { _, checked ->
+            if (suppressDrawerListeners) return@setOnCheckedChangeListener
+            if (checked) {
+                suppressDrawerListeners = true
+                binding.historyDrawer.switchSortByInvoiceNumberAsc.isChecked = false
+                suppressDrawerListeners = false
+                preferences.sortByInvoiceNumberAsc = false
+            }
+            preferences.sortByDateAsc = checked
+            applyFilters()
+        }
+        binding.historyDrawer.switchSortByInvoiceNumberAsc.setOnCheckedChangeListener { _, checked ->
+            if (suppressDrawerListeners) return@setOnCheckedChangeListener
+            if (checked) {
+                suppressDrawerListeners = true
+                binding.historyDrawer.switchSortByDateAsc.isChecked = false
+                suppressDrawerListeners = false
+                preferences.sortByDateAsc = false
+            }
+            preferences.sortByInvoiceNumberAsc = checked
+            applyFilters()
+        }
     }
 
     private fun syncDrawerToggles() {
@@ -182,6 +205,8 @@ class BillsHistoryFragment : Fragment() {
         binding.historyDrawer.switchSearchFilter.isChecked = preferences.searchFilterEnabled
         binding.historyDrawer.switchDateRangeFilter.isChecked = preferences.dateRangeFilterEnabled
         binding.historyDrawer.switchCounterRangeFilter.isChecked = preferences.counterRangeFilterEnabled
+        binding.historyDrawer.switchSortByDateAsc.isChecked = preferences.sortByDateAsc
+        binding.historyDrawer.switchSortByInvoiceNumberAsc.isChecked = preferences.sortByInvoiceNumberAsc
         suppressDrawerListeners = false
     }
 
@@ -263,11 +288,12 @@ class BillsHistoryFragment : Fragment() {
     }
 
     private fun getFilteredBills(): List<BillWithDetails> {
-        return BillsFilterHelper.apply(allBills, buildCurrentFilter())
+        val filtered = BillsFilterHelper.apply(allBills, buildCurrentFilter())
+        return BillsSortHelper.apply(filtered, preferences)
     }
 
     private fun downloadPdfReport() {
-        viewModel.exportPdfReport(requireContext(), allBills, buildCurrentFilter()) { file ->
+        viewModel.exportPdfReport(requireContext(), getFilteredBills(), buildCurrentFilter()) { file ->
             if (file == null) {
                 android.widget.Toast.makeText(requireContext(), R.string.export_no_data, android.widget.Toast.LENGTH_SHORT).show()
                 return@exportPdfReport
@@ -277,7 +303,7 @@ class BillsHistoryFragment : Fragment() {
     }
 
     private fun downloadExcelReport() {
-        viewModel.exportExcelReport(requireContext(), allBills, buildCurrentFilter()) { file ->
+        viewModel.exportExcelReport(requireContext(), getFilteredBills(), buildCurrentFilter()) { file ->
             if (file == null) {
                 android.widget.Toast.makeText(requireContext(), R.string.export_no_data, android.widget.Toast.LENGTH_SHORT).show()
                 return@exportExcelReport

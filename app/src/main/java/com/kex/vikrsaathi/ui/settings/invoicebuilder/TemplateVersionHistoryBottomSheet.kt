@@ -50,11 +50,10 @@ class TemplateVersionHistoryBottomSheet : BottomSheetDialogFragment() {
 
     fun submitVersions(list: List<InvoiceTemplateVersion>) {
         versions = list
-        (binding.recyclerVersions.adapter as? VersionAdapter)?.submit(list)
-        if (_binding != null) {
-            binding.textNoVersions.isVisible = list.isEmpty()
-            binding.recyclerVersions.isVisible = list.isNotEmpty()
-        }
+        val currentBinding = _binding ?: return
+        (currentBinding.recyclerVersions.adapter as? VersionAdapter)?.submit(list)
+        currentBinding.textNoVersions.isVisible = list.isEmpty()
+        currentBinding.recyclerVersions.isVisible = list.isNotEmpty()
     }
 
     private fun confirmRestore(version: InvoiceTemplateVersion) {

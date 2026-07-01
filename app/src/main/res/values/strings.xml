@@ -232,6 +232,9 @@
     <string name="any_date">Any</string>
     <string name="bills_history_options">Bills History options</string>
     <string name="filter_section">Filter</string>
+    <string name="sort_section">Sort</string>
+    <string name="sort_by_date_asc">Sort by date (asc)</string>
+    <string name="sort_by_invoice_number_asc">Sort by invoice number (asc)</string>
     <string name="filter_search_bill">Search bill</string>
     <string name="filter_date_range">Date range</string>
     <string name="filter_counter_range">Counter range</string>

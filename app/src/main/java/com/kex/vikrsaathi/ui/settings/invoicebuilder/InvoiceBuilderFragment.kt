@@ -211,7 +211,10 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
         viewModel.versionHistory.observe(viewLifecycleOwner) { versions ->
-            versionSheet?.submitVersions(versions)
+            val sheet = versionSheet
+            if (sheet != null && sheet.isAdded) {
+                sheet.submitVersions(versions)
+            }
         }
 
         binding.buttonUndo.setOnClickListener { viewModel.undo() }
@@ -510,7 +513,6 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
     }
 
     private fun openVersionHistory() {
-        viewModel.loadVersionHistory()
         val sheet = TemplateVersionHistoryBottomSheet.newInstance()
         sheet.callback = object : TemplateVersionHistoryBottomSheet.Callback {
             override fun onRestore(versionId: Long) {
@@ -519,6 +521,7 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
         }
         versionSheet = sheet
         sheet.show(parentFragmentManager, "template_versions")
+        viewModel.loadVersionHistory()
     }
 
     private fun previewPdf() {
