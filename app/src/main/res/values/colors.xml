@@ -16,6 +16,7 @@
     <color name="orange_accent">#FFB74D</color>
     <color name="orange_surface">#FFF8F0</color>
     <color name="orange_on_primary">#FFFFFF</color>
+    <color name="splash_subtitle_text">#E6FFFFFF</color>
 
     <!-- Legacy aliases kept for compatibility -->
     <color name="purple_500">@color/orange_primary</color>
