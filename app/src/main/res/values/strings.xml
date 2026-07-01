@@ -99,6 +99,19 @@
     <string name="shop_logo_image">Shop Logo</string>
     <string name="change_shop_logo">Change Shop Logo</string>
     <string name="settings_general">General</string>
+    <string name="settings_general_title">General Settings</string>
+    <string name="settings_general_subtitle">Shop name, currency symbol, and default discount</string>
+    <string name="settings_general_page_hint">These values are used across billing, reports, and new bills.</string>
+    <string name="settings_hub_subtitle">Choose a category to manage your shop preferences.</string>
+    <string name="settings_invoice_config_subtitle">Images, bill numbering, and printable invoice layout</string>
+    <string name="settings_invoice_hub_subtitle">Configure how your invoices look and how bill numbers are generated.</string>
+    <string name="settings_image_configuration">Image Configuration</string>
+    <string name="settings_image_configuration_subtitle">Header, shop logo, and authorised signature images</string>
+    <string name="settings_invoice_counter_configuration">Invoice Counter Configuration</string>
+    <string name="settings_invoice_counter_configuration_subtitle">Prefix, suffix, separator, and next bill number</string>
+    <string name="settings_invoice_layout_configuration">Invoice Layout Configuration</string>
+    <string name="settings_invoice_layout_configuration_subtitle">Manage printable invoice templates and layout</string>
+    <string name="settings_app_version">Vikr Saathi v%1$s</string>
     <string name="settings_branding">Branding images</string>
     <string name="settings_branding_hint">Used on invoices via Invoice Builder data fields.</string>
     <string name="settings_invoices">Invoices</string>
@@ -316,7 +329,9 @@
     <string name="template_import_failed">Could not import template</string>
     <string name="template_export_failed">Could not export template</string>
     <string name="table_columns">Table columns</string>
-    <string name="table_columns_hint">Key must match bill item fields (sl, name, mrp, discount, lineTotal).</string>
+    <string name="table_columns_hint">Key must match bill item fields (sl, name, quantity, mrp, discount, lineTotal).</string>
+    <string name="table_border_width_dp">Border width (dp)</string>
+    <string name="table_border_width_hint">Typical: 1 = thin, 2 = medium, 3+ = bold. Range 0.25–8.</string>
     <string name="add_column">Add column</string>
     <string name="column_key">Key</string>
     <string name="column_label">Label</string>

@@ -4,20 +4,15 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
-import com.kex.vikrsaathi.data.model.template.ElementBounds
 import com.kex.vikrsaathi.data.model.template.ElementKind
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
-import com.kex.vikrsaathi.data.model.template.TableColumn
 import com.kex.vikrsaathi.data.model.template.TemplateElement
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
-import com.kex.vikrsaathi.data.model.template.TextAlign
 
 /**
  * Renders templates to PDF with multi-page support for overflowing item tables.
  */
 object TemplatePdfRenderer {
-
-    private const val ROW_HEIGHT = 18f
 
     fun render(document: PdfDocument, template: InvoiceTemplate, context: TemplateRenderContext) {
         val renderer = TemplateRenderer()
@@ -90,61 +85,59 @@ object TemplatePdfRenderer {
             textSize = 10f
             color = Color.BLACK
         }
-        val linePaint = Paint().apply {
-            color = Color.BLACK
-            strokeWidth = 1f
-        }
 
+        val rowSeparators = mutableListOf<Float>()
         var y = startY
+        val sectionTop = startY
         val maxY = minOf(pageBottom, bounds.y + bounds.height)
+        val borderWidthPt = TableBorderSettings.strokePt(element.content)
 
-        if (includeHeader) {
-            canvas.drawLine(bounds.x, y, bounds.x + bounds.width, y, linePaint)
-            y += 16f
-            if (element.content["showHeader"] == "true") {
-                drawTableRow(canvas, columns, columns.associate { it.key to it.label }, bounds, y, headerPaint)
-                y += 8f
-                canvas.drawLine(bounds.x, y, bounds.x + bounds.width, y, linePaint)
-                y += 16f
-            }
+        if (includeHeader && element.content["showHeader"] == "true") {
+            val headerValues = columns.associate { it.key to it.label }
+            val headerHeight = TableCellLayout.measureRowHeight(
+                columns, headerValues, bounds.width, headerPaint
+            )
+            TableCellLayout.drawTableRow(
+                canvas,
+                columns,
+                headerValues,
+                bounds,
+                TableCellLayout.rowBaselineY(y, headerPaint),
+                headerPaint
+            )
+            y += headerHeight
+            rowSeparators.add(y)
         }
 
         var index = startRowIndex
         while (index < rows.size) {
-            if (y + ROW_HEIGHT > maxY) {
+            val rowHeight = TableCellLayout.measureRowHeight(
+                columns, rows[index].values, bounds.width, cellPaint
+            )
+            if (y + rowHeight > maxY) {
+                TableCellLayout.drawTableGrid(
+                    canvas, columns, bounds, sectionTop, y, rowSeparators, borderWidthPt
+                )
                 return TableSectionResult(index, needsNewPage = true)
             }
-            drawTableRow(canvas, columns, rows[index].values, bounds, y, cellPaint)
-            y += ROW_HEIGHT
+            TableCellLayout.drawTableRow(
+                canvas,
+                columns,
+                rows[index].values,
+                bounds,
+                TableCellLayout.rowBaselineY(y, cellPaint),
+                cellPaint
+            )
+            y += rowHeight
+            rowSeparators.add(y)
             index++
         }
 
-        canvas.drawLine(bounds.x, y.coerceAtMost(maxY), bounds.x + bounds.width, y, linePaint)
+        val sectionBottom = y.coerceAtMost(maxY)
+        TableCellLayout.drawTableGrid(
+            canvas, columns, bounds, sectionTop, sectionBottom, rowSeparators, borderWidthPt
+        )
         return TableSectionResult(index, needsNewPage = false)
-    }
-
-    private fun drawTableRow(
-        canvas: Canvas,
-        columns: List<TableColumn>,
-        values: Map<String, String>,
-        bounds: ElementBounds,
-        y: Float,
-        paint: Paint
-    ) {
-        var x = bounds.x
-        columns.forEach { column ->
-            val colWidth = bounds.width * (column.widthPercent / 100f)
-            val value = truncate(values[column.key].orEmpty(), 28)
-            val drawX = when (column.align) {
-                TextAlign.LEFT -> x + 2f
-                TextAlign.CENTER ->
-                    x + (colWidth - paint.measureText(value)) / 2f
-                TextAlign.RIGHT ->
-                    x + colWidth - paint.measureText(value) - 2f
-            }
-            canvas.drawText(value, drawX, y, paint)
-            x += colWidth
-        }
     }
 
     private fun createPageInfo(template: InvoiceTemplate, pageNumber: Int): PdfDocument.PageInfo {
@@ -153,9 +146,5 @@ object TemplatePdfRenderer {
             template.pageHeightPt,
             pageNumber
         ).create()
-    }
-
-    private fun truncate(text: String, max: Int): String {
-        return if (text.length <= max) text else text.take(max - 3) + "..."
     }
 }

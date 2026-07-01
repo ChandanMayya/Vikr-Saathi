@@ -114,10 +114,13 @@
         android:id="@+id/settingsFragment"
         android:name="com.kex.vikrsaathi.ui.settings.SettingsFragment"
         android:label="@string/settings"
-        tools:layout="@layout/fragment_settings">
+        tools:layout="@layout/fragment_settings_nav_hub">
         <action
-            android:id="@+id/action_settings_to_invoice_templates"
-            app:destination="@id/invoiceTemplatesFragment" />
+            android:id="@+id/action_settings_to_general"
+            app:destination="@id/generalSettingsFragment" />
+        <action
+            android:id="@+id/action_settings_to_invoice_configuration"
+            app:destination="@id/invoiceConfigurationFragment" />
         <action
             android:id="@+id/action_settings_to_backup"
             app:destination="@id/backupFragment" />
@@ -125,6 +128,40 @@
             android:id="@+id/action_settings_to_reset"
             app:destination="@id/resetFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/generalSettingsFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.GeneralSettingsFragment"
+        android:label="@string/settings_general_title"
+        tools:layout="@layout/fragment_general_settings" />
+
+    <fragment
+        android:id="@+id/invoiceConfigurationFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.InvoiceConfigurationFragment"
+        android:label="@string/invoice_configuration"
+        tools:layout="@layout/fragment_settings_nav_hub">
+        <action
+            android:id="@+id/action_invoice_configuration_to_image"
+            app:destination="@id/invoiceImageSettingsFragment" />
+        <action
+            android:id="@+id/action_invoice_configuration_to_counter"
+            app:destination="@id/invoiceCounterSettingsFragment" />
+        <action
+            android:id="@+id/action_invoice_configuration_to_layout"
+            app:destination="@id/invoiceTemplatesFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/invoiceImageSettingsFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.InvoiceImageSettingsFragment"
+        android:label="@string/settings_image_configuration"
+        tools:layout="@layout/fragment_invoice_image_settings" />
+
+    <fragment
+        android:id="@+id/invoiceCounterSettingsFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.InvoiceCounterSettingsFragment"
+        android:label="@string/settings_invoice_counter_configuration"
+        tools:layout="@layout/fragment_invoice_counter_settings" />
 
     <fragment
         android:id="@+id/backupFragment"
@@ -141,7 +178,7 @@
     <fragment
         android:id="@+id/invoiceTemplatesFragment"
         android:name="com.kex.vikrsaathi.ui.settings.InvoiceTemplatesFragment"
-        android:label="@string/invoice_templates"
+        android:label="@string/settings_invoice_layout_configuration"
         tools:layout="@layout/fragment_invoice_templates">
         <action
             android:id="@+id/action_invoice_templates_to_builder"

@@ -177,53 +177,53 @@ class TemplateRenderer(
             textSize = 10f
             color = Color.BLACK
         }
-        val linePaint = Paint().apply {
-            color = Color.BLACK
-            strokeWidth = 1f
-        }
 
+        val rowSeparators = mutableListOf<Float>()
         var y = bounds.y
-        val rowHeight = 18f
-
-        canvas.drawLine(bounds.x, y, bounds.x + bounds.width, y, linePaint)
-        y += 16f
+        val tableTop = bounds.y
+        val borderWidthPt = TableBorderSettings.strokePt(element.content)
 
         if (element.content["showHeader"] == "true") {
-            drawTableRow(canvas, columns, columns.associate { it.key to it.label }, bounds, y, headerPaint)
-            y += 8f
-            canvas.drawLine(bounds.x, y, bounds.x + bounds.width, y, linePaint)
-            y += 16f
+            val headerValues = columns.associate { it.key to it.label }
+            val headerHeight = TableCellLayout.measureRowHeight(
+                columns, headerValues, bounds.width, headerPaint
+            )
+            TableCellLayout.drawTableRow(
+                canvas,
+                columns,
+                headerValues,
+                bounds,
+                TableCellLayout.rowBaselineY(y, headerPaint),
+                headerPaint
+            )
+            y += headerHeight
+            rowSeparators.add(y)
         }
 
         rows.forEach { row ->
-            if (y + rowHeight > bounds.y + bounds.height) return
-            drawTableRow(canvas, columns, row.values, bounds, y, cellPaint)
-            y += rowHeight
-        }
-
-        canvas.drawLine(bounds.x, y.coerceAtMost(bounds.y + bounds.height), bounds.x + bounds.width, y, linePaint)
-    }
-
-    private fun drawTableRow(
-        canvas: Canvas,
-        columns: List<TableColumn>,
-        values: Map<String, String>,
-        bounds: com.kex.vikrsaathi.data.model.template.ElementBounds,
-        y: Float,
-        paint: Paint
-    ) {
-        var x = bounds.x
-        columns.forEach { column ->
-            val colWidth = bounds.width * (column.widthPercent / 100f)
-            val value = truncate(values[column.key].orEmpty(), 28)
-            val drawX = when (column.align) {
-                TextAlign.LEFT -> x + 2f
-                TextAlign.CENTER -> x + (colWidth - paint.measureText(value)) / 2f
-                TextAlign.RIGHT -> x + colWidth - paint.measureText(value) - 2f
+            val rowHeight = TableCellLayout.measureRowHeight(columns, row.values, bounds.width, cellPaint)
+            if (y + rowHeight > bounds.y + bounds.height) {
+                TableCellLayout.drawTableGrid(
+                    canvas, columns, bounds, tableTop, y, rowSeparators, borderWidthPt
+                )
+                return
             }
-            canvas.drawText(value, drawX, y, paint)
-            x += colWidth
+            TableCellLayout.drawTableRow(
+                canvas,
+                columns,
+                row.values,
+                bounds,
+                TableCellLayout.rowBaselineY(y, cellPaint),
+                cellPaint
+            )
+            y += rowHeight
+            rowSeparators.add(y)
         }
+
+        val tableBottom = y.coerceAtMost(bounds.y + bounds.height)
+        TableCellLayout.drawTableGrid(
+            canvas, columns, bounds, tableTop, tableBottom, rowSeparators, borderWidthPt
+        )
     }
 
     private fun drawWrappedText(
@@ -321,9 +321,5 @@ class TemplateRenderer(
 
     private fun parseColor(hex: String): Int {
         return runCatching { Color.parseColor(hex) }.getOrDefault(Color.BLACK)
-    }
-
-    private fun truncate(text: String, max: Int): String {
-        return if (text.length <= max) text else text.take(max - 3) + "..."
     }
 }

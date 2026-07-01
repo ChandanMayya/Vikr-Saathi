@@ -17,6 +17,7 @@ import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplateVersion
 import com.kex.vikrsaathi.data.model.template.TableColumn
 import com.kex.vikrsaathi.data.model.template.TemplateElement
+import com.kex.vikrsaathi.data.model.template.TextAlign
 import com.kex.vikrsaathi.data.model.template.TemplateGuide
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
@@ -34,6 +35,7 @@ import com.kex.vikrsaathi.domain.template.TemplateLayoutValidator
 import com.kex.vikrsaathi.domain.template.TemplateContextFactory
 import com.kex.vikrsaathi.domain.template.TemplateRenderContext
 import com.kex.vikrsaathi.domain.template.TemplateValidationIssue
+import com.kex.vikrsaathi.domain.template.TableBorderSettings
 import com.kex.vikrsaathi.util.PdfGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -457,13 +459,15 @@ class InvoiceBuilderViewModel(
         }
     }
 
-    fun updateTableColumns(elementId: String, columns: List<TableColumn>) {
+    fun updateTableColumns(elementId: String, columns: List<TableColumn>, borderWidthDp: Float) {
         mutate { current ->
             current.copy(
                 elements = current.elements.map { element ->
                     if (element.id != elementId) return@map element
                     val content = element.content.toMutableMap()
                     content["columns"] = TemplateJsonCodec.tableColumnsToJson(columns)
+                    content[TableBorderSettings.CONTENT_KEY] =
+                        TableBorderSettings.formatBorderWidthDp(borderWidthDp)
                     element.copy(content = content)
                 }
             )
@@ -888,7 +892,10 @@ class InvoiceBuilderViewModel(
                 content = mapOf(
                     "bindingKey" to DataBindingKey.BILL_ITEMS.name,
                     "showHeader" to "true",
-                    "columns" to TemplateJsonCodec.tableColumnsToJson(defaultTableColumns())
+                    "columns" to TemplateJsonCodec.tableColumnsToJson(defaultTableColumns()),
+                    TableBorderSettings.CONTENT_KEY to TableBorderSettings.formatBorderWidthDp(
+                        TableBorderSettings.DEFAULT_DP
+                    )
                 )
             )
             ElementKind.SPACER -> TemplateElement(
@@ -903,11 +910,12 @@ class InvoiceBuilderViewModel(
 
     private fun defaultTableColumns(): List<TableColumn> {
         return listOf(
-            TableColumn("sl", "Sl", 8f),
-            TableColumn("name", "Particulars", 40f),
-            TableColumn("mrp", "MRP", 15f),
-            TableColumn("discount", "Disc%", 12f),
-            TableColumn("lineTotal", "Price", 25f)
+            TableColumn("sl", "Sl", 7f, TextAlign.CENTER),
+            TableColumn("name", "Particulars", 43f, TextAlign.LEFT),
+            TableColumn("quantity", "Qty", 11f, TextAlign.CENTER),
+            TableColumn("mrp", "MRP", 11f, TextAlign.CENTER),
+            TableColumn("discount", "Disc%", 11f, TextAlign.CENTER),
+            TableColumn("lineTotal", "Price", 17f, TextAlign.CENTER)
         )
     }
 }

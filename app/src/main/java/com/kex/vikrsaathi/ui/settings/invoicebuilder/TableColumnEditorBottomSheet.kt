@@ -12,11 +12,12 @@ import com.kex.vikrsaathi.data.model.template.TemplateElement
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.databinding.BottomSheetTableColumnsBinding
 import com.kex.vikrsaathi.databinding.ItemTableColumnEditorBinding
+import com.kex.vikrsaathi.domain.template.TableBorderSettings
 
 class TableColumnEditorBottomSheet : BottomSheetDialogFragment() {
 
     interface Callback {
-        fun onApply(elementId: String, columns: List<TableColumn>)
+        fun onApply(elementId: String, columns: List<TableColumn>, borderWidthDp: Float)
     }
 
     private var _binding: BottomSheetTableColumnsBinding? = null
@@ -43,6 +44,9 @@ class TableColumnEditorBottomSheet : BottomSheetDialogFragment() {
         val columnsJson = current.content["columns"].orEmpty()
         columns.clear()
         columns.addAll(TemplateJsonCodec.tableColumnsFromJson(columnsJson))
+        binding.editBorderWidth.setText(
+            TableBorderSettings.parseBorderWidthDp(current.content).toString()
+        )
 
         adapter = ColumnAdapter(columns) { index ->
             columns.removeAt(index)
@@ -58,7 +62,10 @@ class TableColumnEditorBottomSheet : BottomSheetDialogFragment() {
 
         binding.buttonApplyColumns.setOnClickListener {
             val parsed = adapter.readColumns()
-            callback?.onApply(current.id, parsed)
+            val borderWidthDp = binding.editBorderWidth.text.toString().toFloatOrNull()
+                ?.coerceIn(TableBorderSettings.MIN_DP, TableBorderSettings.MAX_DP)
+                ?: TableBorderSettings.DEFAULT_DP
+            callback?.onApply(current.id, parsed, borderWidthDp)
             dismiss()
         }
     }

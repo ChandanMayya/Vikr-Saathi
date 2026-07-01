@@ -62,11 +62,12 @@ class TemplateBindingResolver {
                 discount = item.discount,
                 quantity = item.quantity
             )
-            val name = if (line.quantity > 1) "${line.name} (x${line.quantity})" else line.name
+            val name = line.name
             TableRowData(
                 mapOf(
                     "sl" to (index + 1).toString(),
                     "name" to name,
+                    "quantity" to line.quantity.toString(),
                     "mrp" to PriceCalculator.formatAmount(line.mrp, context.currencySymbol),
                     "discount" to String.format(Locale.getDefault(), "%.1f", line.discount),
                     "lineTotal" to PriceCalculator.formatAmount(line.lineTotal, context.currencySymbol)

@@ -490,8 +490,12 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
         }
         val sheet = TableColumnEditorBottomSheet.newInstance(element)
         sheet.callback = object : TableColumnEditorBottomSheet.Callback {
-            override fun onApply(elementId: String, columns: List<com.kex.vikrsaathi.data.model.template.TableColumn>) {
-                viewModel.updateTableColumns(elementId, columns)
+            override fun onApply(
+                elementId: String,
+                columns: List<com.kex.vikrsaathi.data.model.template.TableColumn>,
+                borderWidthDp: Float
+            ) {
+                viewModel.updateTableColumns(elementId, columns, borderWidthDp)
             }
         }
         sheet.show(parentFragmentManager, "table_columns")

@@ -48,66 +48,131 @@
                 android:id="@+id/cardNewBill"
                 style="@style/VikrSaathiDashboardCard"
                 android:layout_width="0dp"
-                android:layout_height="120dp"
+                android:layout_height="128dp"
                 android:layout_columnWeight="1"
                 app:cardBackgroundColor="@color/orange_700">
 
-                <TextView
-                    style="@style/VikrSaathiDashboardCardText"
-                    android:text="@string/new_bill" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <ImageView
+                        style="@style/VikrSaathiDashboardCardIcon"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_dashboard_sale" />
+
+                    <TextView
+                        style="@style/VikrSaathiDashboardCardLabel"
+                        android:text="@string/new_bill" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardCustomers"
                 style="@style/VikrSaathiDashboardCard"
                 android:layout_width="0dp"
-                android:layout_height="120dp"
+                android:layout_height="128dp"
                 android:layout_columnWeight="1"
                 app:cardBackgroundColor="@color/orange_600">
 
-                <TextView
-                    style="@style/VikrSaathiDashboardCardText"
-                    android:text="@string/customers" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <ImageView
+                        style="@style/VikrSaathiDashboardCardIcon"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_dashboard_customers" />
+
+                    <TextView
+                        style="@style/VikrSaathiDashboardCardLabel"
+                        android:text="@string/customers" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardItems"
                 style="@style/VikrSaathiDashboardCard"
                 android:layout_width="0dp"
-                android:layout_height="120dp"
+                android:layout_height="128dp"
                 android:layout_columnWeight="1"
                 app:cardBackgroundColor="@color/orange_500">
 
-                <TextView
-                    style="@style/VikrSaathiDashboardCardText"
-                    android:text="@string/items" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <ImageView
+                        style="@style/VikrSaathiDashboardCardIcon"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_dashboard_items" />
+
+                    <TextView
+                        style="@style/VikrSaathiDashboardCardLabel"
+                        android:text="@string/items" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardBillsHistory"
                 style="@style/VikrSaathiDashboardCard"
                 android:layout_width="0dp"
-                android:layout_height="120dp"
+                android:layout_height="128dp"
                 android:layout_columnWeight="1"
                 app:cardBackgroundColor="@color/orange_800">
 
-                <TextView
-                    style="@style/VikrSaathiDashboardCardText"
-                    android:text="@string/bills_history" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <ImageView
+                        style="@style/VikrSaathiDashboardCardIcon"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_dashboard_history" />
+
+                    <TextView
+                        style="@style/VikrSaathiDashboardCardLabel"
+                        android:text="@string/bills_history" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardSettings"
                 style="@style/VikrSaathiDashboardCard"
                 android:layout_width="0dp"
-                android:layout_height="120dp"
+                android:layout_height="128dp"
                 android:layout_columnSpan="2"
                 android:layout_columnWeight="1"
                 app:cardBackgroundColor="@color/orange_900">
 
-                <TextView
-                    style="@style/VikrSaathiDashboardCardText"
-                    android:text="@string/settings" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <ImageView
+                        style="@style/VikrSaathiDashboardCardIcon"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_dashboard_settings" />
+
+                    <TextView
+                        style="@style/VikrSaathiDashboardCardLabel"
+                        android:text="@string/settings" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </GridLayout>
     </LinearLayout>

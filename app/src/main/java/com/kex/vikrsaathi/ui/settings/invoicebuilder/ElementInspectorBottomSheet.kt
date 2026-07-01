@@ -26,6 +26,7 @@ import com.kex.vikrsaathi.data.model.template.VerticalAlign
 import com.kex.vikrsaathi.databinding.BottomSheetElementInspectorBinding
 import com.kex.vikrsaathi.domain.template.TemplateImageBitmapResolver
 import com.kex.vikrsaathi.domain.template.TemplateImageBoundsHelper
+import com.kex.vikrsaathi.domain.template.TableBorderSettings
 import com.kex.vikrsaathi.util.TemplateImageStore
 
 class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
@@ -338,6 +339,12 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
         binding.editWidth.setText(current.bounds.width.toString())
         binding.editHeight.setText(current.bounds.height.toString())
 
+        if (current.kind == ElementKind.TABLE) {
+            binding.editTableBorderWidth.setText(
+                TableBorderSettings.parseBorderWidthDp(current.content).toString()
+            )
+        }
+
         if (current.kind == ElementKind.IMAGE && current.binding == ElementBinding.STATIC) {
             val path = current.content["imagePath"]
             if (!path.isNullOrBlank()) {
@@ -354,6 +361,7 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
     private fun updateFieldVisibility(kind: ElementKind) {
         val isText = kind == ElementKind.TEXT
         val isImage = kind == ElementKind.IMAGE
+        val isTable = kind == ElementKind.TABLE
         val isDynamic = selectedBindingType == ElementBinding.DYNAMIC.name
 
         binding.layoutStaticText.isVisible = isText && !isDynamic
@@ -363,6 +371,8 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
         binding.layoutTextStyle.isVisible = isText
         binding.layoutAlignment.isVisible = isText || isImage
         binding.layoutImageScale.isVisible = isImage
+        binding.layoutTableBorderWidth.isVisible = isTable
+        (binding.spinnerBindingType.parent as? View)?.isVisible = !isTable
     }
 
     private fun applyBulkChanges(elements: List<TemplateElement>) {
@@ -440,6 +450,13 @@ class ElementInspectorBottomSheet : BottomSheetDialogFragment() {
                     content["bindingKey"] = selectedDataField.orEmpty()
                     content.remove("imagePath")
                 }
+            }
+            ElementKind.TABLE -> {
+                val borderWidthDp = binding.editTableBorderWidth.text.toString().toFloatOrNull()
+                    ?.coerceIn(TableBorderSettings.MIN_DP, TableBorderSettings.MAX_DP)
+                    ?: TableBorderSettings.DEFAULT_DP
+                content[TableBorderSettings.CONTENT_KEY] =
+                    TableBorderSettings.formatBorderWidthDp(borderWidthDp)
             }
             else -> Unit
         }
