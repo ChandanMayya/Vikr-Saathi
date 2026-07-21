@@ -18,6 +18,7 @@ import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
 import com.kex.vikrsaathi.util.BackupSaveResult
 import com.kex.vikrsaathi.util.BackupStorageHelper
+import com.kex.vikrsaathi.util.AppThemeManager
 import com.kex.vikrsaathi.util.TemplateImageStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -368,6 +369,8 @@ class BackupManager(
         settingsRepository.shopName = backup.shopName.ifBlank { settingsRepository.shopName }
         settingsRepository.currencySymbol = backup.currencySymbol.ifBlank { settingsRepository.currencySymbol }
         settingsRepository.defaultDiscount = backup.defaultDiscount
+        settingsRepository.themeMode = backup.themeMode
+        AppThemeManager.apply(backup.themeMode)
 
         BackupJsonCodec.decodeBitmap(backup.headerImageBase64)?.let {
             settingsRepository.saveHeaderImage(it)

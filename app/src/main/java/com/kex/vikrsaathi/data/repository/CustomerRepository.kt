@@ -20,4 +20,12 @@ class CustomerRepository(private val customerDao: CustomerDao) {
         if (query.isBlank()) return emptyList()
         return customerDao.searchCustomers(query)
     }
+
+    suspend fun findByNameExact(name: String): Customer? {
+        val normalized = name.trim()
+        if (normalized.isBlank()) return null
+        return customerDao.searchCustomers(normalized).firstOrNull {
+            it.name.trim().equals(normalized, ignoreCase = true)
+        }
+    }
 }

@@ -1,0 +1,395 @@
+{
+  "id": 0,
+  "name": "A5 Half-Sheet Landscape",
+  "isDefault": false,
+  "pageWidthPt": 420,
+  "pageHeightPt": 595,
+  "marginLeft": 10,
+  "marginTop": 10,
+  "marginRight": 10,
+  "marginBottom": 10,
+  "version": 2,
+  "updatedAt": 1784552649986,
+  "guides": [
+    {
+      "id": "c19abd13-5e54-412c-8c41-11b0e7ae98c6",
+      "orientation": "HORIZONTAL",
+      "positionPt": 297.5
+    }
+  ],
+  "elements": [
+    {
+      "id": "757f3285-aa96-4aa3-825d-1f5a35e1ba9e",
+      "kind": "IMAGE",
+      "binding": "DYNAMIC",
+      "bounds": {
+        "x": 10.0,
+        "y": 10.0,
+        "width": 64.0,
+        "height": 277.5
+      },
+      "zIndex": 1,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 9,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "CENTER",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "STRETCH"
+      },
+      "content": {
+        "bindingKey": "HEADER_IMAGE"
+      }
+    },
+    {
+      "id": "8957ed39-3738-4217-b2f0-9732a39f2525",
+      "kind": "TEXT",
+      "binding": "DYNAMIC",
+      "bounds": {
+        "x": 80.0,
+        "y": 10.0,
+        "width": 127.6,
+        "height": 14.0
+      },
+      "zIndex": 3,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 8,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "LEFT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "bindingKey": "BILL_NUMBER",
+        "prefix": "Invoice No: "
+      }
+    },
+    {
+      "id": "987e93e5-7b24-44f3-9434-3f76a303826c",
+      "kind": "TEXT",
+      "binding": "DYNAMIC",
+      "bounds": {
+        "x": 207.6,
+        "y": 10.0,
+        "width": 104.4,
+        "height": 14.0
+      },
+      "zIndex": 4,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 8,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "RIGHT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "bindingKey": "BILL_DATE",
+        "prefix": "Date: "
+      }
+    },
+    {
+      "id": "978533d0-d2be-4503-84be-2e446d69db70",
+      "kind": "LINE",
+      "binding": "STATIC",
+      "bounds": {
+        "x": 80.0,
+        "y": 27.0,
+        "width": 232.0,
+        "height": 1.0
+      },
+      "zIndex": 5,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 9,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "LEFT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {}
+    },
+    {
+      "id": "15260e06-7750-46e4-8b46-ee190a5863cd",
+      "kind": "TEXT",
+      "binding": "STATIC",
+      "bounds": {
+        "x": 80.0,
+        "y": 32.0,
+        "width": 232.0,
+        "height": 12.0
+      },
+      "zIndex": 6,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 9,
+        "bold": true,
+        "italic": false,
+        "underline": false,
+        "textAlign": "LEFT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "text": "Buyer Details"
+      }
+    },
+    {
+      "id": "2a7f121f-7a1d-4d84-9b4a-c17f3a486b06",
+      "kind": "TEXT",
+      "binding": "DYNAMIC",
+      "bounds": {
+        "x": 80.0,
+        "y": 45.0,
+        "width": 232.0,
+        "height": 11.0
+      },
+      "zIndex": 7,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 8,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "LEFT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "bindingKey": "CUSTOMER_NAME",
+        "prefix": "Name: "
+      }
+    },
+    {
+      "id": "d985e626-64f0-431d-9cd9-eb35da6d6bbe",
+      "kind": "TEXT",
+      "binding": "DYNAMIC",
+      "bounds": {
+        "x": 80.0,
+        "y": 57.0,
+        "width": 232.0,
+        "height": 11.0
+      },
+      "zIndex": 8,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 8,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "LEFT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "bindingKey": "CUSTOMER_ADDRESS",
+        "prefix": "Address: "
+      }
+    },
+    {
+      "id": "989d1ce9-2136-492c-a183-f80a0dbd1596",
+      "kind": "TEXT",
+      "binding": "DYNAMIC",
+      "bounds": {
+        "x": 80.0,
+        "y": 69.0,
+        "width": 232.0,
+        "height": 11.0
+      },
+      "zIndex": 9,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 8,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "LEFT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "bindingKey": "CUSTOMER_PHONE",
+        "prefix": "Phone: "
+      }
+    },
+    {
+      "id": "91de3b52-3821-4630-b4b3-57a18249136b",
+      "kind": "TABLE",
+      "binding": "DYNAMIC",
+      "bounds": {
+        "x": 80.0,
+        "y": 85.0,
+        "width": 232.0,
+        "height": 202.5
+      },
+      "zIndex": 10,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 8,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "LEFT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "bindingKey": "BILL_ITEMS",
+        "columns": "[{\"key\": \"sl\", \"label\": \"Sl\", \"widthPercent\": 7, \"align\": \"CENTER\"}, {\"key\": \"name\", \"label\": \"Particulars\", \"widthPercent\": 43, \"align\": \"LEFT\"}, {\"key\": \"quantity\", \"label\": \"Qty\", \"widthPercent\": 11, \"align\": \"CENTER\"}, {\"key\": \"mrp\", \"label\": \"MRP\", \"widthPercent\": 11, \"align\": \"CENTER\"}, {\"key\": \"discount\", \"label\": \"Disc%\", \"widthPercent\": 11, \"align\": \"CENTER\"}, {\"key\": \"lineTotal\", \"label\": \"Price\", \"widthPercent\": 17, \"align\": \"CENTER\"}]",
+        "showHeader": "true",
+        "borderWidthDp": "1.2"
+      }
+    },
+    {
+      "id": "44dc0db4-4691-4bb6-994d-e500bfebeb49",
+      "kind": "TEXT",
+      "binding": "DYNAMIC",
+      "bounds": {
+        "x": 318.0,
+        "y": 10.0,
+        "width": 92.0,
+        "height": 16.0
+      },
+      "zIndex": 11,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 10,
+        "bold": true,
+        "italic": false,
+        "underline": false,
+        "textAlign": "RIGHT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "bindingKey": "BILL_TOTAL",
+        "prefix": "Total: "
+      }
+    },
+    {
+      "id": "e7119b10-89c6-4da1-aa61-55e3538d43aa",
+      "kind": "TEXT",
+      "binding": "DYNAMIC",
+      "bounds": {
+        "x": 318.0,
+        "y": 30.0,
+        "width": 92.0,
+        "height": 90.0
+      },
+      "zIndex": 12,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 7,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "RIGHT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "bindingKey": "BILL_TOTAL_WORDS",
+        "prefix": "Amount in Words: ",
+        "wrap": "true"
+      }
+    },
+    {
+      "id": "5961e7ff-1e92-4bc0-9655-1b000523b89d",
+      "kind": "IMAGE",
+      "binding": "DYNAMIC",
+      "bounds": {
+        "x": 318.0,
+        "y": 231.5,
+        "width": 92.0,
+        "height": 40.0
+      },
+      "zIndex": 13,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 9,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "LEFT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "bindingKey": "SIGNATURE_IMAGE"
+      }
+    },
+    {
+      "id": "8125bc15-b3f5-49a0-a72e-b4af639725b5",
+      "kind": "TEXT",
+      "binding": "STATIC",
+      "bounds": {
+        "x": 318.0,
+        "y": 273.5,
+        "width": 92.0,
+        "height": 12.0
+      },
+      "zIndex": 14,
+      "visible": true,
+      "locked": false,
+      "style": {
+        "fontSize": 7,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "textAlign": "RIGHT",
+        "verticalAlign": "TOP",
+        "color": "#000000",
+        "fontFamily": "DEFAULT",
+        "imageScaleMode": "FIT"
+      },
+      "content": {
+        "text": "Authorised Signature"
+      }
+    }
+  ]
+}

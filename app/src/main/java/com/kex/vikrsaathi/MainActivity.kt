@@ -13,7 +13,9 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import com.kex.vikrsaathi.databinding.ActivityMainBinding
 import com.kex.vikrsaathi.ui.help.HelpOverlay
 import com.kex.vikrsaathi.ui.navigation.BackNavigationGuard
+import com.kex.vikrsaathi.util.AppThemeManager
 import com.kex.vikrsaathi.util.SystemBarInsets
+import com.kex.vikrsaathi.util.ThemeMode
 
 class MainActivity : AppCompatActivity() {
 
@@ -43,6 +45,16 @@ class MainActivity : AppCompatActivity() {
             setOf(R.id.dashboardFragment)
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val app = application as VikrSaathiApp
+        if (app.settingsRepository.themeMode == ThemeMode.AUTO &&
+            AppThemeManager.apply(ThemeMode.AUTO)
+        ) {
+            recreate()
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {

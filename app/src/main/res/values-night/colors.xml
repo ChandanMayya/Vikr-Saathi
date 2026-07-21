@@ -26,6 +26,16 @@
     <color name="switch_thumb_on">#FFFFFF</color>
     <color name="switch_thumb_off_outline">#938F99</color>
 
+    <!-- Help glass panel (dark) -->
+    <color name="help_backdrop_overlay">#1A000000</color>
+    <color name="help_glass_overlay">#1AFFFFFF</color>
+    <color name="help_glass_shine">#26FFFFFF</color>
+    <color name="help_glass_border_bright">#55FFFFFF</color>
+    <color name="help_glass_border_soft">#28FFFFFF</color>
+    <color name="help_glass_icon_tint">#FFA726</color>
+    <color name="help_glass_close_bg">#30FFFFFF</color>
+    <color name="help_section_surface">#26FFFFFF</color>
+
     <!-- Disabled outlined buttons -->
     <color name="button_disabled_text">#9E9E9E</color>
     <color name="button_disabled_stroke">#757575</color>

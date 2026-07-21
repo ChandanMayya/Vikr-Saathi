@@ -23,6 +23,14 @@ class ItemRepository(private val itemDao: ItemDao) {
         return itemDao.searchByName(query)
     }
 
+    suspend fun findByNameExact(name: String): Item? {
+        val normalized = name.trim()
+        if (normalized.isBlank()) return null
+        return itemDao.searchByName(normalized).firstOrNull {
+            it.name.trim().equals(normalized, ignoreCase = true)
+        }
+    }
+
     suspend fun isBarcodeUnique(barcode: String, excludeId: Long = 0): Boolean {
         if (barcode.isBlank()) return true
         return itemDao.countByBarcode(barcode, excludeId) == 0

@@ -30,6 +30,7 @@ import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Customer
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.databinding.DialogCustomerFormBinding
+import com.kex.vikrsaathi.databinding.DialogItemFormBinding
 import com.kex.vikrsaathi.databinding.FragmentBillBinding
 import com.kex.vikrsaathi.ui.scanner.BarcodeScannerActivity
 import com.kex.vikrsaathi.ui.scanner.BarcodeScanBus
@@ -51,6 +52,7 @@ class BillFragment : Fragment() {
     private lateinit var lineAdapter: BillLineItemAdapter
     private var customerSuggestions: List<Customer> = emptyList()
     private var itemSuggestions: List<Item> = emptyList()
+    private var lastItemSearchQuery: String = ""
     private var suppressCustomerSearch = false
     private var suppressItemSearch = false
     private var isReadOnly = false
@@ -143,7 +145,6 @@ class BillFragment : Fragment() {
             binding.textTotalInWords.text = getString(R.string.total_in_words, words)
         }
 
-        binding.buttonAddNewCustomer.setOnClickListener { showAddCustomerDialog() }
         binding.buttonScanBarcode.setOnClickListener {
             BarcodeScanBus.onBarcodeScanned = { barcode -> handleBarcodeResult(barcode) }
             scannerLauncher.launch(
@@ -328,7 +329,6 @@ class BillFragment : Fragment() {
         binding.autoCompleteCustomer.isEnabled = !isReadOnly
         binding.editBuyerAddress.isEnabled = !isReadOnly
         binding.editBuyerPhone.isEnabled = !isReadOnly
-        binding.buttonAddNewCustomer.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.layoutAddItem.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.buttonSaveBill.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.layoutViewBillActions.visibility = if (isReadOnly) View.VISIBLE else View.GONE
@@ -419,6 +419,11 @@ class BillFragment : Fragment() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 if (suppressItemSearch || isReadOnly) return
                 val query = s?.toString().orEmpty().trim()
+                // Autocomplete may temporarily set the selected label into the field
+                // before the click listener runs; do not treat that label as typed text.
+                if (!query.equals(getString(R.string.add_new_item), ignoreCase = true)) {
+                    lastItemSearchQuery = query
+                }
                 if (query.isEmpty()) {
                     binding.autoCompleteItem.dismissDropDown()
                     return
@@ -426,11 +431,13 @@ class BillFragment : Fragment() {
                 viewModel.searchItems(query) { results ->
                     if (suppressItemSearch || !binding.autoCompleteItem.isAttachedToWindow) return@searchItems
                     itemSuggestions = results
+                    val names = results.map { it.name }.toMutableList()
+                    names.add(getString(R.string.add_new_item))
                     binding.autoCompleteItem.setAdapter(
                         ArrayAdapter(
                             requireContext(),
                             android.R.layout.simple_dropdown_item_1line,
-                            results.map { it.name }
+                            names
                         )
                     )
                     if (binding.autoCompleteItem.hasFocus() && !suppressItemSearch) {
@@ -446,13 +453,32 @@ class BillFragment : Fragment() {
             suppressItemSearch = true
             binding.autoCompleteItem.dismissDropDown()
 
-            val item = itemSuggestions.getOrNull(position) ?: run {
+            val names = itemSuggestions.map { it.name }.toMutableList()
+            names.add(getString(R.string.add_new_item))
+            val selected = names.getOrNull(position) ?: run {
                 suppressItemSearch = false
                 return@setOnItemClickListener
             }
-            viewModel.addItemFromMaster(item)
-            binding.autoCompleteItem.setText("", false)
-            binding.autoCompleteItem.clearFocus()
+
+            if (selected == getString(R.string.add_new_item)) {
+                // Autocomplete replaces the field with the selected label; use the
+                // last typed query instead, and never prefill with the menu label.
+                val addNewLabel = getString(R.string.add_new_item)
+                val typedName = lastItemSearchQuery
+                    .takeUnless { it.equals(addNewLabel, ignoreCase = true) }
+                    .orEmpty()
+                binding.autoCompleteItem.setText("", false)
+                lastItemSearchQuery = ""
+                showAddItemDialog(prefillName = typedName)
+            } else {
+                val item = itemSuggestions.find { it.name == selected }
+                if (item != null) {
+                    viewModel.addItemFromMaster(item)
+                }
+                binding.autoCompleteItem.setText("", false)
+                lastItemSearchQuery = ""
+                binding.autoCompleteItem.clearFocus()
+            }
             binding.autoCompleteItem.post { suppressItemSearch = false }
         }
 
@@ -487,6 +513,54 @@ class BillFragment : Fragment() {
             .show()
     }
 
+    private fun showAddItemDialog(prefillName: String = "", prefillBarcode: String? = null) {
+        if (isReadOnly) return
+        val formBinding = DialogItemFormBinding.inflate(layoutInflater)
+        val addNewLabel = getString(R.string.add_new_item)
+        val namePrefill = prefillName.trim()
+            .takeUnless { it.isEmpty() || it.equals(addNewLabel, ignoreCase = true) }
+            .orEmpty()
+        if (namePrefill.isNotEmpty()) {
+            formBinding.editItemName.setText(namePrefill)
+        }
+        prefillBarcode?.let { formBinding.editItemBarcode.setText(it) }
+        formBinding.editItemDiscount.setText(viewModel.defaultDiscount.toString())
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.add_new_item)
+            .setView(formBinding.root)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val name = formBinding.editItemName.text.toString().trim()
+                val mrp = formBinding.editItemMrp.text.toString().toDoubleOrNull()
+                if (name.isEmpty() || mrp == null) {
+                    Toast.makeText(requireContext(), R.string.invalid_item, Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val item = Item(
+                    name = name,
+                    barcode = formBinding.editItemBarcode.text.toString().trim().ifEmpty { null },
+                    mrp = mrp,
+                    discount = formBinding.editItemDiscount.text.toString().toDoubleOrNull() ?: 0.0,
+                    sellingPrice = formBinding.editItemSellingPrice.text.toString().toDoubleOrNull(),
+                    remarks = formBinding.editItemUnit.text.toString().trim()
+                )
+                viewModel.saveItem(item) { result ->
+                    result.onSuccess { saved ->
+                        viewModel.addItemFromMaster(saved)
+                        Toast.makeText(requireContext(), R.string.item_saved, Toast.LENGTH_SHORT).show()
+                    }.onFailure {
+                        Toast.makeText(
+                            requireContext(),
+                            it.message ?: getString(R.string.save_failed),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     private fun handleBarcodeResult(barcode: String) {
         if (isReadOnly) return
         viewModel.findItemByBarcode(barcode) { item ->
@@ -494,10 +568,7 @@ class BillFragment : Fragment() {
                 MaterialAlertDialogBuilder(requireContext())
                     .setMessage(R.string.item_not_found_add_new)
                     .setPositiveButton(R.string.add_item) { _, _ ->
-                        findNavController().navigate(
-                            R.id.action_bill_to_items,
-                            bundleOf("barcode" to barcode)
-                        )
+                        showAddItemDialog(prefillBarcode = barcode)
                     }
                     .setNegativeButton(R.string.cancel, null)
                     .show()
@@ -514,8 +585,40 @@ class BillFragment : Fragment() {
             Toast.makeText(requireContext(), R.string.add_items_first, Toast.LENGTH_SHORT).show()
             return
         }
+        val buyerName = binding.autoCompleteCustomer.text.toString().trim()
+        if (buyerName.isBlank()) {
+            MaterialAlertDialogBuilder(requireContext())
+                .setMessage(R.string.walk_in_customer_confirm)
+                .setPositiveButton(R.string.yes) { _, _ -> proceedSaveBill(buyerName) }
+                .setNegativeButton(R.string.no, null)
+                .show()
+            return
+        }
+        proceedSaveBill(buyerName)
+    }
+
+    private fun proceedSaveBill(buyerName: String) {
         val isNewBillSave = viewModel.isNewBillSession
-        viewModel.saveBill { id ->
+        viewModel.saveBill(
+            buyerName = buyerName,
+            buyerAddress = binding.editBuyerAddress.text.toString().trim(),
+            buyerPhone = binding.editBuyerPhone.text.toString().trim()
+        ) { id, autoRegister ->
+            if (autoRegister.hasChanges) {
+                val message = buildList {
+                    if (autoRegister.customerCreated) add(getString(R.string.auto_saved_customer))
+                    if (autoRegister.itemCreatedCount > 0) {
+                        add(
+                            resources.getQuantityString(
+                                R.plurals.auto_saved_items,
+                                autoRegister.itemCreatedCount,
+                                autoRegister.itemCreatedCount
+                            )
+                        )
+                    }
+                }.joinToString(" • ")
+                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+            }
             if (isNewBillSave) {
                 findNavController().navigate(
                     R.id.action_bill_to_preview,

@@ -9,6 +9,7 @@ import com.kex.vikrsaathi.data.model.template.DataBindingKey
 import com.kex.vikrsaathi.data.model.template.ElementBounds
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.util.ThemeMode
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
@@ -25,6 +26,9 @@ class SettingsViewModel(
     private val _defaultDiscount = MutableLiveData(repository.defaultDiscount)
     val defaultDiscount: LiveData<Double> = _defaultDiscount
 
+    private val _themeMode = MutableLiveData(repository.themeMode)
+    val themeMode: LiveData<ThemeMode> = _themeMode
+
     fun saveShopName(name: String) {
         repository.shopName = name
         _shopName.value = name
@@ -38,6 +42,11 @@ class SettingsViewModel(
     fun saveDefaultDiscount(discount: Double) {
         repository.defaultDiscount = discount
         _defaultDiscount.value = discount
+    }
+
+    fun saveThemeMode(mode: ThemeMode) {
+        repository.themeMode = mode
+        _themeMode.value = mode
     }
 
     fun saveInvoiceConfig(

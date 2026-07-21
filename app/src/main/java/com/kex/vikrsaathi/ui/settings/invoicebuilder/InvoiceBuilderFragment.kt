@@ -6,6 +6,7 @@ import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,14 +20,15 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.model.template.ElementKind
 import com.kex.vikrsaathi.databinding.FragmentInvoiceBuilderBinding
+import com.kex.vikrsaathi.ui.help.HelpOverlay
 import com.kex.vikrsaathi.ui.help.HelpScreen
-import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.ui.navigation.BackNavigationGuard
 import com.kex.vikrsaathi.util.ViewModelFactory
 
@@ -50,6 +52,8 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
     private lateinit var drawerButtonExportJson: MaterialButton
     private lateinit var drawerButtonImportJson: MaterialButton
     private lateinit var drawerButtonVersionHistory: MaterialButton
+    private lateinit var drawerTogglePageOrientation: MaterialButtonToggleGroup
+    private lateinit var drawerTextPageSize: TextView
 
     private val viewModel: InvoiceBuilderViewModel by viewModels {
         ViewModelFactory(requireActivity().application as VikrSaathiApp)
@@ -80,7 +84,6 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
 
         bindDrawerViews(view)
         setupToolbarMenu()
-        installHelpMenu(HelpScreen.INVOICE_BUILDER)
         setupDrawer()
         setupBackNavigation()
 
@@ -118,6 +121,11 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
                 refreshCanvas()
             }
 
+            override fun onElementRotationChangeFinished(deltaDegrees: Float) {
+                viewModel.rotateSelectionBy(deltaDegrees)
+                refreshCanvas()
+            }
+
             override fun onGuideSelected(guideId: String) {
                 viewModel.selectGuide(guideId)
                 updateGuideUi()
@@ -142,6 +150,7 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
             if (binding.templateCanvas.isGestureActive) return@observe
             refreshCanvas()
             binding.templateCanvas.setRenderContext(viewModel.previewRenderContext(requireContext()))
+            syncDrawerPageLayout()
         }
         viewModel.selectedElementIds.observe(viewLifecycleOwner) {
             if (!binding.templateCanvas.isGestureActive) {
@@ -232,6 +241,8 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
         binding.buttonUngroup.setOnClickListener { viewModel.ungroupSelection() }
         binding.buttonToggleLock.setOnClickListener { viewModel.toggleLockSelection() }
         binding.buttonDuplicate.setOnClickListener { viewModel.duplicateSelectedElement() }
+        binding.buttonRotateLeft.setOnClickListener { viewModel.rotateSelectionCounterClockwise() }
+        binding.buttonRotateRight.setOnClickListener { viewModel.rotateSelectionClockwise() }
         binding.buttonBringForward.setOnClickListener { viewModel.bringForward() }
         binding.buttonSendBackward.setOnClickListener { viewModel.sendBackward() }
         binding.buttonBringToFront.setOnClickListener { viewModel.bringToFront() }
@@ -295,6 +306,7 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
     private fun updateSelectionUi() {
         val ids = viewModel.selectedElementIds.value.orEmpty()
         val hasSelection = ids.isNotEmpty()
+        val isLocked = viewModel.isSelectionLocked()
         val isSingleTable = ids.size == 1 && viewModel.getSelectedElement()?.kind == ElementKind.TABLE
         val isGrouped = viewModel.isSelectionGrouped()
 
@@ -302,6 +314,8 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
         setActionEnabled(binding.buttonEditTableColumns, isSingleTable)
         setActionEnabled(binding.buttonDelete, hasSelection)
         setActionEnabled(binding.buttonDuplicate, hasSelection)
+        setActionEnabled(binding.buttonRotateLeft, hasSelection && !isLocked)
+        setActionEnabled(binding.buttonRotateRight, hasSelection && !isLocked)
         setActionEnabled(binding.buttonToggleLock, hasSelection)
         setActionEnabled(binding.buttonBringForward, hasSelection)
         setActionEnabled(binding.buttonSendBackward, hasSelection)
@@ -341,6 +355,8 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
         drawerButtonExportJson = view.findViewById(R.id.drawerButtonExportJson)
         drawerButtonImportJson = view.findViewById(R.id.drawerButtonImportJson)
         drawerButtonVersionHistory = view.findViewById(R.id.drawerButtonVersionHistory)
+        drawerTogglePageOrientation = view.findViewById(R.id.drawerTogglePageOrientation)
+        drawerTextPageSize = view.findViewById(R.id.drawerTextPageSize)
     }
 
     private fun setupToolbarMenu() {
@@ -350,10 +366,16 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                if (menuItem.itemId == R.id.action_builder_options) {
-                    syncDrawerToggles()
-                    binding.drawerLayout.openDrawer(GravityCompat.END)
-                    return true
+                when (menuItem.itemId) {
+                    R.id.action_help -> {
+                        HelpOverlay.show(requireActivity(), HelpScreen.INVOICE_BUILDER)
+                        return true
+                    }
+                    R.id.action_builder_options -> {
+                        syncDrawerToggles()
+                        binding.drawerLayout.openDrawer(GravityCompat.END)
+                        return true
+                    }
                 }
                 return false
             }
@@ -370,6 +392,15 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
         drawerSwitchLivePreview.setOnCheckedChangeListener { _, checked ->
             if (!suppressDrawerListeners) viewModel.setLivePreview(checked)
         }
+
+        drawerTogglePageOrientation.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (suppressDrawerListeners || !isChecked) return@addOnButtonCheckedListener
+            when (checkedId) {
+                R.id.drawerButtonPortrait -> viewModel.setPageOrientation(false)
+                R.id.drawerButtonLandscape -> viewModel.setPageOrientation(true)
+            }
+        }
+
         drawerSwitchSnapGrid.setOnCheckedChangeListener { _, checked ->
             if (!suppressDrawerListeners) viewModel.setSnapToGrid(checked)
         }
@@ -420,8 +451,26 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
         drawerSwitchSnapGuides.isChecked = viewModel.snapToGuides.value == true
         drawerSwitchSnapObjects.isChecked = viewModel.snapToObjects.value == true
         drawerSwitchShowGuides.isChecked = viewModel.showGuides.value == true
+        syncDrawerPageLayout()
         suppressDrawerListeners = false
         updateGuideUi()
+    }
+
+    private fun syncDrawerPageLayout() {
+        val template = viewModel.template.value ?: return
+        drawerTextPageSize.text = getString(
+            R.string.page_size_format,
+            template.pageWidthPt,
+            template.pageHeightPt
+        )
+        val orientationButtonId = if (viewModel.isPageLandscape()) {
+            R.id.drawerButtonLandscape
+        } else {
+            R.id.drawerButtonPortrait
+        }
+        if (drawerTogglePageOrientation.checkedButtonId != orientationButtonId) {
+            drawerTogglePageOrientation.check(orientationButtonId)
+        }
     }
 
     private fun openAddElementSheet() {

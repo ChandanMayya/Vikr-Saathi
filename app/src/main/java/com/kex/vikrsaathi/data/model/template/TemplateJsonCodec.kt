@@ -119,6 +119,9 @@ object TemplateJsonCodec {
             put("visible", element.visible)
             element.groupId?.let { put("groupId", it) }
             put("locked", element.locked)
+            if (element.rotationDegrees != 0f) {
+                put("rotationDegrees", element.rotationDegrees.toDouble())
+            }
             put("style", JSONObject().apply {
                 put("fontSize", element.style.fontSize.toDouble())
                 put("bold", element.style.bold)
@@ -155,6 +158,7 @@ object TemplateJsonCodec {
             visible = obj.optBoolean("visible", true),
             groupId = obj.optString("groupId").takeIf { it.isNotBlank() },
             locked = obj.optBoolean("locked", false),
+            rotationDegrees = obj.optDouble("rotationDegrees", 0.0).toFloat(),
             style = ElementStyle(
                 fontSize = styleObj.optDouble("fontSize", 12.0).toFloat(),
                 bold = styleObj.optBoolean("bold", false),

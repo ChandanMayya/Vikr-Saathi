@@ -19,6 +19,7 @@ import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.TemplateElement
 import com.kex.vikrsaathi.data.model.template.TemplateGuide
 import com.kex.vikrsaathi.domain.template.ElementBoundsHelper
+import com.kex.vikrsaathi.domain.template.ElementRotationHelper
 import com.kex.vikrsaathi.domain.template.GridSnapper
 import com.kex.vikrsaathi.domain.template.GuideSnapper
 import com.kex.vikrsaathi.domain.template.AlignmentDistanceLabel
@@ -45,6 +46,7 @@ class TemplateCanvasView @JvmOverloads constructor(
         fun onLockedElementTapped()
         fun onElementBoundsChangeStarted(elementId: String, isResize: Boolean)
         fun onElementBoundsChangeFinished(elementId: String, bounds: ElementBounds)
+        fun onElementRotationChangeFinished(deltaDegrees: Float)
         fun onGuideSelected(guideId: String)
         fun onGuideDragStarted(guideId: String)
         fun onGuidePositionChanged(guideId: String, positionPt: Float)
@@ -130,6 +132,11 @@ class TemplateCanvasView @JvmOverloads constructor(
     private var dragStartUnion: ElementBounds? = null
     private var liveUnion: ElementBounds? = null
     private var activeAlignmentLines: List<ObjectAlignmentLine> = emptyList()
+
+    private var rotationSnapshotElements: List<TemplateElement> = emptyList()
+    private var liveRotationDelta: Float = 0f
+    private var rotationStartAngle: Float = 0f
+    private var rotationPivotPage: Pair<Float, Float>? = null
 
     private var isZoomGesture = false
     private var lastPinchFocusX = 0f
@@ -220,6 +227,14 @@ class TemplateCanvasView @JvmOverloads constructor(
         color = Color.parseColor("#F57C00")
         style = Paint.Style.FILL
     }
+    private val rotateHandlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#F57C00")
+        style = Paint.Style.FILL
+    }
+    private val rotateStemPaint = Paint().apply {
+        color = Color.parseColor("#F57C00")
+        strokeWidth = 2f
+    }
     private val lockLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#616161")
         textSize = 14f
@@ -256,7 +271,7 @@ class TemplateCanvasView @JvmOverloads constructor(
 
     private val templateRenderer = TemplateRenderer()
 
-    private enum class TouchMode { NONE, DRAG, RESIZE, PAN, GUIDE_DRAG }
+    private enum class TouchMode { NONE, DRAG, RESIZE, ROTATE, PAN, GUIDE_DRAG }
 
     fun setTemplate(
         template: InvoiceTemplate?,
@@ -379,7 +394,33 @@ class TemplateCanvasView @JvmOverloads constructor(
         dragPageOffsetY = 0f
         touchFilterActive = false
         activeAlignmentLines = emptyList()
+        rotationSnapshotElements = emptyList()
+        liveRotationDelta = 0f
+        rotationStartAngle = 0f
+        rotationPivotPage = null
         isGestureActive = false
+    }
+
+    private fun elementForDraw(element: TemplateElement): TemplateElement {
+        if (mode == TouchMode.ROTATE && element.id in dragTargetIds) {
+            val snapshot = rotationSnapshotElements.find { it.id == element.id } ?: return element
+            val pivot = rotationPivotPage ?: return snapshot
+            return if (liveRotationDelta == 0f) {
+                snapshot
+            } else {
+                ElementRotationHelper.rotateElement(
+                    snapshot,
+                    liveRotationDelta,
+                    pivot.first,
+                    pivot.second
+                )
+            }
+        }
+        return element
+    }
+
+    private fun selectionHasLockedElements(template: InvoiceTemplate): Boolean {
+        return template.elements.any { it.id in selectedIds && it.locked }
     }
 
     private fun referenceBoundsExcludingDrag(): List<ElementBounds> {
@@ -500,6 +541,9 @@ class TemplateCanvasView @JvmOverloads constructor(
     }
 
     private fun boundsForElement(element: TemplateElement): ElementBounds {
+        if (mode == TouchMode.ROTATE && element.id in dragTargetIds) {
+            return elementForDraw(element).bounds
+        }
         if (!isGestureActive || element.id !in dragTargetIds) {
             return element.bounds
         }
@@ -517,10 +561,19 @@ class TemplateCanvasView @JvmOverloads constructor(
     }
 
     private fun selectionUnionBounds(template: InvoiceTemplate): ElementBounds? {
-        if (isGestureActive) {
+        if (isGestureActive && mode == TouchMode.DRAG) {
             return resolvedLiveUnion(template.pageWidthPt, template.pageHeightPt)
         }
-        return ElementBoundsHelper.unionBounds(template.elements, selectedIds)
+        if (isGestureActive && mode == TouchMode.ROTATE) {
+            val bounds = template.elements
+                .filter { it.id in selectedIds && it.visible }
+                .map { ElementRotationHelper.axisAlignedBounds(elementForDraw(it)) }
+            return ElementBoundsHelper.unionOfBounds(bounds)
+        }
+        val bounds = template.elements
+            .filter { it.id in selectedIds && it.visible }
+            .map { ElementRotationHelper.axisAlignedBounds(it) }
+        return ElementBoundsHelper.unionOfBounds(bounds)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -669,7 +722,23 @@ class TemplateCanvasView @JvmOverloads constructor(
     private fun drawBuilder(canvas: Canvas, template: InvoiceTemplate) {
         template.elements.sortedBy { it.zIndex }.forEach { element ->
             if (!element.visible) return@forEach
-            val rect = boundsForElement(element)
+            val drawElement = elementForDraw(element)
+            val rect = if (mode == TouchMode.DRAG && element.id in dragTargetIds) {
+                boundsForElement(element)
+            } else {
+                drawElement.bounds
+            }
+            val rotation = if (mode == TouchMode.DRAG && element.id in dragTargetIds) {
+                element.rotationDegrees
+            } else {
+                drawElement.rotationDegrees
+            }
+            if (rotation != 0f) {
+                val pivotX = rect.x + rect.width / 2f
+                val pivotY = rect.y + rect.height / 2f
+                canvas.save()
+                canvas.rotate(rotation, pivotX, pivotY)
+            }
             elementFillPaint.color = colorForKind(element.kind.name)
             canvas.drawRect(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height, elementFillPaint)
             elementBorderPaint.color = when {
@@ -692,12 +761,20 @@ class TemplateCanvasView @JvmOverloads constructor(
                     lockLabelPaint
                 )
             }
+            if (rotation != 0f) {
+                canvas.restore()
+            }
             if (!element.groupId.isNullOrBlank() && element.id !in selectedIds) {
+                val groupRect = if (rotation != 0f) {
+                    ElementRotationHelper.axisAlignedBounds(drawElement)
+                } else {
+                    rect
+                }
                 canvas.drawRect(
-                    rect.x,
-                    rect.y,
-                    rect.x + rect.width,
-                    rect.y + rect.height,
+                    groupRect.x,
+                    groupRect.y,
+                    groupRect.x + groupRect.width,
+                    groupRect.y + groupRect.height,
                     groupPaint
                 )
             }
@@ -742,20 +819,18 @@ class TemplateCanvasView @JvmOverloads constructor(
     private fun drawSelectionOverlay(canvas: Canvas, template: InvoiceTemplate) {
         if (selectedIds.isEmpty()) return
 
-        val union = selectionUnionBounds(template) ?: return
-        val unionRect = pageToScreen(union)
-        canvas.drawRect(unionRect, selectedPaint)
-
-        if (!isGestureActive) {
-            val selectedElements = template.elements.filter { it.id in selectedIds && it.visible }
-            selectedElements.forEach { element ->
-                if (validationElementIds.contains(element.id)) {
-                    val rect = pageToScreen(element.bounds)
-                    canvas.drawRect(rect, warningPaint)
-                }
+        val selectedElements = template.elements.filter { it.id in selectedIds && it.visible }
+        selectedElements.forEach { element ->
+            drawRotatedSelectionOutline(canvas, elementForDraw(element), selectedPaint)
+            if (validationElementIds.contains(element.id)) {
+                drawRotatedSelectionOutline(canvas, elementForDraw(element), warningPaint)
             }
         }
 
+        if (selectionHasLockedElements(template)) return
+
+        val union = selectionUnionBounds(template) ?: return
+        val unionRect = pageToScreen(union)
         val handle = 24f
         canvas.drawRect(
             unionRect.right - handle,
@@ -764,6 +839,45 @@ class TemplateCanvasView @JvmOverloads constructor(
             unionRect.bottom,
             handlePaint
         )
+
+        val handleCenter = rotateHandleScreenPosition(union) ?: return
+        canvas.drawLine(
+            offsetX + (union.x + union.width / 2f) * scale,
+            offsetY + union.y * scale,
+            handleCenter.first,
+            handleCenter.second,
+            rotateStemPaint
+        )
+        canvas.drawCircle(handleCenter.first, handleCenter.second, ROTATE_HANDLE_RADIUS_PX, rotateHandlePaint)
+    }
+
+    private fun drawRotatedSelectionOutline(canvas: Canvas, element: TemplateElement, paint: Paint) {
+        val bounds = element.bounds
+        val centerX = offsetX + (bounds.x + bounds.width / 2f) * scale
+        val centerY = offsetY + (bounds.y + bounds.height / 2f) * scale
+        val rect = RectF(
+            offsetX + bounds.x * scale,
+            offsetY + bounds.y * scale,
+            offsetX + (bounds.x + bounds.width) * scale,
+            offsetY + (bounds.y + bounds.height) * scale
+        )
+        canvas.save()
+        canvas.rotate(element.rotationDegrees, centerX, centerY)
+        canvas.drawRect(rect, paint)
+        canvas.restore()
+    }
+
+    private fun rotateHandleScreenPosition(union: ElementBounds): Pair<Float, Float>? {
+        val handlePageX = union.x + union.width / 2f
+        val handlePageY = union.y - ROTATE_HANDLE_OFFSET_PT
+        return offsetX + handlePageX * scale to offsetY + handlePageY * scale
+    }
+
+    private fun isRotateHandleHit(screenX: Float, screenY: Float, template: InvoiceTemplate): Boolean {
+        if (selectedIds.isEmpty() || selectionHasLockedElements(template)) return false
+        val union = selectionUnionBounds(template) ?: return false
+        val (handleX, handleY) = rotateHandleScreenPosition(union) ?: return false
+        return hypot(screenX - handleX, screenY - handleY) <= ROTATE_HANDLE_HIT_RADIUS_PX
     }
 
     private fun colorForKind(kind: String): Int {
@@ -830,6 +944,29 @@ class TemplateCanvasView @JvmOverloads constructor(
                 downTouchY = event.y
                 hasDragged = false
                 gestureCommitted = false
+
+                if (selectedIds.isNotEmpty() && isRotateHandleHit(event.x, event.y, t)) {
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    dragTargetIds = selectedIds
+                    rotationSnapshotElements = t.elements.filter { it.id in dragTargetIds }
+                    rotationPivotPage = ElementRotationHelper.selectionPivot(rotationSnapshotElements)
+                    val pivot = rotationPivotPage
+                    if (pivot != null) {
+                        val pageX = (event.x - offsetX) / scale
+                        val pageY = (event.y - offsetY) / scale
+                        rotationStartAngle = ElementRotationHelper.angleDegrees(
+                            pivot.first,
+                            pivot.second,
+                            pageX,
+                            pageY
+                        )
+                    }
+                    liveRotationDelta = 0f
+                    activeElementId = selectedIds.first()
+                    mode = TouchMode.ROTATE
+                    return true
+                }
+
                 val hit = findElementAt(event.x, event.y, t)
                 downHitId = hit?.id
 
@@ -898,6 +1035,27 @@ class TemplateCanvasView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_MOVE -> {
+                if (mode == TouchMode.ROTATE) {
+                    val pivot = rotationPivotPage ?: return true
+                    if (!hasDragged) {
+                        val dist = hypot(event.x - downTouchX, event.y - downTouchY)
+                        if (dist < dragThresholdPx) return true
+                        hasDragged = true
+                        isGestureActive = true
+                    }
+                    val pageX = (event.x - offsetX) / scale
+                    val pageY = (event.y - offsetY) / scale
+                    val currentAngle = ElementRotationHelper.angleDegrees(
+                        pivot.first,
+                        pivot.second,
+                        pageX,
+                        pageY
+                    )
+                    liveRotationDelta = currentAngle - rotationStartAngle
+                    invalidate()
+                    return true
+                }
+
                 if (mode == TouchMode.GUIDE_DRAG) {
                     val guideId = activeGuideId ?: return true
                     val guide = t.guides.find { it.id == guideId } ?: return true
@@ -961,6 +1119,8 @@ class TemplateCanvasView @JvmOverloads constructor(
                 val hitId = downHitId
                 val wasPan = mode == TouchMode.PAN
                 val wasGuideDrag = mode == TouchMode.GUIDE_DRAG
+                val wasRotate = mode == TouchMode.ROTATE
+                val rotationDelta = liveRotationDelta
 
                 if (!hasDragged) {
                     when {
@@ -978,6 +1138,11 @@ class TemplateCanvasView @JvmOverloads constructor(
                     cancelActiveElementGesture()
                     if (position != null) {
                         listener?.onGuideDragFinished(guideId, position)
+                    }
+                } else if (wasRotate) {
+                    cancelActiveElementGesture()
+                    if (rotationDelta != 0f) {
+                        listener?.onElementRotationChangeFinished(rotationDelta)
                     }
                 } else if (!wasPan && elementId != null) {
                     template?.let {
@@ -1120,12 +1285,13 @@ class TemplateCanvasView @JvmOverloads constructor(
     }
 
     private fun findElementAt(screenX: Float, screenY: Float, template: InvoiceTemplate): TemplateElement? {
+        val pageX = (screenX - offsetX) / scale
+        val pageY = (screenY - offsetY) / scale
         return template.elements
             .filter { it.visible }
             .sortedByDescending { it.zIndex }
             .firstOrNull { element ->
-                val rect = pageToScreen(element.bounds)
-                rect.contains(screenX, screenY)
+                ElementRotationHelper.containsPoint(element, pageX, pageY)
             }
     }
 
@@ -1134,5 +1300,8 @@ class TemplateCanvasView @JvmOverloads constructor(
         private const val MAX_ZOOM = 4f
         private const val TOUCH_SMOOTHING_ALPHA = 0.22f
         private const val GUIDE_HIT_TOLERANCE_PX = 18f
+        private const val ROTATE_HANDLE_OFFSET_PT = 24f
+        private const val ROTATE_HANDLE_RADIUS_PX = 14f
+        private const val ROTATE_HANDLE_HIT_RADIUS_PX = 22f
     }
 }

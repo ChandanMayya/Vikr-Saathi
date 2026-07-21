@@ -7,6 +7,10 @@ object ElementBoundsHelper {
 
     fun unionBounds(elements: List<TemplateElement>, ids: Set<String>): ElementBounds? {
         val bounds = elements.filter { ids.contains(it.id) }.map { it.bounds }
+        return unionOfBounds(bounds)
+    }
+
+    fun unionOfBounds(bounds: List<ElementBounds>): ElementBounds? {
         if (bounds.isEmpty()) return null
         val left = bounds.minOf { it.x }
         val top = bounds.minOf { it.y }

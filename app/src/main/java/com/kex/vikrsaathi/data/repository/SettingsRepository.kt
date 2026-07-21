@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import java.io.File
 import java.io.FileOutputStream
+import com.kex.vikrsaathi.util.ThemeMode
 
 /**
  * Persists shop-level settings using SharedPreferences and local image files.
@@ -29,6 +30,10 @@ class SettingsRepository(context: Context) {
     var defaultDiscount: Double
         get() = prefs.getFloat(KEY_DEFAULT_DISCOUNT, 0f).toDouble()
         set(value) = prefs.edit().putFloat(KEY_DEFAULT_DISCOUNT, value.toFloat()).apply()
+
+    var themeMode: ThemeMode
+        get() = ThemeMode.fromStored(prefs.getString(KEY_THEME_MODE, null))
+        set(value) = prefs.edit().putString(KEY_THEME_MODE, value.name).apply()
 
     var invoicePrefix: String
         get() = prefs.getString(KEY_INVOICE_PREFIX, "") ?: ""
@@ -138,6 +143,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_SHOP_NAME = "shop_name"
         private const val KEY_CURRENCY = "currency_symbol"
         private const val KEY_DEFAULT_DISCOUNT = "default_discount"
+        private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_INVOICE_PREFIX = "invoice_prefix"
         private const val KEY_INVOICE_SUFFIX = "invoice_suffix"
         private const val KEY_INVOICE_SEPARATOR = "invoice_separator"

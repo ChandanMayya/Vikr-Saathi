@@ -122,7 +122,9 @@ data class TemplateElement(
     /** Elements sharing a groupId move, resize, and lock together in the builder. */
     val groupId: String? = null,
     /** Locked elements cannot be selected or edited until unlocked. */
-    val locked: Boolean = false
+    val locked: Boolean = false,
+    /** Clockwise rotation in degrees around the center of [bounds]. */
+    val rotationDegrees: Float = 0f
 )
 
 data class InvoiceTemplate(

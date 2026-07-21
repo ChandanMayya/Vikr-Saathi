@@ -13,6 +13,7 @@ import com.kex.vikrsaathi.data.reset.ResetHistoryStore
 import com.kex.vikrsaathi.data.reset.ResetManager
 import com.kex.vikrsaathi.util.BillsHistoryPreferences
 import com.kex.vikrsaathi.util.InvoiceBuilderPreferences
+import com.kex.vikrsaathi.util.AppThemeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -68,6 +69,7 @@ class VikrSaathiApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        AppThemeManager.apply(settingsRepository.themeMode)
         settingsRepository.copyAssetHeaderIfNeeded(this)
         appScope.launch {
             invoiceTemplateRepository.ensureDefaultTemplateExists()

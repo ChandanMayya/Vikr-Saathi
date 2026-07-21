@@ -32,6 +32,14 @@ class BillViewModel(
     private val invoiceTemplateRepository: InvoiceTemplateRepository
 ) : ViewModel() {
 
+    data class AutoRegisterResult(
+        val customerCreated: Boolean = false,
+        val itemCreatedCount: Int = 0
+    ) {
+        val hasChanges: Boolean
+            get() = customerCreated || itemCreatedCount > 0
+    }
+
     private val _lineItems = MutableLiveData<List<BillLineItem>>(emptyList())
     val lineItems: LiveData<List<BillLineItem>> = _lineItems
 
@@ -162,6 +170,22 @@ class BillViewModel(
         }
     }
 
+    fun saveItem(item: Item, onResult: (Result<Item>) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val barcode = item.barcode?.trim().orEmpty()
+                if (barcode.isNotEmpty() && !itemRepository.isBarcodeUnique(barcode, item.id)) {
+                    onResult(Result.failure(IllegalStateException("Barcode already exists")))
+                    return@launch
+                }
+                val id = itemRepository.insert(item.copy(barcode = barcode.ifEmpty { null }))
+                onResult(Result.success(item.copy(id = id, barcode = barcode.ifEmpty { null })))
+            } catch (e: Exception) {
+                onResult(Result.failure(e))
+            }
+        }
+    }
+
     fun searchItems(query: String, callback: (List<Item>) -> Unit) {
         viewModelScope.launch { callback(itemRepository.searchByName(query)) }
     }
@@ -216,17 +240,38 @@ class BillViewModel(
         recalculate()
     }
 
-    fun saveBill(onSaved: (Long) -> Unit) {
+    fun saveBill(
+        buyerName: String,
+        buyerAddress: String,
+        buyerPhone: String,
+        onSaved: (Long, AutoRegisterResult) -> Unit
+    ) {
         val lines = _lineItems.value.orEmpty()
         if (lines.isEmpty()) return
         viewModelScope.launch {
+            val (resolvedCustomer, customerCreated) = resolveOrCreateCustomer(
+                buyerName = buyerName,
+                buyerAddress = buyerAddress,
+                buyerPhone = buyerPhone
+            )
+            val (resolvedLines, createdItemsCount) = resolveOrCreateItems(lines)
+            if (resolvedLines != lines) {
+                _lineItems.value = resolvedLines
+                recalculate()
+            }
             val id = billRepository.saveBill(
-                customerId = _selectedCustomer.value?.id,
-                lineItems = lines,
+                customerId = resolvedCustomer?.id,
+                lineItems = resolvedLines,
                 existingBillId = editingBillId
             )
             editingBillId = id
-            onSaved(id)
+            onSaved(
+                id,
+                AutoRegisterResult(
+                    customerCreated = customerCreated,
+                    itemCreatedCount = createdItemsCount
+                )
+            )
         }
     }
 
@@ -281,5 +326,75 @@ class BillViewModel(
         _totalDiscount.value = totalDiscount
         _grandTotal.value = total
         _totalInWords.value = NumberToWords.convert(total)
+    }
+
+    private suspend fun resolveOrCreateCustomer(
+        buyerName: String,
+        buyerAddress: String,
+        buyerPhone: String
+    ): Pair<Customer?, Boolean> {
+        val existingSelected = _selectedCustomer.value
+        val normalizedName = buyerName.trim()
+        val normalizedPhone = buyerPhone.trim()
+        val normalizedAddress = buyerAddress.trim()
+        if (normalizedName.isBlank()) return existingSelected to false
+
+        if (existingSelected != null &&
+            existingSelected.name.trim().equals(normalizedName, ignoreCase = true)
+        ) {
+            val hasDetailsChanged = existingSelected.phone.trim() != normalizedPhone ||
+                existingSelected.address1.trim() != normalizedAddress
+            return if (!hasDetailsChanged) {
+                existingSelected to false
+            } else {
+                val updated = existingSelected.copy(
+                    name = normalizedName,
+                    address1 = normalizedAddress,
+                    phone = normalizedPhone
+                )
+                customerRepository.update(updated)
+                _selectedCustomer.value = updated
+                updated to false
+            }
+        }
+
+        val existingByName = customerRepository.findByNameExact(normalizedName)
+        if (existingByName != null) {
+            _selectedCustomer.value = existingByName
+            return existingByName to false
+        }
+
+        val created = Customer(
+            name = normalizedName,
+            address1 = normalizedAddress,
+            phone = normalizedPhone
+        )
+        val id = customerRepository.insert(created)
+        val saved = created.copy(id = id)
+        _selectedCustomer.value = saved
+        return saved to true
+    }
+
+    private suspend fun resolveOrCreateItems(lines: List<BillLineItem>): Pair<List<BillLineItem>, Int> {
+        var createdCount = 0
+        val resolved = lines.map { line ->
+            if (line.itemId != null || line.name.isBlank()) return@map line
+
+            val exact = itemRepository.findByNameExact(line.name)
+            if (exact != null) {
+                return@map line.copy(itemId = exact.id)
+            }
+
+            val created = Item(
+                name = line.name.trim(),
+                mrp = line.mrp,
+                discount = line.discount,
+                sellingPrice = PriceCalculator.priceAfterDiscount(line.mrp, line.discount)
+            )
+            val id = itemRepository.insert(created)
+            createdCount += 1
+            line.copy(itemId = id)
+        }
+        return resolved to createdCount
     }
 }

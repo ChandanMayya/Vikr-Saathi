@@ -40,15 +40,32 @@ class TemplateRenderer(
 
     fun render(canvas: Canvas, template: InvoiceTemplate, context: TemplateRenderContext) {
         template.sortedElements.forEach { element ->
-            when (element.kind) {
-                ElementKind.IMAGE -> drawImage(canvas, element, context)
-                ElementKind.TEXT -> drawText(canvas, element, context)
-                ElementKind.LINE -> drawLine(canvas, element)
-                ElementKind.RECT -> drawRect(canvas, element)
-                ElementKind.TABLE -> drawTable(canvas, element, context)
-                ElementKind.SPACER -> Unit
+            canvas.withElementRotation(element) {
+                when (element.kind) {
+                    ElementKind.IMAGE -> drawImage(this, element, context)
+                    ElementKind.TEXT -> drawText(this, element, context)
+                    ElementKind.LINE -> drawLine(this, element)
+                    ElementKind.RECT -> drawRect(this, element)
+                    ElementKind.TABLE -> drawTable(this, element, context)
+                    ElementKind.SPACER -> Unit
+                }
             }
         }
+    }
+
+    private inline fun Canvas.withElementRotation(element: TemplateElement, block: Canvas.() -> Unit) {
+        val degrees = element.rotationDegrees
+        if (degrees == 0f) {
+            block()
+            return
+        }
+        val bounds = element.bounds
+        val pivotX = bounds.x + bounds.width / 2f
+        val pivotY = bounds.y + bounds.height / 2f
+        save()
+        rotate(degrees, pivotX, pivotY)
+        block()
+        restore()
     }
 
     private fun drawImage(canvas: Canvas, element: TemplateElement, context: TemplateRenderContext) {

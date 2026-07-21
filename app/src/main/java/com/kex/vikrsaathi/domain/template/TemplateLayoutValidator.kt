@@ -36,7 +36,7 @@ object TemplateLayoutValidator {
         val visible = template.elements.filter { it.visible }
 
         visible.forEach { element ->
-            val b = element.bounds
+            val b = ElementRotationHelper.axisAlignedBounds(element)
             if (b.x < 0 || b.y < 0) {
                 issues.add(TemplateValidationIssue(element.id, "Element is outside page (negative position)"))
             }
@@ -46,7 +46,7 @@ object TemplateLayoutValidator {
             if (b.y + b.height > template.pageHeightPt) {
                 issues.add(TemplateValidationIssue(element.id, "Element extends beyond page height"))
             }
-            if (b.width < 8f || b.height < 4f) {
+            if (element.bounds.width < 8f || element.bounds.height < 4f) {
                 issues.add(TemplateValidationIssue(element.id, "Element is too small"))
             }
         }
@@ -55,7 +55,10 @@ object TemplateLayoutValidator {
             for (j in i + 1 until visible.size) {
                 val a = visible[i]
                 val b = visible[j]
-                if (boundsOverlap(a.bounds, b.bounds)) {
+                if (boundsOverlap(
+                        ElementRotationHelper.axisAlignedBounds(a),
+                        ElementRotationHelper.axisAlignedBounds(b)
+                    )) {
                     issues.add(
                         TemplateValidationIssue(
                             a.id,

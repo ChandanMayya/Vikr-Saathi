@@ -22,12 +22,14 @@ import com.kex.vikrsaathi.data.model.template.TemplateGuide
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.domain.template.ElementRotationHelper
 import com.kex.vikrsaathi.domain.template.ElementBoundsHelper
 import com.kex.vikrsaathi.domain.template.ElementSelectionHelper
 import com.kex.vikrsaathi.domain.template.ElementZOrder
 import com.kex.vikrsaathi.domain.template.GridSnapper
 import com.kex.vikrsaathi.domain.template.GuideSnapper
 import com.kex.vikrsaathi.domain.template.ObjectAlignmentSnapper
+import com.kex.vikrsaathi.domain.template.TemplateOrientationHelper
 import com.kex.vikrsaathi.domain.template.SampleBillFactory
 import com.kex.vikrsaathi.domain.template.TemplateImageBitmapResolver
 import com.kex.vikrsaathi.domain.template.TemplateImageBoundsHelper
@@ -718,6 +720,28 @@ class InvoiceBuilderViewModel(
         _snapToObjects.value = enabled
         editorPreferences.snapToObjects = enabled
     }
+
+    fun isPageLandscape(): Boolean =
+        _template.value?.let { TemplateOrientationHelper.isLandscape(it) } ?: false
+
+    fun setPageOrientation(landscape: Boolean) {
+        mutate { current ->
+            TemplateOrientationHelper.withOrientation(current, landscape)
+        }
+    }
+
+    fun rotateSelectionBy(deltaDegrees: Float) {
+        if (deltaDegrees == 0f) return
+        val ids = _selectedElementIds.value.orEmpty()
+        if (ids.isEmpty() || isSelectionLocked()) return
+        mutate { current ->
+            current.copy(elements = ElementRotationHelper.rotateElements(current.elements, ids, deltaDegrees))
+        }
+    }
+
+    fun rotateSelectionClockwise() = rotateSelectionBy(90f)
+
+    fun rotateSelectionCounterClockwise() = rotateSelectionBy(-90f)
 
     fun getSelectedElement(): TemplateElement? {
         val id = _selectedElementIds.value?.firstOrNull() ?: return null

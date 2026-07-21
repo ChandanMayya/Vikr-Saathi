@@ -153,6 +153,7 @@
         <item>Shop name — shown on dashboard toolbar and invoices.</item>
         <item>Currency symbol — used for all amounts (e.g. ₹).</item>
         <item>Default discount % — pre-filled when adding items to a bill.</item>
+        <item>Appearance — Light, Dark, Auto (day/night), or follow your phone theme.</item>
         <item>Changes save automatically when you leave a field.</item>
     </string-array>
 
@@ -210,7 +211,7 @@
         <item>Table columns — edit the items table when a table is selected.</item>
         <item>Preview PDF — sample output with demo bill data.</item>
         <item>Save — stores the template and records a version snapshot.</item>
-        <item>Menu (⋮) — grid, guides, import/export JSON, version history.</item>
+        <item>Menu (⋮) — page layout (portrait/landscape), grid, guides, import/export JSON, version history.</item>
     </string-array>
     <string name="help_invoice_builder_s2_title">Selection toolbar</string>
     <string-array name="help_invoice_builder_s2">
@@ -220,6 +221,7 @@
         <item>Group / Ungroup — move multiple elements together.</item>
         <item>Lock / Unlock — block or allow canvas moves for the selection.</item>
         <item>Duplicate — copy the selected element.</item>
+        <item>Rotate — turn the selection 90° (toolbar buttons or orange handle above selection). Grouped elements rotate together.</item>
         <item>Bring forward / Send backward — change stacking order one step.</item>
         <item>Bring to front / Send to back — move to the top or bottom layer.</item>
         <item>Detailed property help — tap ? in the Element Properties or Table Columns panel.</item>

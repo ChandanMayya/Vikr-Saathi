@@ -12,6 +12,7 @@ import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.util.ThemeMode
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
@@ -180,6 +181,7 @@ object BackupJsonCodec {
             put("shopName", settings.shopName)
             put("currencySymbol", settings.currencySymbol)
             put("defaultDiscount", settings.defaultDiscount)
+            put("themeMode", settings.themeMode.name)
             put("invoicePrefix", settings.invoicePrefix)
             put("invoiceSuffix", settings.invoiceSuffix)
             put("invoiceSeparator", settings.invoiceSeparator)
@@ -199,6 +201,7 @@ object BackupJsonCodec {
             shopName = obj.optString("shopName", ""),
             currencySymbol = obj.optString("currencySymbol", "₹"),
             defaultDiscount = obj.optDouble("defaultDiscount", 0.0),
+            themeMode = ThemeMode.fromStored(obj.optString("themeMode", ThemeMode.SYSTEM.name)),
             invoicePrefix = obj.optString("invoicePrefix", ""),
             invoiceSuffix = obj.optString("invoiceSuffix", ""),
             invoiceSeparator = obj.optString("invoiceSeparator", "/"),
@@ -361,6 +364,7 @@ data class SettingsBackup(
     val shopName: String,
     val currencySymbol: String,
     val defaultDiscount: Double,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val invoicePrefix: String,
     val invoiceSuffix: String,
     val invoiceSeparator: String,

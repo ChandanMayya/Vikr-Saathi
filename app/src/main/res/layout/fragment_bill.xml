@@ -68,13 +68,6 @@
                     android:inputType="phone" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonAddNewCustomer"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/add_new_customer" />
-
             <LinearLayout
                 android:id="@+id/layoutAddItem"
                 android:layout_width="match_parent"
@@ -106,6 +99,15 @@
                     android:contentDescription="@string/scan_barcode"
                     app:icon="@drawable/ic_barcode_scan" />
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/textAutoRegisterHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/bill_auto_register_hint"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="@color/text_secondary_dark" />
 
             <TextView
                 android:layout_width="match_parent"

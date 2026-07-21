@@ -23,6 +23,47 @@
             android:textAppearance="?attr/textAppearanceTitleMedium"
             android:textStyle="bold" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/page_layout_section"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/drawerTextPageSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/drawerTogglePageOrientation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/drawerButtonPortrait"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/page_orientation_portrait" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/drawerButtonLandscape"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/page_orientation_landscape" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/drawerSwitchLivePreview"
             android:layout_width="match_parent"
