@@ -55,6 +55,12 @@ object HelpContentProvider {
                 section(R.string.help_items_s1_title, R.array.help_items_s1),
                 section(R.string.help_items_s2_title, R.array.help_items_s2)
             )
+            HelpScreen.STOCK -> guide(
+                context,
+                R.string.help_stock_title,
+                R.string.help_stock_overview,
+                section(R.string.help_stock_s1_title, R.array.help_stock_s1)
+            )
             HelpScreen.BILLS_HISTORY -> guide(
                 context,
                 R.string.help_bills_history_title,
@@ -79,6 +85,12 @@ object HelpContentProvider {
                 R.string.help_general_settings_title,
                 R.string.help_general_settings_overview,
                 section(R.string.help_general_settings_s1_title, R.array.help_general_settings_s1)
+            )
+            HelpScreen.INVENTORY_SETTINGS -> guide(
+                context,
+                R.string.help_inventory_settings_title,
+                R.string.help_inventory_settings_overview,
+                section(R.string.help_inventory_settings_s1_title, R.array.help_inventory_settings_s1)
             )
             HelpScreen.INVOICE_CONFIGURATION -> guide(
                 context,

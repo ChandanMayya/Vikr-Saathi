@@ -13,10 +13,14 @@ import com.kex.vikrsaathi.data.draft.HeldDraftSummary
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.BillDraftRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
+import com.kex.vikrsaathi.data.repository.InventoryRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.data.repository.StockShortfall
 import android.content.Context
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
+import com.kex.vikrsaathi.domain.inventory.StockDeltaCalculator
+import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.NumberToWords
 import com.kex.vikrsaathi.util.PdfGenerator
 import com.kex.vikrsaathi.util.PriceCalculator
@@ -29,7 +33,8 @@ class BillViewModel(
     private val billRepository: BillRepository,
     private val billDraftRepository: BillDraftRepository,
     private val settingsRepository: SettingsRepository,
-    private val invoiceTemplateRepository: InvoiceTemplateRepository
+    private val invoiceTemplateRepository: InvoiceTemplateRepository,
+    private val inventoryRepository: InventoryRepository
 ) : ViewModel() {
 
     data class AutoRegisterResult(
@@ -63,11 +68,62 @@ class BillViewModel(
     val defaultDiscount: Double
         get() = settingsRepository.defaultDiscount
 
+    val inventoryMode: InventoryMode
+        get() = settingsRepository.inventoryMode
+
     val currentBillId: Long?
         get() = editingBillId
 
     val isNewBillSession: Boolean
         get() = editingBillId == null
+
+    /**
+     * Checks stock without saving or creating masters.
+     * New (unsaved) line items are treated as available = 0.
+     */
+    fun prepareSaveBill(
+        buyerName: String,
+        buyerAddress: String,
+        buyerPhone: String,
+        onPrepared: (shortfalls: List<StockShortfall>) -> Unit
+    ) {
+        val lines = _lineItems.value.orEmpty()
+        if (lines.isEmpty()) return
+        viewModelScope.launch {
+            if (inventoryMode == InventoryMode.OFF) {
+                onPrepared(emptyList())
+                return@launch
+            }
+            val oldQuantities = if (editingBillId != null) {
+                val details = billRepository.getBillWithDetails(editingBillId!!)
+                StockDeltaCalculator.aggregateQuantities(
+                    details?.items.orEmpty().map { it.itemId to it.quantity }
+                )
+            } else {
+                emptyMap()
+            }
+            val shortfalls = inventoryRepository.findShortfalls(
+                lineItems = lines,
+                existingBillId = editingBillId,
+                oldBillQuantities = oldQuantities
+            ).toMutableList()
+            lines.filter { it.itemId == null && it.name.isNotBlank() && it.quantity > 0 }
+                .groupBy { it.name.trim().lowercase() }
+                .forEach { (_, group) ->
+                    val required = group.sumOf { it.quantity }
+                    val name = group.first().name
+                    shortfalls.add(
+                        StockShortfall(
+                            itemId = 0L,
+                            itemName = name,
+                            available = 0,
+                            required = required
+                        )
+                    )
+                }
+            onPrepared(shortfalls)
+        }
+    }
 
     fun holdBill(
         buyerName: String,

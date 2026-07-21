@@ -9,6 +9,7 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentDashboardBinding
@@ -26,6 +27,8 @@ class DashboardFragment : Fragment() {
         ViewModelFactory(requireActivity().application as VikrSaathiApp)
     }
 
+    private val lowStockAdapter = LowStockAdapter()
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -42,6 +45,9 @@ class DashboardFragment : Fragment() {
 
         val app = requireActivity().application as VikrSaathiApp
         updateToolbarTitle(app.settingsRepository.shopName)
+
+        binding.recyclerLowStock.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerLowStock.adapter = lowStockAdapter
 
         viewModel.shopName.observe(viewLifecycleOwner, ::updateToolbarTitle)
 
@@ -69,6 +75,21 @@ class DashboardFragment : Fragment() {
             }
         }
 
+        viewModel.lowStock.observe(viewLifecycleOwner) { summary ->
+            if (summary.count == 0) {
+                binding.textLowStockSummary.text = getString(R.string.low_stock_empty)
+                binding.recyclerLowStock.isVisible = false
+                binding.textLowStockViewAll.isVisible = false
+                lowStockAdapter.submitList(emptyList())
+            } else {
+                binding.textLowStockSummary.text =
+                    getString(R.string.low_stock_count, summary.count)
+                binding.recyclerLowStock.isVisible = true
+                binding.textLowStockViewAll.isVisible = summary.count > summary.items.size
+                lowStockAdapter.submitList(summary.items)
+            }
+        }
+
         binding.cardNewBill.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_bill)
         }
@@ -80,6 +101,15 @@ class DashboardFragment : Fragment() {
         }
         binding.cardBillsHistory.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_bills_history)
+        }
+        binding.cardStock.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_stock)
+        }
+        binding.cardLowStock.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_stock)
+        }
+        binding.textLowStockViewAll.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_stock)
         }
         binding.cardSettings.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_settings)

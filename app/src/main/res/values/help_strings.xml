@@ -9,12 +9,14 @@
     <string-array name="help_dashboard_s1">
         <item>Total amount and bill count for today.</item>
         <item>Top items chart shows your best sellers by quantity.</item>
+        <item>Low stock card lists items at or below your threshold — tap to open Inventory.</item>
     </string-array>
     <string name="help_dashboard_s2_title">Quick actions</string>
     <string-array name="help_dashboard_s2">
         <item>New Bill — create a sale invoice.</item>
         <item>Customers — manage buyer details.</item>
         <item>Items — manage products and prices.</item>
+        <item>Inventory — stock quantities and adjustments.</item>
         <item>Bills History — view, filter, and export past bills.</item>
         <item>Settings — shop name, invoice layout, backup, and more.</item>
     </string-array>
@@ -30,9 +32,10 @@
     </string-array>
     <string name="help_new_bill_s2_title">Adding items</string>
     <string-array name="help_new_bill_s2">
-        <item>Add item — search and select from your item master.</item>
+        <item>Add item — search and select from your item master, or choose Add New Item.</item>
         <item>Scan barcode — use the camera to find an item quickly.</item>
         <item>Each line shows MRP, discount %, quantity, and line total.</item>
+        <item>Stock is reduced when you save (see Inventory settings for Warn/Block).</item>
         <item>Total discount and grand total update automatically.</item>
     </string-array>
     <string name="help_new_bill_s3_title">Actions</string>
@@ -92,18 +95,31 @@
 
     <!-- Items -->
     <string name="help_items_title">Items</string>
-    <string name="help_items_overview">Your product master. Items added here appear when billing and can be scanned by barcode.</string>
+    <string name="help_items_overview">Your product master with on-hand stock. Items added here appear when billing and can be scanned by barcode.</string>
     <string name="help_items_s1_title">Item list</string>
     <string-array name="help_items_s1">
-        <item>Each card shows name, MRP, discount, and selling price.</item>
-        <item>Tap to edit; delete removes the item from the master.</item>
+        <item>Each card shows name, MRP, discount, selling price, and stock.</item>
+        <item>Stock highlighted in orange when at or below the low-stock threshold.</item>
+        <item>Tap Edit to change details; Adjust stock to add or remove quantity.</item>
     </string-array>
     <string name="help_items_s2_title">Add / edit item</string>
     <string-array name="help_items_s2">
-        <item>+ button — add a new product.</item>
+        <item>+ button — add a new product with optional opening stock.</item>
         <item>Name and MRP are required. Barcode is optional for scanning.</item>
         <item>Discount % applies when the item is added to a bill (unless selling price is set).</item>
         <item>Selling price overrides discount calculation when provided.</item>
+        <item>Use Adjust stock for restocking — changes are recorded in stock history.</item>
+    </string-array>
+
+    <!-- Stock / Inventory -->
+    <string name="help_stock_title">Inventory</string>
+    <string name="help_stock_overview">See on-hand quantities, filter low stock, adjust stock, and review movement history.</string>
+    <string name="help_stock_s1_title">How to use</string>
+    <string-array name="help_stock_s1">
+        <item>Search by name or barcode; toggle Low stock only to focus on shortages.</item>
+        <item>Stock in / Adjust — change quantity with an optional note.</item>
+        <item>Tap a row to view recent stock movements (sales, adjustments, opening).</item>
+        <item>Sales deduct stock on bill save; deleting a bill restores stock.</item>
     </string-array>
 
     <!-- Bills history -->
@@ -139,7 +155,8 @@
     <string name="help_settings_overview">Configure your shop, invoices, backups, and data management.</string>
     <string name="help_settings_s1_title">Sections</string>
     <string-array name="help_settings_s1">
-        <item>General — shop name, currency, default discount.</item>
+        <item>General — shop name, currency, default discount, appearance.</item>
+        <item>Inventory Settings — shortfall policy and low-stock threshold.</item>
         <item>Invoice Configuration — images, counter, and layout templates.</item>
         <item>Backup &amp; Restore — export and import your full data.</item>
         <item>Reset — clear data or restore from a JSON backup.</item>
@@ -155,6 +172,17 @@
         <item>Default discount % — pre-filled when adding items to a bill.</item>
         <item>Appearance — Light, Dark, Auto (day/night), or follow your phone theme.</item>
         <item>Changes save automatically when you leave a field.</item>
+    </string-array>
+
+    <!-- Inventory settings -->
+    <string name="help_inventory_settings_title">Inventory Settings</string>
+    <string name="help_inventory_settings_overview">Choose how bills handle short stock and when items count as low stock.</string>
+    <string name="help_inventory_settings_s1_title">Options</string>
+    <string-array name="help_inventory_settings_s1">
+        <item>Off — still track stock, but do not warn or block at Save Bill.</item>
+        <item>Warn — ask before saving when quantity exceeds available stock.</item>
+        <item>Block — prevent saving until quantities or stock are fixed.</item>
+        <item>Low stock threshold — used on Dashboard, Items, and Inventory screens.</item>
     </string-array>
 
     <!-- Invoice configuration hub -->

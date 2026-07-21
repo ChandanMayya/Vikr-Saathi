@@ -2,15 +2,18 @@ package com.kex.vikrsaathi.ui.item
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.databinding.ItemMasterBinding
 import com.kex.vikrsaathi.util.PriceCalculator
 
 class ItemAdapter(
     private val currencySymbol: String,
+    private val lowStockThreshold: Int,
     private val onEdit: (Item) -> Unit,
     private val onDelete: (Item) -> Unit
 ) : ListAdapter<Item, ItemAdapter.ViewHolder>(DiffCallback()) {
@@ -37,6 +40,13 @@ class ItemAdapter(
             binding.textItemMrp.text = PriceCalculator.formatAmount(item.mrp, currencySymbol)
             binding.textItemDiscount.text = String.format("%.1f%%", item.discount)
             binding.textItemBarcode.text = item.barcode?.ifBlank { null } ?: "-"
+            binding.textItemStock.text = item.stockQty.toString()
+            val stockColor = if (item.stockQty <= lowStockThreshold) {
+                ContextCompat.getColor(binding.root.context, R.color.orange_700)
+            } else {
+                ContextCompat.getColor(binding.root.context, R.color.text_primary_dark)
+            }
+            binding.textItemStock.setTextColor(stockColor)
             binding.buttonEditItem.setOnClickListener { onEdit(item) }
             binding.buttonDeleteItem.setOnClickListener { onDelete(item) }
         }

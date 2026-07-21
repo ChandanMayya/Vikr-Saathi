@@ -32,6 +32,13 @@
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
+            android:id="@+id/action_dashboard_to_stock"
+            app:destination="@id/stockFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
             android:id="@+id/action_dashboard_to_bills_history"
             app:destination="@id/billsHistoryFragment"
             app:enterAnim="@anim/nav_fade_in"
@@ -128,6 +135,12 @@
         tools:layout="@layout/fragment_items" />
 
     <fragment
+        android:id="@+id/stockFragment"
+        android:name="com.kex.vikrsaathi.ui.stock.StockFragment"
+        android:label="@string/inventory"
+        tools:layout="@layout/fragment_stock" />
+
+    <fragment
         android:id="@+id/billsHistoryFragment"
         android:name="com.kex.vikrsaathi.ui.bills.BillsHistoryFragment"
         android:label="@string/bills_history"
@@ -167,6 +180,13 @@
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
+            android:id="@+id/action_settings_to_inventory"
+            app:destination="@id/inventorySettingsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
             android:id="@+id/action_settings_to_invoice_configuration"
             app:destination="@id/invoiceConfigurationFragment"
             app:enterAnim="@anim/nav_fade_in"
@@ -194,6 +214,12 @@
         android:name="com.kex.vikrsaathi.ui.settings.GeneralSettingsFragment"
         android:label="@string/settings_general_title"
         tools:layout="@layout/fragment_general_settings" />
+
+    <fragment
+        android:id="@+id/inventorySettingsFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.InventorySettingsFragment"
+        android:label="@string/settings_inventory_title"
+        tools:layout="@layout/fragment_inventory_settings" />
 
     <fragment
         android:id="@+id/invoiceConfigurationFragment"

@@ -39,6 +39,15 @@ interface ItemDao {
     @Query("SELECT COUNT(*) FROM items WHERE barcode = :barcode AND id != :excludeId")
     suspend fun countByBarcode(barcode: String, excludeId: Long = 0): Int
 
+    @Query("UPDATE items SET stockQty = :stockQty WHERE id = :itemId")
+    suspend fun updateStockQty(itemId: Long, stockQty: Int)
+
+    @Query("SELECT * FROM items WHERE stockQty <= :threshold ORDER BY stockQty ASC, name ASC")
+    suspend fun getLowStockItems(threshold: Int): List<Item>
+
+    @Query("SELECT COUNT(*) FROM items WHERE stockQty <= :threshold")
+    suspend fun countLowStockItems(threshold: Int): Int
+
     @Query("DELETE FROM items")
     suspend fun deleteAll()
 }

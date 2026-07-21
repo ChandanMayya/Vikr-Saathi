@@ -16,5 +16,6 @@ data class Item(
     val mrp: Double,
     val discount: Double = 0.0,
     val sellingPrice: Double? = null,
-    val remarks: String = ""
+    val remarks: String = "",
+    val stockQty: Int = 0
 )

@@ -115,3 +115,33 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         db.execSQL("ALTER TABLE bill_drafts_new RENAME TO bill_drafts")
     }
 }
+
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE items ADD COLUMN stockQty INTEGER NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS stock_movements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                itemId INTEGER NOT NULL,
+                delta INTEGER NOT NULL,
+                quantityAfter INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                referenceType TEXT,
+                referenceId INTEGER,
+                note TEXT,
+                createdAt INTEGER NOT NULL,
+                FOREIGN KEY(itemId) REFERENCES items(id) ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_stock_movements_itemId_createdAt ON stock_movements(itemId, createdAt)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_stock_movements_referenceType_referenceId ON stock_movements(referenceType, referenceId)"
+        )
+    }
+}

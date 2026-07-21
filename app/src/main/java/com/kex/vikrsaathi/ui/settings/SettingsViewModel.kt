@@ -9,6 +9,7 @@ import com.kex.vikrsaathi.data.model.template.DataBindingKey
 import com.kex.vikrsaathi.data.model.template.ElementBounds
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.ThemeMode
 import kotlinx.coroutines.launch
 
@@ -29,6 +30,12 @@ class SettingsViewModel(
     private val _themeMode = MutableLiveData(repository.themeMode)
     val themeMode: LiveData<ThemeMode> = _themeMode
 
+    private val _inventoryMode = MutableLiveData(repository.inventoryMode)
+    val inventoryMode: LiveData<InventoryMode> = _inventoryMode
+
+    private val _lowStockThreshold = MutableLiveData(repository.lowStockThreshold)
+    val lowStockThreshold: LiveData<Int> = _lowStockThreshold
+
     fun saveShopName(name: String) {
         repository.shopName = name
         _shopName.value = name
@@ -47,6 +54,16 @@ class SettingsViewModel(
     fun saveThemeMode(mode: ThemeMode) {
         repository.themeMode = mode
         _themeMode.value = mode
+    }
+
+    fun saveInventoryMode(mode: InventoryMode) {
+        repository.inventoryMode = mode
+        _inventoryMode.value = mode
+    }
+
+    fun saveLowStockThreshold(threshold: Int) {
+        repository.lowStockThreshold = threshold
+        _lowStockThreshold.value = repository.lowStockThreshold
     }
 
     fun saveInvoiceConfig(

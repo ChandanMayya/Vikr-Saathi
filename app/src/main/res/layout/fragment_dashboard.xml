@@ -115,6 +115,62 @@
                             android:visibility="gone" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardLowStock"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardBackgroundColor="@color/surface_card"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="1dp"
+                    app:contentPadding="12dp"
+                    app:strokeColor="@color/stroke_subtle"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/low_stock_items"
+                            android:textAppearance="?attr/textAppearanceLabelLarge"
+                            android:textColor="@color/text_primary_dark"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/textLowStockSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textColor="@color/text_secondary_dark" />
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/recyclerLowStock"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:nestedScrollingEnabled="false"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/textLowStockViewAll"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:gravity="end"
+                            android:text="@string/low_stock_view_all"
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="@color/text_accent"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
@@ -247,6 +303,32 @@
                     <TextView
                         style="@style/VikrSaathiDashboardCardLabel"
                         android:text="@string/bills_history" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardStock"
+                style="@style/VikrSaathiDashboardCard"
+                android:layout_width="0dp"
+                android:layout_height="92dp"
+                android:layout_columnWeight="1"
+                app:cardBackgroundColor="@color/orange_800">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="8dp">
+
+                    <ImageView
+                        style="@style/VikrSaathiDashboardCardIcon"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_dashboard_stock" />
+
+                    <TextView
+                        style="@style/VikrSaathiDashboardCardLabel"
+                        android:text="@string/inventory" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

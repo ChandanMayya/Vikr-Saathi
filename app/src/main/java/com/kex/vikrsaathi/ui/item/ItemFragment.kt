@@ -13,6 +13,7 @@ import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.databinding.DialogItemFormBinding
+import com.kex.vikrsaathi.databinding.DialogStockAdjustBinding
 import com.kex.vikrsaathi.databinding.FragmentItemsBinding
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
@@ -45,6 +46,7 @@ class ItemFragment : Fragment() {
         val app = requireActivity().application as VikrSaathiApp
         adapter = ItemAdapter(
             currencySymbol = app.settingsRepository.currencySymbol,
+            lowStockThreshold = viewModel.lowStockThreshold,
             onEdit = { showItemDialog(it) },
             onDelete = { confirmDelete(it) }
         )
@@ -64,7 +66,19 @@ class ItemFragment : Fragment() {
             formBinding.editItemDiscount.setText(it.discount.toString())
             formBinding.editItemSellingPrice.setText(it.sellingPrice?.toString().orEmpty())
             formBinding.editItemUnit.setText(it.remarks)
-        } ?: formBinding.editItemDiscount.setText(viewModel.defaultDiscount.toString())
+            formBinding.layoutOpeningStock.visibility = View.GONE
+            formBinding.textCurrentStock.visibility = View.VISIBLE
+            formBinding.textCurrentStock.text = getString(R.string.current_stock, it.stockQty)
+            formBinding.buttonAdjustStock.visibility = View.VISIBLE
+            formBinding.buttonAdjustStock.setOnClickListener {
+                showAdjustStockDialog(existing)
+            }
+        } ?: run {
+            formBinding.editItemDiscount.setText(viewModel.defaultDiscount.toString())
+            formBinding.layoutOpeningStock.visibility = View.VISIBLE
+            formBinding.textCurrentStock.visibility = View.GONE
+            formBinding.buttonAdjustStock.visibility = View.GONE
+        }
 
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(if (existing == null) R.string.add_item else R.string.edit_item)
@@ -76,6 +90,7 @@ class ItemFragment : Fragment() {
                     Toast.makeText(requireContext(), R.string.invalid_item, Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
+                val openingStock = formBinding.editOpeningStock.text.toString().toIntOrNull() ?: 0
                 val item = Item(
                     id = existing?.id ?: 0,
                     name = name,
@@ -83,10 +98,37 @@ class ItemFragment : Fragment() {
                     mrp = mrp,
                     discount = formBinding.editItemDiscount.text.toString().toDoubleOrNull() ?: 0.0,
                     sellingPrice = formBinding.editItemSellingPrice.text.toString().toDoubleOrNull(),
-                    remarks = formBinding.editItemUnit.text.toString().trim()
+                    remarks = formBinding.editItemUnit.text.toString().trim(),
+                    stockQty = existing?.stockQty ?: 0
                 )
-                viewModel.saveItem(item) { result ->
+                viewModel.saveItem(item, openingStock = if (existing == null) openingStock else 0) { result ->
                     result.onFailure {
+                        Toast.makeText(
+                            requireContext(),
+                            it.message ?: getString(R.string.save_failed),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showAdjustStockDialog(item: Item) {
+        val formBinding = DialogStockAdjustBinding.inflate(layoutInflater)
+        formBinding.textAdjustCurrentStock.text = getString(R.string.current_stock, item.stockQty)
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.adjust_stock)
+            .setView(formBinding.root)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val delta = formBinding.editStockDelta.text.toString().toIntOrNull() ?: 0
+                if (delta == 0) return@setPositiveButton
+                val note = formBinding.editStockNote.text.toString().trim()
+                viewModel.adjustStock(item.id, delta, note.ifEmpty { null }) { result ->
+                    result.onSuccess {
+                        Toast.makeText(requireContext(), R.string.stock_adjusted, Toast.LENGTH_SHORT).show()
+                    }.onFailure {
                         Toast.makeText(
                             requireContext(),
                             it.message ?: getString(R.string.save_failed),

@@ -13,9 +13,11 @@ import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
+import com.kex.vikrsaathi.data.repository.InventoryRepository
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.data.entity.StockMovement
 import com.kex.vikrsaathi.util.BackupSaveResult
 import com.kex.vikrsaathi.util.BackupStorageHelper
 import com.kex.vikrsaathi.util.AppThemeManager
@@ -35,7 +37,8 @@ class BackupManager(
     private val customerRepository: CustomerRepository,
     private val itemRepository: ItemRepository,
     private val billRepository: BillRepository,
-    private val invoiceTemplateRepository: InvoiceTemplateRepository
+    private val invoiceTemplateRepository: InvoiceTemplateRepository,
+    private val inventoryRepository: InventoryRepository
 ) {
 
     suspend fun exportBackup(
@@ -65,7 +68,8 @@ class BackupManager(
                 bills = payload.bills,
                 templates = payload.templates,
                 templateVersions = payload.templateVersions,
-                templateImages = payload.templateImages
+                templateImages = payload.templateImages,
+                stockMovements = payload.stockMovements
             )
         }
     }
@@ -94,7 +98,8 @@ class BackupManager(
         val bills: List<com.kex.vikrsaathi.data.model.BillWithDetails>,
         val templates: List<InvoiceTemplateEntity>,
         val templateVersions: List<InvoiceTemplateVersionEntity>,
-        val templateImages: List<TemplateImageBackup>
+        val templateImages: List<TemplateImageBackup>,
+        val stockMovements: List<StockMovement>
     )
 
     private suspend fun collectBackupPayload(
@@ -113,6 +118,13 @@ class BackupManager(
         val items = if (options.includeItems) {
             onProgress("Reading items…", 25)
             database.itemDao().getAllItemsSync()
+        } else {
+            emptyList()
+        }
+
+        val stockMovements = if (options.includeItems) {
+            onProgress("Reading stock movements…", 30)
+            inventoryRepository.getAllMovementsSync()
         } else {
             emptyList()
         }
@@ -150,7 +162,15 @@ class BackupManager(
         }
 
         onProgress("Building backup file…", 88)
-        return BackupPayload(customers, items, bills, templates, templateVersions, templateImages)
+        return BackupPayload(
+            customers,
+            items,
+            bills,
+            templates,
+            templateVersions,
+            templateImages,
+            stockMovements
+        )
     }
 
     suspend fun readManifest(uri: Uri): BackupManifest = withContext(Dispatchers.IO) {
@@ -249,14 +269,15 @@ class BackupManager(
                             return@forEach
                         }
                     }
-                    val id = itemRepository.insert(
+                    val id = itemRepository.insertWithStock(
                         Item(
                             name = backup.name,
                             barcode = backup.barcode,
                             mrp = backup.mrp,
                             discount = backup.discount,
                             sellingPrice = backup.sellingPrice,
-                            remarks = backup.remarks
+                            remarks = backup.remarks,
+                            stockQty = backup.stockQty
                         )
                     )
                     itemIdMap[backup.legacyId] = id
@@ -264,6 +285,27 @@ class BackupManager(
                 } catch (e: Exception) {
                     itemsSkipped++
                     errors.add("Item ${backup.name}: ${e.message}")
+                }
+            }
+
+            onProgress("Importing stock movements…", 48)
+            BackupJsonCodec.parseStockMovements(root).forEach { backup ->
+                val mappedItemId = itemIdMap[backup.itemLegacyId] ?: return@forEach
+                try {
+                    inventoryRepository.importMovement(
+                        StockMovement(
+                            itemId = mappedItemId,
+                            delta = backup.delta,
+                            quantityAfter = backup.quantityAfter,
+                            type = backup.type,
+                            referenceType = backup.referenceType,
+                            referenceId = backup.referenceId,
+                            note = backup.note,
+                            createdAt = backup.createdAt
+                        )
+                    )
+                } catch (e: Exception) {
+                    errors.add("Stock movement: ${e.message}")
                 }
             }
         }
@@ -355,7 +397,7 @@ class BackupManager(
     private fun validateSchema(json: String) {
         val root = JSONObject(json)
         val version = root.optInt("schemaVersion", 0)
-        if (version != BackupJsonCodec.SCHEMA_VERSION) {
+        if (version !in BackupJsonCodec.SUPPORTED_SCHEMA_VERSIONS) {
             throw IllegalArgumentException("Unsupported backup version: $version")
         }
     }
@@ -370,6 +412,8 @@ class BackupManager(
         settingsRepository.currencySymbol = backup.currencySymbol.ifBlank { settingsRepository.currencySymbol }
         settingsRepository.defaultDiscount = backup.defaultDiscount
         settingsRepository.themeMode = backup.themeMode
+        settingsRepository.inventoryMode = backup.inventoryMode
+        settingsRepository.lowStockThreshold = backup.lowStockThreshold
         AppThemeManager.apply(backup.themeMode)
 
         BackupJsonCodec.decodeBitmap(backup.headerImageBase64)?.let {

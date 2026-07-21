@@ -12,6 +12,7 @@ import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.ThemeMode
 import org.json.JSONArray
 import org.json.JSONObject
@@ -19,7 +20,8 @@ import java.io.ByteArrayOutputStream
 
 object BackupJsonCodec {
 
-    const val SCHEMA_VERSION = 1
+    const val SCHEMA_VERSION = 2
+    val SUPPORTED_SCHEMA_VERSIONS = setOf(1, 2)
 
     fun encodeBitmap(bitmap: Bitmap?): String? {
         if (bitmap == null) return null
@@ -50,11 +52,15 @@ object BackupJsonCodec {
         bills: List<BillWithDetails>,
         templates: List<InvoiceTemplateEntity>,
         templateVersions: List<InvoiceTemplateVersionEntity>,
-        templateImages: List<TemplateImageBackup>
+        templateImages: List<TemplateImageBackup>,
+        stockMovements: List<com.kex.vikrsaathi.data.entity.StockMovement> = emptyList()
     ): String {
         val includes = buildList {
             if (options.includeCustomers) add("customers")
-            if (options.includeItems) add("items")
+            if (options.includeItems) {
+                add("items")
+                if (stockMovements.isNotEmpty()) add("stock_movements")
+            }
             if (options.includeSales) add("sales")
             if (options.includeSettings) add("settings")
             if (options.includeInvoiceConfig) add("invoice_config")
@@ -74,6 +80,12 @@ object BackupJsonCodec {
             }
             if (options.includeItems) {
                 put("items", JSONArray().apply { items.forEach { put(encodeItem(it)) } })
+                if (stockMovements.isNotEmpty()) {
+                    put(
+                        "stockMovements",
+                        JSONArray().apply { stockMovements.forEach { put(encodeStockMovement(it)) } }
+                    )
+                }
             }
             if (options.includeSales) {
                 put("bills", JSONArray().apply { bills.forEach { put(encodeBill(it)) } })
@@ -135,6 +147,15 @@ object BackupJsonCodec {
         }
     }
 
+    fun parseStockMovements(root: JSONObject): List<StockMovementBackup> {
+        val array = root.optJSONArray("stockMovements") ?: return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                add(decodeStockMovement(array.getJSONObject(i)))
+            }
+        }
+    }
+
     fun parseBills(root: JSONObject): List<BillBackup> {
         val array = root.optJSONArray("bills") ?: return emptyList()
         return buildList {
@@ -182,6 +203,8 @@ object BackupJsonCodec {
             put("currencySymbol", settings.currencySymbol)
             put("defaultDiscount", settings.defaultDiscount)
             put("themeMode", settings.themeMode.name)
+            put("inventoryMode", settings.inventoryMode.name)
+            put("lowStockThreshold", settings.lowStockThreshold)
             put("invoicePrefix", settings.invoicePrefix)
             put("invoiceSuffix", settings.invoiceSuffix)
             put("invoiceSeparator", settings.invoiceSeparator)
@@ -202,6 +225,10 @@ object BackupJsonCodec {
             currencySymbol = obj.optString("currencySymbol", "₹"),
             defaultDiscount = obj.optDouble("defaultDiscount", 0.0),
             themeMode = ThemeMode.fromStored(obj.optString("themeMode", ThemeMode.SYSTEM.name)),
+            inventoryMode = InventoryMode.fromStored(
+                obj.optString("inventoryMode", InventoryMode.WARN.name)
+            ),
+            lowStockThreshold = obj.optInt("lowStockThreshold", 5),
             invoicePrefix = obj.optString("invoicePrefix", ""),
             invoiceSuffix = obj.optString("invoiceSuffix", ""),
             invoiceSeparator = obj.optString("invoiceSeparator", "/"),
@@ -248,6 +275,7 @@ object BackupJsonCodec {
             put("discount", item.discount)
             item.sellingPrice?.let { put("sellingPrice", it) }
             put("remarks", item.remarks)
+            put("stockQty", item.stockQty)
         }
     }
 
@@ -258,7 +286,38 @@ object BackupJsonCodec {
         mrp = obj.getDouble("mrp"),
         discount = obj.getDouble("discount"),
         sellingPrice = obj.optDouble("sellingPrice").takeIf { !obj.isNull("sellingPrice") },
-        remarks = obj.optString("remarks", "")
+        remarks = obj.optString("remarks", ""),
+        stockQty = obj.optInt("stockQty", 0)
+    )
+
+    private fun encodeStockMovement(
+        movement: com.kex.vikrsaathi.data.entity.StockMovement
+    ): JSONObject {
+        return JSONObject().apply {
+            put("itemLegacyId", movement.itemId)
+            put("delta", movement.delta)
+            put("quantityAfter", movement.quantityAfter)
+            put("type", movement.type)
+            movement.referenceType?.let { put("referenceType", it) }
+            movement.referenceId?.let { put("referenceId", it) }
+            movement.note?.let { put("note", it) }
+            put("createdAt", movement.createdAt)
+        }
+    }
+
+    private fun decodeStockMovement(obj: JSONObject) = StockMovementBackup(
+        itemLegacyId = obj.getLong("itemLegacyId"),
+        delta = obj.getInt("delta"),
+        quantityAfter = obj.getInt("quantityAfter"),
+        type = obj.getString("type"),
+        referenceType = obj.optString("referenceType").takeIf { it.isNotBlank() },
+        referenceId = if (obj.has("referenceId") && !obj.isNull("referenceId")) {
+            obj.getLong("referenceId")
+        } else {
+            null
+        },
+        note = obj.optString("note").takeIf { it.isNotBlank() },
+        createdAt = obj.optLong("createdAt", System.currentTimeMillis())
     )
 
     private fun encodeBill(details: BillWithDetails): JSONObject {
@@ -365,6 +424,8 @@ data class SettingsBackup(
     val currencySymbol: String,
     val defaultDiscount: Double,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val inventoryMode: InventoryMode = InventoryMode.WARN,
+    val lowStockThreshold: Int = 5,
     val invoicePrefix: String,
     val invoiceSuffix: String,
     val invoiceSeparator: String,
@@ -394,7 +455,19 @@ data class ItemBackup(
     val mrp: Double,
     val discount: Double,
     val sellingPrice: Double?,
-    val remarks: String
+    val remarks: String,
+    val stockQty: Int = 0
+)
+
+data class StockMovementBackup(
+    val itemLegacyId: Long,
+    val delta: Int,
+    val quantityAfter: Int,
+    val type: String,
+    val referenceType: String?,
+    val referenceId: Long?,
+    val note: String?,
+    val createdAt: Long
 )
 
 data class BillBackup(

@@ -6,8 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.R
+import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentGeneralSettingsBinding
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu

@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import java.io.File
 import java.io.FileOutputStream
+import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.ThemeMode
 
 /**
@@ -34,6 +35,14 @@ class SettingsRepository(context: Context) {
     var themeMode: ThemeMode
         get() = ThemeMode.fromStored(prefs.getString(KEY_THEME_MODE, null))
         set(value) = prefs.edit().putString(KEY_THEME_MODE, value.name).apply()
+
+    var inventoryMode: InventoryMode
+        get() = InventoryMode.fromStored(prefs.getString(KEY_INVENTORY_MODE, null))
+        set(value) = prefs.edit().putString(KEY_INVENTORY_MODE, value.name).apply()
+
+    var lowStockThreshold: Int
+        get() = prefs.getInt(KEY_LOW_STOCK_THRESHOLD, DEFAULT_LOW_STOCK_THRESHOLD).coerceAtLeast(0)
+        set(value) = prefs.edit().putInt(KEY_LOW_STOCK_THRESHOLD, value.coerceAtLeast(0)).apply()
 
     var invoicePrefix: String
         get() = prefs.getString(KEY_INVOICE_PREFIX, "") ?: ""
@@ -76,6 +85,8 @@ class SettingsRepository(context: Context) {
         shopName = DEFAULT_SHOP_NAME
         currencySymbol = DEFAULT_CURRENCY
         defaultDiscount = 0.0
+        inventoryMode = InventoryMode.WARN
+        lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD
         File(filesDir, HEADER_FILE).delete()
         File(filesDir, SIGNATURE_FILE).delete()
         File(filesDir, LOGO_FILE).delete()
@@ -144,6 +155,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_CURRENCY = "currency_symbol"
         private const val KEY_DEFAULT_DISCOUNT = "default_discount"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_INVENTORY_MODE = "inventory_mode"
+        private const val KEY_LOW_STOCK_THRESHOLD = "low_stock_threshold"
         private const val KEY_INVOICE_PREFIX = "invoice_prefix"
         private const val KEY_INVOICE_SUFFIX = "invoice_suffix"
         private const val KEY_INVOICE_SEPARATOR = "invoice_separator"
@@ -151,6 +164,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_INVOICE_COUNTER_DIGITS = "invoice_counter_digits"
         private const val DEFAULT_SHOP_NAME = "Vikr Saathi Shop"
         private const val DEFAULT_CURRENCY = "₹"
+        private const val DEFAULT_LOW_STOCK_THRESHOLD = 5
         private const val HEADER_FILE = "header.png"
         private const val SIGNATURE_FILE = "signature.png"
         private const val LOGO_FILE = "logo.png"

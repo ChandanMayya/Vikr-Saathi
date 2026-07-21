@@ -151,6 +151,33 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/VikrSaathiBillLineLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/stock" />
+
+            <TextView
+                android:id="@+id/textItemStock"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_bill_line_input"
+                android:gravity="center"
+                android:minHeight="36dp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="8dp"
+                android:textColor="@color/text_primary_dark"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:gravity="end"
             android:orientation="horizontal">

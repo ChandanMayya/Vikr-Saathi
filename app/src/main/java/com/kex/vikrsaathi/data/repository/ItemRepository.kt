@@ -8,7 +8,11 @@ class ItemRepository(private val itemDao: ItemDao) {
 
     val allItems: LiveData<List<Item>> = itemDao.getAllItems()
 
-    suspend fun insert(item: Item): Long = itemDao.insert(item)
+    suspend fun insert(item: Item): Long = itemDao.insert(item.copy(stockQty = 0))
+
+    /** Backup/import path — preserves exported on-hand quantity. */
+    suspend fun insertWithStock(item: Item): Long =
+        itemDao.insert(item.copy(stockQty = item.stockQty.coerceAtLeast(0)))
 
     suspend fun update(item: Item) = itemDao.update(item)
 
@@ -17,6 +21,8 @@ class ItemRepository(private val itemDao: ItemDao) {
     suspend fun getById(id: Long): Item? = itemDao.getItemById(id)
 
     suspend fun getByBarcode(barcode: String): Item? = itemDao.getItemByBarcode(barcode)
+
+    suspend fun getAllSync(): List<Item> = itemDao.getAllItemsSync()
 
     suspend fun searchByName(query: String): List<Item> {
         if (query.isBlank()) return emptyList()
@@ -35,4 +41,7 @@ class ItemRepository(private val itemDao: ItemDao) {
         if (barcode.isBlank()) return true
         return itemDao.countByBarcode(barcode, excludeId) == 0
     }
+
+    suspend fun getLowStockItems(threshold: Int): List<Item> =
+        itemDao.getLowStockItems(threshold)
 }

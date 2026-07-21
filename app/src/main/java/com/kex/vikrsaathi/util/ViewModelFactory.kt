@@ -16,6 +16,7 @@ import com.kex.vikrsaathi.ui.settings.InvoiceTemplatesViewModel
 import com.kex.vikrsaathi.ui.settings.backup.BackupViewModel
 import com.kex.vikrsaathi.ui.settings.reset.ResetViewModel
 import com.kex.vikrsaathi.ui.settings.invoicebuilder.InvoiceBuilderViewModel
+import com.kex.vikrsaathi.ui.stock.StockViewModel
 
 class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Factory {
 
@@ -23,11 +24,25 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
             modelClass.isAssignableFrom(DashboardViewModel::class.java) ->
-                DashboardViewModel(app.settingsRepository, app.billRepository) as T
+                DashboardViewModel(
+                    app.settingsRepository,
+                    app.billRepository,
+                    app.inventoryRepository
+                ) as T
             modelClass.isAssignableFrom(CustomerViewModel::class.java) ->
                 CustomerViewModel(app.customerRepository) as T
             modelClass.isAssignableFrom(ItemViewModel::class.java) ->
-                ItemViewModel(app.itemRepository, app.settingsRepository) as T
+                ItemViewModel(
+                    app.itemRepository,
+                    app.settingsRepository,
+                    app.inventoryRepository
+                ) as T
+            modelClass.isAssignableFrom(StockViewModel::class.java) ->
+                StockViewModel(
+                    app.itemRepository,
+                    app.inventoryRepository,
+                    app.settingsRepository
+                ) as T
             modelClass.isAssignableFrom(BillViewModel::class.java) ->
                 BillViewModel(
                     app.customerRepository,
@@ -35,7 +50,8 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.billRepository,
                     app.billDraftRepository,
                     app.settingsRepository,
-                    app.invoiceTemplateRepository
+                    app.invoiceTemplateRepository,
+                    app.inventoryRepository
                 ) as T
             modelClass.isAssignableFrom(BillPreviewViewModel::class.java) ->
                 BillPreviewViewModel(

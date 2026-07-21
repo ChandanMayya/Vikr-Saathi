@@ -115,6 +115,7 @@ class ResetManager(
             if (ResetOptions.CATEGORY_ITEMS in sections) {
                 onProgress("Deleting items…", 66)
                 database.itemDao().deleteAll()
+                database.stockMovementDao().deleteAll()
             }
             if (ResetOptions.CATEGORY_TEMPLATES in sections) {
                 onProgress("Deleting invoice templates…", 74)

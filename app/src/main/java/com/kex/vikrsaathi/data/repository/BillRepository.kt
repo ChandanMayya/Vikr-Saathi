@@ -9,13 +9,15 @@ import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.data.model.DashboardTodayStats
 import com.kex.vikrsaathi.data.model.DashboardTopItem
+import com.kex.vikrsaathi.domain.inventory.StockDeltaCalculator
 import com.kex.vikrsaathi.util.DayRange
 import com.kex.vikrsaathi.util.InvoiceNumberFormatter
 
 class BillRepository(
     private val billDao: BillDao,
     private val billItemDao: BillItemDao,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val inventoryRepository: InventoryRepository
 ) {
 
     val allBills: LiveData<List<Bill>> = billDao.getAllBills()
@@ -27,8 +29,13 @@ class BillRepository(
         billDao.getBillWithDetails(billId)
 
     suspend fun deleteBill(bill: Bill) {
+        val items = billItemDao.getItemsForBill(bill.id)
+        val quantities = StockDeltaCalculator.aggregateQuantities(
+            items.map { it.itemId to it.quantity }
+        )
         billItemDao.deleteItemsForBill(bill.id)
         billDao.deleteBill(bill)
+        inventoryRepository.reverseBillStock(bill.id, quantities)
     }
 
     suspend fun saveBill(
@@ -38,10 +45,14 @@ class BillRepository(
     ): Long {
         val total = lineItems.sumOf { it.lineTotal }
         val billId: Long
+        val oldQuantities: Map<Long, Int>
 
         if (existingBillId != null) {
             val existing = billDao.getBillById(existingBillId)
                 ?: return saveBill(customerId, lineItems, null)
+            oldQuantities = StockDeltaCalculator.aggregateQuantities(
+                billItemDao.getItemsForBill(existingBillId).map { it.itemId to it.quantity }
+            )
             billId = existingBillId
             billDao.updateBill(
                 existing.copy(
@@ -52,6 +63,7 @@ class BillRepository(
             )
             billItemDao.deleteItemsForBill(existingBillId)
         } else {
+            oldQuantities = emptyMap()
             val (billNumber, counter) = generateNextInvoiceNumber()
             val bill = Bill(
                 billNumber = billNumber,
@@ -74,6 +86,11 @@ class BillRepository(
             )
         }
         billItemDao.insertAll(billItems)
+        inventoryRepository.applyBillStockChanges(
+            billId = billId,
+            oldQuantities = oldQuantities,
+            newLineItems = lineItems
+        )
         return billId
     }
 
@@ -139,6 +156,7 @@ class BillRepository(
             )
         }
         billItemDao.insertAll(billItems)
+        // Do not apply SALE movements on backup import — stockQty comes from item export.
 
         if (invoiceCounter > 0) {
             val dbMax = billDao.getMaxInvoiceCounter() ?: 0

@@ -589,12 +589,57 @@ class BillFragment : Fragment() {
         if (buyerName.isBlank()) {
             MaterialAlertDialogBuilder(requireContext())
                 .setMessage(R.string.walk_in_customer_confirm)
-                .setPositiveButton(R.string.yes) { _, _ -> proceedSaveBill(buyerName) }
+                .setPositiveButton(R.string.yes) { _, _ -> checkStockAndSave(buyerName) }
                 .setNegativeButton(R.string.no, null)
                 .show()
             return
         }
-        proceedSaveBill(buyerName)
+        checkStockAndSave(buyerName)
+    }
+
+    private fun checkStockAndSave(buyerName: String) {
+        if (viewModel.inventoryMode == com.kex.vikrsaathi.util.InventoryMode.OFF) {
+            proceedSaveBill(buyerName)
+            return
+        }
+        val address = binding.editBuyerAddress.text.toString().trim()
+        val phone = binding.editBuyerPhone.text.toString().trim()
+        viewModel.prepareSaveBill(buyerName, address, phone) { shortfalls ->
+            if (shortfalls.isEmpty()) {
+                proceedSaveBill(buyerName)
+                return@prepareSaveBill
+            }
+            val details = shortfalls.joinToString("\n") {
+                getString(
+                    R.string.stock_shortfall_line,
+                    it.itemName,
+                    it.available,
+                    it.required
+                )
+            }
+            when (viewModel.inventoryMode) {
+                com.kex.vikrsaathi.util.InventoryMode.BLOCK -> {
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.insufficient_stock_title)
+                        .setMessage(
+                            getString(R.string.insufficient_stock_block_message) + "\n\n" + details
+                        )
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                }
+                com.kex.vikrsaathi.util.InventoryMode.WARN -> {
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.insufficient_stock_title)
+                        .setMessage(
+                            getString(R.string.insufficient_stock_warn_message) + "\n\n" + details
+                        )
+                        .setPositiveButton(R.string.yes) { _, _ -> proceedSaveBill(buyerName) }
+                        .setNegativeButton(R.string.no, null)
+                        .show()
+                }
+                com.kex.vikrsaathi.util.InventoryMode.OFF -> proceedSaveBill(buyerName)
+            }
+        }
     }
 
     private fun proceedSaveBill(buyerName: String) {

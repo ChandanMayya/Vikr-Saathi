@@ -5,6 +5,7 @@ import com.kex.vikrsaathi.data.database.AppDatabase
 import com.kex.vikrsaathi.data.repository.BillDraftRepository
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
+import com.kex.vikrsaathi.data.repository.InventoryRepository
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
@@ -24,17 +25,25 @@ class VikrSaathiApp : Application() {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val database by lazy { AppDatabase.getInstance(this) }
+    val settingsRepository by lazy { SettingsRepository(this) }
     val customerRepository by lazy { CustomerRepository(database.customerDao()) }
     val itemRepository by lazy { ItemRepository(database.itemDao()) }
+    val inventoryRepository by lazy {
+        InventoryRepository(
+            database = database,
+            itemDao = database.itemDao(),
+            stockMovementDao = database.stockMovementDao()
+        )
+    }
     val billRepository by lazy {
         BillRepository(
             database.billDao(),
             database.billItemDao(),
-            settingsRepository
+            settingsRepository,
+            inventoryRepository
         )
     }
     val billDraftRepository by lazy { BillDraftRepository(database.billDraftDao()) }
-    val settingsRepository by lazy { SettingsRepository(this) }
     val invoiceTemplateRepository by lazy {
         InvoiceTemplateRepository(
             database.invoiceTemplateDao(),
@@ -51,7 +60,8 @@ class VikrSaathiApp : Application() {
             customerRepository = customerRepository,
             itemRepository = itemRepository,
             billRepository = billRepository,
-            invoiceTemplateRepository = invoiceTemplateRepository
+            invoiceTemplateRepository = invoiceTemplateRepository,
+            inventoryRepository = inventoryRepository
         )
     }
     val resetHistoryStore by lazy { ResetHistoryStore(this) }

@@ -11,6 +11,7 @@ import com.kex.vikrsaathi.data.dao.CustomerDao
 import com.kex.vikrsaathi.data.dao.InvoiceTemplateDao
 import com.kex.vikrsaathi.data.dao.InvoiceTemplateVersionDao
 import com.kex.vikrsaathi.data.dao.ItemDao
+import com.kex.vikrsaathi.data.dao.StockMovementDao
 import com.kex.vikrsaathi.data.entity.Bill
 import com.kex.vikrsaathi.data.entity.BillDraftEntity
 import com.kex.vikrsaathi.data.entity.BillItem
@@ -18,6 +19,7 @@ import com.kex.vikrsaathi.data.entity.Customer
 import com.kex.vikrsaathi.data.entity.InvoiceTemplateEntity
 import com.kex.vikrsaathi.data.entity.InvoiceTemplateVersionEntity
 import com.kex.vikrsaathi.data.entity.Item
+import com.kex.vikrsaathi.data.entity.StockMovement
 
 @Database(
     entities = [
@@ -27,9 +29,10 @@ import com.kex.vikrsaathi.data.entity.Item
         BillItem::class,
         InvoiceTemplateEntity::class,
         InvoiceTemplateVersionEntity::class,
-        BillDraftEntity::class
+        BillDraftEntity::class,
+        StockMovement::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -41,6 +44,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun billItemDao(): BillItemDao
     abstract fun invoiceTemplateDao(): InvoiceTemplateDao
     abstract fun invoiceTemplateVersionDao(): InvoiceTemplateVersionDao
+    abstract fun stockMovementDao(): StockMovementDao
 
     companion object {
         @Volatile
@@ -53,7 +57,14 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "vikr_saathi.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(
+                        MIGRATION_1_2,
+                        MIGRATION_2_3,
+                        MIGRATION_3_4,
+                        MIGRATION_4_5,
+                        MIGRATION_5_6,
+                        MIGRATION_6_7
+                    )
                     .build()
                     .also { INSTANCE = it }
             }
