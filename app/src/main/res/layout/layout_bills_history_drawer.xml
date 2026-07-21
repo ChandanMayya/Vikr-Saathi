@@ -80,6 +80,40 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
+            android:text="@string/view_mode"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="@color/text_secondary_dark"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/radioViewMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp">
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioViewComfortable"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/view_mode_comfortable" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioViewCompact"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/view_mode_compact" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioViewDetails"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/view_mode_details" />
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
             android:text="@string/reports_section"
             android:textAppearance="?attr/textAppearanceTitleSmall"
             android:textColor="@color/text_secondary_dark"

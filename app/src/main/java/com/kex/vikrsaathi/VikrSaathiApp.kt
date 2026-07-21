@@ -14,6 +14,7 @@ import com.kex.vikrsaathi.data.reset.ResetHistoryStore
 import com.kex.vikrsaathi.data.reset.ResetManager
 import com.kex.vikrsaathi.util.BillsHistoryPreferences
 import com.kex.vikrsaathi.util.InvoiceBuilderPreferences
+import com.kex.vikrsaathi.util.ListViewPreferences
 import com.kex.vikrsaathi.util.AppThemeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +53,7 @@ class VikrSaathiApp : Application() {
     }
     val invoiceBuilderPreferences by lazy { InvoiceBuilderPreferences(this) }
     val billsHistoryPreferences by lazy { BillsHistoryPreferences(this) }
+    val listViewPreferences by lazy { ListViewPreferences(this) }
     val backupManager by lazy {
         BackupManager(
             context = this,

@@ -6,17 +6,22 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.databinding.DialogItemFormBinding
 import com.kex.vikrsaathi.databinding.DialogStockAdjustBinding
 import com.kex.vikrsaathi.databinding.FragmentItemsBinding
+import com.kex.vikrsaathi.ui.common.applyListViewMode
+import com.kex.vikrsaathi.ui.common.installListViewOptionsDrawer
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
+import com.kex.vikrsaathi.util.ListViewMode
+import com.kex.vikrsaathi.util.ListViewPreferences
+import com.kex.vikrsaathi.util.ListViewScreen
 import com.kex.vikrsaathi.util.ViewModelFactory
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
@@ -30,6 +35,8 @@ class ItemFragment : Fragment() {
     }
 
     private lateinit var adapter: ItemAdapter
+    private lateinit var listViewPrefs: ListViewPreferences
+    private var viewMode: ListViewMode = ListViewMode.COMFORTABLE
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -42,19 +49,39 @@ class ItemFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        installHelpMenu(HelpScreen.ITEMS)
         val app = requireActivity().application as VikrSaathiApp
+        listViewPrefs = app.listViewPreferences
+        viewMode = listViewPrefs.getMode(ListViewScreen.ITEMS)
+
+        installHelpMenu(HelpScreen.ITEMS)
+        installListViewOptionsDrawer(
+            drawerLayout = binding.drawerLayout,
+            optionsTitleView = binding.optionsDrawer.textOptionsTitle,
+            titleRes = R.string.items_options,
+            radioViewMode = binding.optionsDrawer.radioViewMode,
+            currentMode = { viewMode },
+            onModeSelected = ::applyViewMode
+        )
+
         adapter = ItemAdapter(
             currencySymbol = app.settingsRepository.currencySymbol,
             lowStockThreshold = viewModel.lowStockThreshold,
             onEdit = { showItemDialog(it) },
             onDelete = { confirmDelete(it) }
         )
-        binding.recyclerItems.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerItems.adapter = adapter
+        applyViewMode(viewMode, persist = false)
 
         viewModel.items.observe(viewLifecycleOwner) { adapter.submitList(it) }
         binding.fabAddItem.setOnClickListener { showItemDialog(null) }
+    }
+
+    private fun applyViewMode(mode: ListViewMode, persist: Boolean = true) {
+        viewMode = mode
+        if (persist) listViewPrefs.setMode(ListViewScreen.ITEMS, mode)
+        adapter.viewMode = mode
+        binding.recyclerItems.applyListViewMode(mode)
+        binding.detailsHeader.root.isVisible = mode == ListViewMode.DETAILS
     }
 
     private fun showItemDialog(existing: Item?) {

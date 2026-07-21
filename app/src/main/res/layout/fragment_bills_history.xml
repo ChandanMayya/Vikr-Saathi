@@ -148,6 +148,13 @@
             android:textColor="@color/text_secondary_dark"
             android:textStyle="bold" />
 
+        <include
+            android:id="@+id/detailsHeader"
+            layout="@layout/layout_details_header_bills"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerBills"
             android:layout_width="match_parent"

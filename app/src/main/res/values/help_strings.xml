@@ -85,6 +85,7 @@
     <string-array name="help_customers_s1">
         <item>Tap a customer to edit name, address, and phone.</item>
         <item>Delete removes the customer (existing bills keep the name used at sale time).</item>
+        <item>Menu (⋮) — open options to switch View mode: Comfortable, Compact (2 columns), or Details.</item>
     </string-array>
     <string name="help_customers_s2_title">Add / edit customer</string>
     <string-array name="help_customers_s2">
@@ -101,6 +102,7 @@
         <item>Each card shows name, MRP, discount, selling price, and stock.</item>
         <item>Stock highlighted in orange when at or below the low-stock threshold.</item>
         <item>Tap Edit to change details; Adjust stock to add or remove quantity.</item>
+        <item>Menu (⋮) — open options to switch View mode: Comfortable, Compact (2 columns), or Details.</item>
     </string-array>
     <string name="help_items_s2_title">Add / edit item</string>
     <string-array name="help_items_s2">
@@ -120,6 +122,7 @@
         <item>Stock in / Adjust — change quantity with an optional note.</item>
         <item>Tap a row to view recent stock movements (sales, adjustments, opening).</item>
         <item>Sales deduct stock on bill save; deleting a bill restores stock.</item>
+        <item>Menu (⋮) — open options to switch View mode: Comfortable, Compact (2 columns), or Details.</item>
     </string-array>
 
     <!-- Bills history -->
@@ -128,6 +131,7 @@
     <string name="help_bills_history_s1_title">Filters &amp; sort</string>
     <string-array name="help_bills_history_s1">
         <item>Menu (⋮) — toggle search, date range, and counter filters.</item>
+        <item>View mode in the same menu — Comfortable, Compact (2 columns), or Details.</item>
         <item>Sort — by date (oldest first) or invoice number (ascending).</item>
         <item>Clear filters resets active filter values.</item>
     </string-array>
@@ -171,6 +175,7 @@
         <item>Currency symbol — used for all amounts (e.g. ₹).</item>
         <item>Default discount % — pre-filled when adding items to a bill.</item>
         <item>Appearance — Light, Dark, Auto (day/night), or follow your phone theme.</item>
+        <item>Master view mode — default list density for Customers, Items, Inventory, and Bills History. A choice on a screen overrides this for that screen only.</item>
         <item>Changes save automatically when you leave a field.</item>
     </string-array>
 

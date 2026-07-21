@@ -12,6 +12,8 @@ import com.kex.vikrsaathi.databinding.FragmentGeneralSettingsBinding
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.AppThemeManager
+import com.kex.vikrsaathi.util.ListViewMode
+import com.kex.vikrsaathi.util.ListViewPreferences
 import com.kex.vikrsaathi.util.ThemeMode
 import com.kex.vikrsaathi.util.ViewModelFactory
 
@@ -26,6 +28,8 @@ class GeneralSettingsFragment : Fragment() {
 
     private val autoSave = SettingsAutoSave(onSave = { persistSettings() })
     private var suppressThemeSelection = false
+    private var suppressViewModeSelection = false
+    private lateinit var listViewPrefs: ListViewPreferences
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -38,6 +42,7 @@ class GeneralSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        listViewPrefs = (requireActivity().application as VikrSaathiApp).listViewPreferences
 
         installHelpMenu(HelpScreen.GENERAL_SETTINGS)
 
@@ -64,6 +69,13 @@ class GeneralSettingsFragment : Fragment() {
             if (AppThemeManager.apply(mode)) {
                 requireActivity().recreate()
             }
+        }
+
+        bindMasterViewMode(listViewPrefs.getMasterMode())
+        binding.radioMasterViewMode.setOnCheckedChangeListener { _, checkedId ->
+            if (suppressViewModeSelection) return@setOnCheckedChangeListener
+            val mode = masterViewModeFor(checkedId) ?: return@setOnCheckedChangeListener
+            listViewPrefs.setMasterMode(mode)
         }
 
         autoSave.attach(
@@ -105,11 +117,30 @@ class GeneralSettingsFragment : Fragment() {
         suppressThemeSelection = false
     }
 
+    private fun bindMasterViewMode(mode: ListViewMode) {
+        suppressViewModeSelection = true
+        binding.radioMasterViewMode.check(
+            when (mode) {
+                ListViewMode.COMFORTABLE -> R.id.radioMasterViewComfortable
+                ListViewMode.COMPACT -> R.id.radioMasterViewCompact
+                ListViewMode.DETAILS -> R.id.radioMasterViewDetails
+            }
+        )
+        suppressViewModeSelection = false
+    }
+
     private fun themeModeFor(checkedId: Int): ThemeMode? = when (checkedId) {
         R.id.radioThemeLight -> ThemeMode.LIGHT
         R.id.radioThemeDark -> ThemeMode.DARK
         R.id.radioThemeAuto -> ThemeMode.AUTO
         R.id.radioThemeSystem -> ThemeMode.SYSTEM
+        else -> null
+    }
+
+    private fun masterViewModeFor(checkedId: Int): ListViewMode? = when (checkedId) {
+        R.id.radioMasterViewComfortable -> ListViewMode.COMFORTABLE
+        R.id.radioMasterViewCompact -> ListViewMode.COMPACT
+        R.id.radioMasterViewDetails -> ListViewMode.DETAILS
         else -> null
     }
 }

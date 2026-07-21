@@ -12,23 +12,27 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
+import androidx.core.view.isVisible
 import androidx.core.view.GravityCompat
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.databinding.FragmentBillsHistoryBinding
 import com.kex.vikrsaathi.ui.bill.BillFragment
+import com.kex.vikrsaathi.ui.common.applyListViewMode
 import com.kex.vikrsaathi.util.BillsFilterHelper
 import com.kex.vikrsaathi.util.BillsHistoryPreferences
 import com.kex.vikrsaathi.util.BillsSortHelper
 import com.kex.vikrsaathi.util.FileShareHelper
+import com.kex.vikrsaathi.util.ListViewMode
+import com.kex.vikrsaathi.util.ListViewPreferences
+import com.kex.vikrsaathi.util.ListViewScreen
 import com.kex.vikrsaathi.util.SalesReportFilter
 import com.kex.vikrsaathi.util.ViewModelFactory
 import com.kex.vikrsaathi.ui.help.HelpScreen
@@ -50,6 +54,8 @@ class BillsHistoryFragment : Fragment() {
 
     private lateinit var adapter: BillHistoryAdapter
     private lateinit var preferences: BillsHistoryPreferences
+    private lateinit var listViewPrefs: ListViewPreferences
+    private var viewMode: ListViewMode = ListViewMode.COMFORTABLE
     private var allBills: List<BillWithDetails> = emptyList()
     private var dateFrom: Long? = null
     private var dateTo: Long? = null
@@ -69,6 +75,8 @@ class BillsHistoryFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val app = requireActivity().application as VikrSaathiApp
         preferences = app.billsHistoryPreferences
+        listViewPrefs = app.listViewPreferences
+        viewMode = listViewPrefs.getMode(ListViewScreen.BILLS_HISTORY)
 
         adapter = BillHistoryAdapter(
             currencySymbol = app.settingsRepository.currencySymbol,
@@ -91,8 +99,8 @@ class BillsHistoryFragment : Fragment() {
             },
             onDelete = { bill -> confirmDelete(bill) }
         )
-        binding.recyclerBills.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerBills.adapter = adapter
+        applyViewMode(viewMode, persist = false)
 
         setupToolbarMenu()
         installHelpMenu(HelpScreen.BILLS_HISTORY)
@@ -201,6 +209,15 @@ class BillsHistoryFragment : Fragment() {
             preferences.sortByInvoiceNumberAsc = checked
             applyFilters()
         }
+        binding.historyDrawer.radioViewMode.setOnCheckedChangeListener { _, checkedId ->
+            if (suppressDrawerListeners) return@setOnCheckedChangeListener
+            val mode = when (checkedId) {
+                R.id.radioViewCompact -> ListViewMode.COMPACT
+                R.id.radioViewDetails -> ListViewMode.DETAILS
+                else -> ListViewMode.COMFORTABLE
+            }
+            applyViewMode(mode, persist = true)
+        }
     }
 
     private fun syncDrawerToggles() {
@@ -210,7 +227,24 @@ class BillsHistoryFragment : Fragment() {
         binding.historyDrawer.switchCounterRangeFilter.isChecked = preferences.counterRangeFilterEnabled
         binding.historyDrawer.switchSortByDateAsc.isChecked = preferences.sortByDateAsc
         binding.historyDrawer.switchSortByInvoiceNumberAsc.isChecked = preferences.sortByInvoiceNumberAsc
+        binding.historyDrawer.radioViewMode.check(
+            when (viewMode) {
+                ListViewMode.COMPACT -> R.id.radioViewCompact
+                ListViewMode.DETAILS -> R.id.radioViewDetails
+                ListViewMode.COMFORTABLE -> R.id.radioViewComfortable
+            }
+        )
         suppressDrawerListeners = false
+    }
+
+    private fun applyViewMode(mode: ListViewMode, persist: Boolean) {
+        viewMode = mode
+        if (persist) {
+            listViewPrefs.setMode(ListViewScreen.BILLS_HISTORY, mode)
+        }
+        adapter.viewMode = mode
+        binding.recyclerBills.applyListViewMode(mode)
+        binding.detailsHeader.root.isVisible = mode == ListViewMode.DETAILS
     }
 
     private fun applyFilterVisibility() {

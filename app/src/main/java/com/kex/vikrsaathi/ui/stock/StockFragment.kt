@@ -7,9 +7,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
@@ -19,8 +19,13 @@ import com.kex.vikrsaathi.data.entity.StockMovementType
 import com.kex.vikrsaathi.databinding.DialogStockAdjustBinding
 import com.kex.vikrsaathi.databinding.FragmentStockBinding
 import com.kex.vikrsaathi.databinding.ItemStockMovementBinding
+import com.kex.vikrsaathi.ui.common.applyListViewMode
+import com.kex.vikrsaathi.ui.common.installListViewOptionsDrawer
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
+import com.kex.vikrsaathi.util.ListViewMode
+import com.kex.vikrsaathi.util.ListViewPreferences
+import com.kex.vikrsaathi.util.ListViewScreen
 import com.kex.vikrsaathi.util.ViewModelFactory
 import java.text.DateFormat
 import java.util.Date
@@ -35,6 +40,8 @@ class StockFragment : Fragment() {
     }
 
     private lateinit var adapter: StockAdapter
+    private lateinit var listViewPrefs: ListViewPreferences
+    private var viewMode: ListViewMode = ListViewMode.COMFORTABLE
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -47,7 +54,19 @@ class StockFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val app = requireActivity().application as VikrSaathiApp
+        listViewPrefs = app.listViewPreferences
+        viewMode = listViewPrefs.getMode(ListViewScreen.INVENTORY)
+
         installHelpMenu(HelpScreen.STOCK)
+        installListViewOptionsDrawer(
+            drawerLayout = binding.drawerLayout,
+            optionsTitleView = binding.optionsDrawer.textOptionsTitle,
+            titleRes = R.string.inventory_options,
+            radioViewMode = binding.optionsDrawer.radioViewMode,
+            currentMode = { viewMode },
+            onModeSelected = ::applyViewMode
+        )
 
         adapter = StockAdapter(
             lowStockThreshold = viewModel.lowStockThreshold,
@@ -55,8 +74,8 @@ class StockFragment : Fragment() {
             onStockIn = { showAdjustDialog(it, prefillDelta = 1) },
             onOpenMovements = { showMovementsDialog(it) }
         )
-        binding.recyclerStock.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerStock.adapter = adapter
+        applyViewMode(viewMode, persist = false)
 
         viewModel.items.observe(viewLifecycleOwner) { viewModel.onItemsChanged(it) }
         viewModel.filteredItems.observe(viewLifecycleOwner) { adapter.submitList(it) }
@@ -71,6 +90,14 @@ class StockFragment : Fragment() {
         binding.switchLowStockOnly.setOnCheckedChangeListener { _, checked ->
             viewModel.setLowStockOnly(checked)
         }
+    }
+
+    private fun applyViewMode(mode: ListViewMode, persist: Boolean = true) {
+        viewMode = mode
+        if (persist) listViewPrefs.setMode(ListViewScreen.INVENTORY, mode)
+        adapter.viewMode = mode
+        binding.recyclerStock.applyListViewMode(mode)
+        binding.detailsHeader.root.isVisible = mode == ListViewMode.DETAILS
     }
 
     private fun showAdjustDialog(item: Item, prefillDelta: Int? = null) {
@@ -102,11 +129,9 @@ class StockFragment : Fragment() {
 
     private fun showMovementsDialog(item: Item) {
         viewModel.loadMovements(item.id)
-        val container = LinearLayoutManager(requireContext()).let {
-            android.widget.LinearLayout(requireContext()).apply {
-                orientation = android.widget.LinearLayout.VERTICAL
-                setPadding(48, 24, 48, 24)
-            }
+        val container = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 24)
         }
         val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.stock_movements) + " — " + item.name)
