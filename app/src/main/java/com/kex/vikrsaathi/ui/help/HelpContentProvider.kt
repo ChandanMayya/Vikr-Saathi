@@ -129,6 +129,12 @@ object HelpContentProvider {
                 R.string.help_backup_overview,
                 section(R.string.help_backup_s1_title, R.array.help_backup_s1)
             )
+            HelpScreen.ANALYSIS -> guide(
+                context,
+                R.string.help_analysis_title,
+                R.string.help_analysis_overview,
+                section(R.string.help_analysis_s1_title, R.array.help_analysis_s1)
+            )
             HelpScreen.RESET -> guide(
                 context,
                 R.string.help_reset_title,

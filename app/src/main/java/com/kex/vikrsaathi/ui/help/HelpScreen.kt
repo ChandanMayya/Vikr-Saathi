@@ -31,5 +31,6 @@ enum class HelpScreen {
     INVOICE_TEMPLATES,
     INVOICE_BUILDER,
     BACKUP,
-    RESET
+    RESET,
+    ANALYSIS
 }

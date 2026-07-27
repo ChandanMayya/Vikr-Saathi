@@ -52,7 +52,20 @@
             app:exitAnim="@anim/nav_fade_out"
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
+            android:id="@+id/action_dashboard_to_analysis"
+            app:destination="@id/analysisFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
+
+    <fragment
+        android:id="@+id/analysisFragment"
+        android:name="com.kex.vikrsaathi.ui.analysis.AnalysisFragment"
+        android:label="@string/analysis"
+        tools:layout="@layout/fragment_analysis" />
 
     <fragment
         android:id="@+id/billFragment"

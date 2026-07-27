@@ -22,4 +22,15 @@ interface BillDraftDao {
 
     @Query("DELETE FROM bill_drafts")
     suspend fun deleteAll()
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM bill_drafts
+        WHERE heldAt >= :startInclusive AND heldAt < :endExclusive
+        """
+    )
+    suspend fun countHeldBetween(startInclusive: Long, endExclusive: Long): Int
+
+    @Query("SELECT COUNT(*) FROM bill_drafts")
+    suspend fun countAllHeld(): Int
 }

@@ -105,6 +105,9 @@ class DashboardFragment : Fragment() {
         binding.cardStock.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_stock)
         }
+        binding.cardAnalysis.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_analysis)
+        }
         binding.cardLowStock.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_stock)
         }

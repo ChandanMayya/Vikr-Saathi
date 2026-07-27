@@ -18,6 +18,7 @@
         <item>Items — manage products and prices.</item>
         <item>Inventory — stock quantities and adjustments.</item>
         <item>Bills History — view, filter, and export past bills.</item>
+        <item>Analysis — charts for sales trends, top products, and top customers.</item>
         <item>Settings — shop name, invoice layout, backup, and more.</item>
     </string-array>
 
@@ -259,6 +260,26 @@
         <item>Bring forward / Send backward — change stacking order one step.</item>
         <item>Bring to front / Send to back — move to the top or bottom layer.</item>
         <item>Detailed property help — tap ? in the Element Properties or Table Columns panel.</item>
+    </string-array>
+
+    <!-- Analysis -->
+    <string name="help_analysis_title">Analysis</string>
+    <string name="help_analysis_overview">Charts and summaries to understand sales performance over time.</string>
+    <string name="help_analysis_s1_title">Using this screen</string>
+    <string-array name="help_analysis_s1">
+        <item>Choose a date range at the top — Today, 7 days, 30 days, or This month.</item>
+        <item>Summary cards show total sales, bill count, and average bill value.</item>
+        <item>Sales over time — daily revenue bars for the selected period.</item>
+        <item>Top products — best sellers ranked by revenue.</item>
+        <item>Top customers — highest spenders, including walk-in sales grouped together.</item>
+        <item>Discount impact — total discount given and average discount percentage.</item>
+        <item>Inventory value — total stock value and top items by stock value.</item>
+        <item>Slow movers — in-stock items with the fewest sales in the selected period.</item>
+        <item>Menu (⋮) — export PDF or Excel report from the options sidebar.</item>
+        <item>Peak hours — when most bills are created during the day.</item>
+        <item>Sales by day of week — which weekdays are busiest.</item>
+        <item>Walk-in vs registered — split between bills with and without a saved customer.</item>
+        <item>Held bills — finalized vs held counts and how many are still waiting.</item>
     </string-array>
 
     <!-- Backup -->

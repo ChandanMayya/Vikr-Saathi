@@ -2,6 +2,7 @@ package com.kex.vikrsaathi
 
 import android.app.Application
 import com.kex.vikrsaathi.data.database.AppDatabase
+import com.kex.vikrsaathi.data.repository.AnalyticsRepository
 import com.kex.vikrsaathi.data.repository.BillDraftRepository
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
@@ -42,6 +43,13 @@ class VikrSaathiApp : Application() {
             database.billItemDao(),
             settingsRepository,
             inventoryRepository
+        )
+    }
+    val analyticsRepository by lazy {
+        AnalyticsRepository(
+            database.billDao(),
+            database.itemDao(),
+            database.billDraftDao()
         )
     }
     val billDraftRepository by lazy { BillDraftRepository(database.billDraftDao()) }

@@ -8,6 +8,8 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.kex.vikrsaathi.data.entity.Item
+import com.kex.vikrsaathi.data.model.analytics.SlowMoverRow
+import com.kex.vikrsaathi.data.model.analytics.StockValueRow
 
 @Dao
 interface ItemDao {
@@ -50,4 +52,52 @@ interface ItemDao {
 
     @Query("DELETE FROM items")
     suspend fun deleteAll()
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(stockQty * COALESCE(sellingPrice, mrp)), 0)
+        FROM items
+        WHERE stockQty > 0
+        """
+    )
+    suspend fun getTotalInventoryValue(): Double
+
+    @Query("SELECT COUNT(*) FROM items WHERE stockQty > 0")
+    suspend fun countInStockItems(): Int
+
+    @Query(
+        """
+        SELECT name AS itemName,
+               stockQty AS stockQty,
+               COALESCE(sellingPrice, mrp) AS unitPrice,
+               (stockQty * COALESCE(sellingPrice, mrp)) AS stockValue
+        FROM items
+        WHERE stockQty > 0
+        ORDER BY stockValue DESC
+        LIMIT 10
+        """
+    )
+    suspend fun getTopStockValueItems(): List<StockValueRow>
+
+    @Query(
+        """
+        SELECT i.name AS itemName,
+               i.stockQty AS stockQty,
+               COALESCE(sold.soldQty, 0) AS soldQty
+        FROM items i
+        LEFT JOIN (
+            SELECT bi.itemId AS itemId, SUM(bi.quantity) AS soldQty
+            FROM bill_items bi
+            INNER JOIN bills b ON b.id = bi.billId
+            WHERE b.date >= :startInclusive
+              AND b.date < :endExclusive
+              AND bi.itemId IS NOT NULL
+            GROUP BY bi.itemId
+        ) sold ON sold.itemId = i.id
+        WHERE i.stockQty > 0
+        ORDER BY soldQty ASC, i.stockQty DESC
+        LIMIT 10
+        """
+    )
+    suspend fun getSlowMovers(startInclusive: Long, endExclusive: Long): List<SlowMoverRow>
 }

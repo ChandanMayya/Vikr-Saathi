@@ -3,6 +3,7 @@ package com.kex.vikrsaathi.util
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.kex.vikrsaathi.VikrSaathiApp
+import com.kex.vikrsaathi.ui.analysis.AnalysisViewModel
 import com.kex.vikrsaathi.ui.bill.BillPreviewViewModel
 import com.kex.vikrsaathi.ui.bill.BillViewModel
 import com.kex.vikrsaathi.ui.bill.HeldBillsViewModel
@@ -28,6 +29,11 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.settingsRepository,
                     app.billRepository,
                     app.inventoryRepository
+                ) as T
+            modelClass.isAssignableFrom(AnalysisViewModel::class.java) ->
+                AnalysisViewModel(
+                    app.analyticsRepository,
+                    app.settingsRepository
                 ) as T
             modelClass.isAssignableFrom(CustomerViewModel::class.java) ->
                 CustomerViewModel(app.customerRepository) as T
