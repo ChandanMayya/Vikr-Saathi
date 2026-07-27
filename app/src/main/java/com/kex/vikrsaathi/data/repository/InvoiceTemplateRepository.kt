@@ -12,6 +12,14 @@ import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplateVersion
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.domain.template.TemplateImageBoundsHelper
+import com.kex.vikrsaathi.util.TemplateImageStore
+
+enum class DeleteTemplateResult {
+    SUCCESS,
+    NOT_FOUND,
+    IS_DEFAULT,
+    LAST_TEMPLATE
+}
 
 class InvoiceTemplateRepository(
     private val dao: InvoiceTemplateDao,
@@ -141,6 +149,19 @@ class InvoiceTemplateRepository(
         return duplicateTemplate(default.id, newName)
     }
 
+    suspend fun deleteTemplate(
+        templateId: Long,
+        imageStoreContext: android.content.Context? = null
+    ): DeleteTemplateResult {
+        val template = getById(templateId) ?: return DeleteTemplateResult.NOT_FOUND
+        if (template.isDefault) return DeleteTemplateResult.IS_DEFAULT
+        if (dao.count() <= 1) return DeleteTemplateResult.LAST_TEMPLATE
+        versionDao.deleteByTemplateId(templateId)
+        dao.deleteById(templateId)
+        imageStoreContext?.let { TemplateImageStore.deleteForTemplate(it, templateId) }
+        return DeleteTemplateResult.SUCCESS
+    }
+
     suspend fun getVersions(templateId: Long): List<InvoiceTemplateVersion> {
         return versionDao.getVersionsForTemplate(templateId).map { entity ->
             val parsed = TemplateJsonCodec.fromJson(entity.snapshotJson)
@@ -192,6 +213,7 @@ class InvoiceTemplateRepository(
             id = id,
             name = name,
             isDefault = isDefault,
+            sheetType = sheetType,
             pageWidthPt = pageWidthPt,
             pageHeightPt = pageHeightPt,
             marginLeft = marginLeft,
@@ -208,6 +230,7 @@ class InvoiceTemplateRepository(
             id = id,
             name = name,
             isDefault = isDefault,
+            sheetType = sheetType,
             pageWidthPt = pageWidthPt,
             pageHeightPt = pageHeightPt,
             marginLeft = marginLeft,

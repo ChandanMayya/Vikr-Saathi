@@ -41,6 +41,9 @@ interface InvoiceTemplateDao {
         markAsDefault(id)
     }
 
+    @Query("DELETE FROM invoice_templates WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("DELETE FROM invoice_templates")
     suspend fun deleteAll()
 }

@@ -203,18 +203,19 @@ class TemplateRenderer(
             totalRowLabel = TableTotalRowSettings.totalRowLabel(element.content)
         )
         val bounds = element.bounds
+        val baseSize = element.style.fontSize.coerceAtLeast(4f)
         val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textSize = 11f
+            textSize = baseSize
             color = Color.BLACK
         }
         val cellPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 10f
+            textSize = baseSize
             color = Color.BLACK
         }
         val totalRowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textSize = 10f
+            textSize = baseSize
             color = Color.BLACK
         }
 

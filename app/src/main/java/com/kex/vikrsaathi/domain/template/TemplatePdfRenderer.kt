@@ -76,18 +76,19 @@ object TemplatePdfRenderer {
         if (columns.isEmpty()) return TableSectionResult(rows.size, false)
 
         val bounds = element.bounds
+        val baseSize = element.style.fontSize.coerceAtLeast(4f)
         val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             isFakeBoldText = true
-            textSize = 11f
+            textSize = baseSize
             color = Color.BLACK
         }
         val cellPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 10f
+            textSize = baseSize
             color = Color.BLACK
         }
         val totalRowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             isFakeBoldText = true
-            textSize = 10f
+            textSize = baseSize
             color = Color.BLACK
         }
 

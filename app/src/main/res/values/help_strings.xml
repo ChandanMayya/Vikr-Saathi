@@ -228,6 +228,7 @@
     <string-array name="help_invoice_templates_s1">
         <item>Tap a template to open the Invoice Builder and edit its layout.</item>
         <item>Set default — marks which template new bills use.</item>
+        <item>Delete — remove a template you no longer need. The default template cannot be deleted; set another default first.</item>
         <item>New template — create another layout from the built-in starting design.</item>
         <item>Import JSON — load a shared template file from storage.</item>
         <item>For field-by-field help while editing, use ? inside Element Properties or Table Columns.</item>
@@ -244,7 +245,7 @@
         <item>Table columns — edit the items table when a table is selected.</item>
         <item>Preview PDF — sample output with demo bill data.</item>
         <item>Save — stores the template and records a version snapshot.</item>
-        <item>Menu (⋮) — page layout (portrait/landscape), grid, guides, import/export JSON, version history.</item>
+        <item>Menu (⋮) — sheet type (A4, A5, Half A5, Letter, custom, …), portrait/landscape, grid, guides, export JSON, version history. Changing sheet size asks whether to scale the layout or keep object positions. For two invoices on one A5, use A5 with content in half the page (or import an A5-half template from Invoice Templates).</item>
     </string-array>
     <string name="help_invoice_builder_s2_title">Selection toolbar</string>
     <string-array name="help_invoice_builder_s2">

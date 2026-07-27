@@ -1,7 +1,6 @@
 package com.kex.vikrsaathi.ui.settings.invoicebuilder
 
 import android.content.Context
-import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -15,6 +14,8 @@ import com.kex.vikrsaathi.data.model.template.GuideOrientation
 import com.kex.vikrsaathi.data.model.template.ImageScaleMode
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplateVersion
+import com.kex.vikrsaathi.data.model.template.PaperSizeCatalog
+import com.kex.vikrsaathi.data.model.template.PaperSizeId
 import com.kex.vikrsaathi.data.model.template.TableColumn
 import com.kex.vikrsaathi.data.model.template.TemplateElement
 import com.kex.vikrsaathi.data.model.template.TextAlign
@@ -30,6 +31,7 @@ import com.kex.vikrsaathi.domain.template.GridSnapper
 import com.kex.vikrsaathi.domain.template.GuideSnapper
 import com.kex.vikrsaathi.domain.template.ObjectAlignmentSnapper
 import com.kex.vikrsaathi.domain.template.TemplateOrientationHelper
+import com.kex.vikrsaathi.domain.template.TemplatePageSizeHelper
 import com.kex.vikrsaathi.domain.template.SampleBillFactory
 import com.kex.vikrsaathi.domain.template.TemplateImageBitmapResolver
 import com.kex.vikrsaathi.domain.template.TemplateImageBoundsHelper
@@ -730,6 +732,42 @@ class InvoiceBuilderViewModel(
         }
     }
 
+    /**
+     * Changes sheet type / page size. [scaleContent] scales layout when true, otherwise clamps.
+     * Preset sizes use portrait dimensions then match the template's current orientation.
+     * For [PaperSizeId.CUSTOM], [customWidthPt]/[customHeightPt] are the target page size
+     * in the current orientation.
+     */
+    fun setSheetType(
+        id: PaperSizeId,
+        customWidthPt: Int? = null,
+        customHeightPt: Int? = null,
+        scaleContent: Boolean
+    ) {
+        mutate { current ->
+            if (id == PaperSizeId.CUSTOM) {
+                val w = customWidthPt ?: return@mutate current
+                val h = customHeightPt ?: return@mutate current
+                TemplatePageSizeHelper.applyDimensions(
+                    template = current,
+                    sheetType = PaperSizeId.CUSTOM.name,
+                    newWidthPt = w,
+                    newHeightPt = h,
+                    scaleContent = scaleContent
+                )
+            } else {
+                val spec = PaperSizeCatalog.specFor(id) ?: return@mutate current
+                TemplatePageSizeHelper.withPageSize(
+                    template = current,
+                    sheetType = id,
+                    portraitWidthPt = spec.widthPtPortrait,
+                    portraitHeightPt = spec.heightPtPortrait,
+                    scaleContent = scaleContent
+                )
+            }
+        }
+    }
+
     fun rotateSelectionBy(deltaDegrees: Float) {
         if (deltaDegrees == 0f) return
         val ids = _selectedElementIds.value.orEmpty()
@@ -829,27 +867,6 @@ class InvoiceBuilderViewModel(
                 out
             }
             onResult(file)
-        }
-    }
-
-    fun importTemplateJson(context: Context, uri: Uri, onResult: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val imported = withContext(Dispatchers.IO) {
-                try {
-                    val json = context.contentResolver.openInputStream(uri)?.use { stream ->
-                        stream.bufferedReader().readText()
-                    } ?: return@withContext null
-                    TemplateJsonCodec.fromJson(json)
-                } catch (_: Exception) {
-                    null
-                }
-            }
-            if (imported == null) {
-                onResult(false)
-                return@launch
-            }
-            mutate { imported.copy(id = _template.value?.id ?: imported.id) }
-            onResult(true)
         }
     }
 

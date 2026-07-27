@@ -5,13 +5,22 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import androidx.core.view.isVisible
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.databinding.ItemInvoiceTemplateBinding
 
 class InvoiceTemplateAdapter(
     private val onSetDefault: (InvoiceTemplate) -> Unit,
-    private val onEdit: (InvoiceTemplate) -> Unit
+    private val onEdit: (InvoiceTemplate) -> Unit,
+    private val onDelete: (InvoiceTemplate) -> Unit
 ) : ListAdapter<InvoiceTemplate, InvoiceTemplateAdapter.ViewHolder>(DiffCallback()) {
+
+    var canDeleteTemplates: Boolean = true
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemInvoiceTemplateBinding.inflate(
@@ -39,6 +48,8 @@ class InvoiceTemplateAdapter(
             binding.radioDefault.isChecked = template.isDefault
             binding.radioDefault.setOnClickListener { onSetDefault(template) }
             binding.buttonEditTemplate.setOnClickListener { onEdit(template) }
+            binding.buttonDeleteTemplate.isVisible = canDeleteTemplates && !template.isDefault
+            binding.buttonDeleteTemplate.setOnClickListener { onDelete(template) }
             binding.root.setOnClickListener { onEdit(template) }
         }
     }

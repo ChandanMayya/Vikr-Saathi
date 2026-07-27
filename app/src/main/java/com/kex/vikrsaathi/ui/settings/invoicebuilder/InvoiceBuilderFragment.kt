@@ -6,10 +6,12 @@ import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.core.view.MenuProvider
 import androidx.core.view.GravityCompat
@@ -23,14 +25,19 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.textfield.TextInputEditText
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.model.template.ElementKind
+import com.kex.vikrsaathi.data.model.template.PaperSizeCatalog
+import com.kex.vikrsaathi.data.model.template.PaperSizeId
 import com.kex.vikrsaathi.databinding.FragmentInvoiceBuilderBinding
+import com.kex.vikrsaathi.domain.template.TemplatePageSizeHelper
 import com.kex.vikrsaathi.ui.help.HelpOverlay
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.navigation.BackNavigationGuard
 import com.kex.vikrsaathi.util.ViewModelFactory
+import kotlin.math.roundToInt
 
 class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
 
@@ -39,6 +46,7 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
 
     private var versionSheet: TemplateVersionHistoryBottomSheet? = null
     private var suppressDrawerListeners = false
+    private var customSizeUsesMm = true
 
     private lateinit var drawerSwitchLivePreview: MaterialSwitch
     private lateinit var drawerSwitchSnapGrid: MaterialSwitch
@@ -50,24 +58,21 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
     private lateinit var drawerButtonAddHorizontalGuide: MaterialButton
     private lateinit var drawerButtonDeleteGuide: MaterialButton
     private lateinit var drawerButtonExportJson: MaterialButton
-    private lateinit var drawerButtonImportJson: MaterialButton
     private lateinit var drawerButtonVersionHistory: MaterialButton
     private lateinit var drawerTogglePageOrientation: MaterialButtonToggleGroup
     private lateinit var drawerTextPageSize: TextView
+    private lateinit var drawerDropdownSheetType: AutoCompleteTextView
+    private lateinit var drawerLayoutCustomSheet: LinearLayout
+    private lateinit var drawerToggleCustomUnit: MaterialButtonToggleGroup
+    private lateinit var drawerEditCustomWidth: TextInputEditText
+    private lateinit var drawerEditCustomHeight: TextInputEditText
+    private lateinit var drawerButtonApplyCustomSheet: MaterialButton
+
+    private val sheetTypeIds = PaperSizeCatalog.selectableIds()
+    private lateinit var sheetTypeLabels: List<String>
 
     private val viewModel: InvoiceBuilderViewModel by viewModels {
         ViewModelFactory(requireActivity().application as VikrSaathiApp)
-    }
-
-    private val importJsonLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri == null) return@registerForActivityResult
-        binding.drawerLayout.closeDrawer(GravityCompat.END)
-        viewModel.importTemplateJson(requireContext(), uri) { success ->
-            val message = if (success) R.string.template_imported else R.string.template_import_failed
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-        }
     }
 
     override fun onCreateView(
@@ -353,10 +358,26 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
         drawerButtonAddHorizontalGuide = view.findViewById(R.id.drawerButtonAddHorizontalGuide)
         drawerButtonDeleteGuide = view.findViewById(R.id.drawerButtonDeleteGuide)
         drawerButtonExportJson = view.findViewById(R.id.drawerButtonExportJson)
-        drawerButtonImportJson = view.findViewById(R.id.drawerButtonImportJson)
         drawerButtonVersionHistory = view.findViewById(R.id.drawerButtonVersionHistory)
         drawerTogglePageOrientation = view.findViewById(R.id.drawerTogglePageOrientation)
         drawerTextPageSize = view.findViewById(R.id.drawerTextPageSize)
+        drawerDropdownSheetType = view.findViewById(R.id.drawerDropdownSheetType)
+        drawerLayoutCustomSheet = view.findViewById(R.id.drawerLayoutCustomSheet)
+        drawerToggleCustomUnit = view.findViewById(R.id.drawerToggleCustomUnit)
+        drawerEditCustomWidth = view.findViewById(R.id.drawerEditCustomWidth)
+        drawerEditCustomHeight = view.findViewById(R.id.drawerEditCustomHeight)
+        drawerButtonApplyCustomSheet = view.findViewById(R.id.drawerButtonApplyCustomSheet)
+
+        sheetTypeLabels = sheetTypeIds.map { id ->
+            val res = when (id) {
+                PaperSizeId.CUSTOM -> R.string.paper_size_custom
+                else -> PaperSizeCatalog.specFor(id)!!.labelRes
+            }
+            getString(res)
+        }
+        drawerDropdownSheetType.setAdapter(
+            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, sheetTypeLabels)
+        )
     }
 
     private fun setupToolbarMenu() {
@@ -401,6 +422,31 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
             }
         }
 
+        drawerDropdownSheetType.setOnItemClickListener { _, _, position, _ ->
+            if (suppressDrawerListeners) return@setOnItemClickListener
+            val id = sheetTypeIds.getOrNull(position) ?: return@setOnItemClickListener
+            if (id == PaperSizeId.CUSTOM) {
+                drawerLayoutCustomSheet.isVisible = true
+                fillCustomSizeFieldsFromTemplate()
+                return@setOnItemClickListener
+            }
+            drawerLayoutCustomSheet.isVisible = false
+            requestSheetTypeChange(id)
+        }
+
+        drawerToggleCustomUnit.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (suppressDrawerListeners || !isChecked) return@addOnButtonCheckedListener
+            val wasMm = customSizeUsesMm
+            customSizeUsesMm = checkedId == R.id.drawerButtonUnitMm
+            if (wasMm != customSizeUsesMm) {
+                convertCustomSizeFields(toMm = customSizeUsesMm)
+            }
+        }
+
+        drawerButtonApplyCustomSheet.setOnClickListener {
+            applyCustomSheetSize()
+        }
+
         drawerSwitchSnapGrid.setOnCheckedChangeListener { _, checked ->
             if (!suppressDrawerListeners) viewModel.setSnapToGrid(checked)
         }
@@ -434,9 +480,6 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
             binding.drawerLayout.closeDrawer(GravityCompat.END)
             exportJson()
         }
-        drawerButtonImportJson.setOnClickListener {
-            importJsonLauncher.launch(arrayOf("application/json", "text/plain"))
-        }
         drawerButtonVersionHistory.setOnClickListener {
             binding.drawerLayout.closeDrawer(GravityCompat.END)
             openVersionHistory()
@@ -458,8 +501,23 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
 
     private fun syncDrawerPageLayout() {
         val template = viewModel.template.value ?: return
+        val sheetId = template.paperSizeId
+        val labelIndex = sheetTypeIds.indexOf(sheetId).takeIf { it >= 0 }
+            ?: sheetTypeIds.indexOf(PaperSizeId.CUSTOM)
+        if (labelIndex >= 0) {
+            drawerDropdownSheetType.setText(sheetTypeLabels[labelIndex], false)
+        }
+        drawerLayoutCustomSheet.isVisible = sheetId == PaperSizeId.CUSTOM
+        if (sheetId == PaperSizeId.CUSTOM) {
+            fillCustomSizeFieldsFromTemplate()
+        }
+
+        val label = sheetTypeLabels.getOrElse(labelIndex) { getString(R.string.paper_size_custom) }
         drawerTextPageSize.text = getString(
-            R.string.page_size_format,
+            R.string.page_size_detail_format,
+            label,
+            PaperSizeCatalog.ptToMm(template.pageWidthPt),
+            PaperSizeCatalog.ptToMm(template.pageHeightPt),
             template.pageWidthPt,
             template.pageHeightPt
         )
@@ -470,6 +528,102 @@ class InvoiceBuilderFragment : Fragment(), BackNavigationGuard {
         }
         if (drawerTogglePageOrientation.checkedButtonId != orientationButtonId) {
             drawerTogglePageOrientation.check(orientationButtonId)
+        }
+        val unitButtonId = if (customSizeUsesMm) R.id.drawerButtonUnitMm else R.id.drawerButtonUnitPt
+        if (drawerToggleCustomUnit.checkedButtonId != unitButtonId) {
+            drawerToggleCustomUnit.check(unitButtonId)
+        }
+    }
+
+    private fun requestSheetTypeChange(
+        id: PaperSizeId,
+        customWidthPt: Int? = null,
+        customHeightPt: Int? = null
+    ) {
+        val template = viewModel.template.value ?: return
+        if (id != PaperSizeId.CUSTOM) {
+            val spec = PaperSizeCatalog.specFor(id) ?: return
+            val landscape = viewModel.isPageLandscape()
+            val (tw, th) = spec.ptsForOrientation(landscape)
+            if (template.pageWidthPt == tw &&
+                template.pageHeightPt == th &&
+                template.sheetType == id.name
+            ) {
+                return
+            }
+        } else if (customWidthPt != null && customHeightPt != null) {
+            if (template.pageWidthPt == customWidthPt &&
+                template.pageHeightPt == customHeightPt &&
+                template.sheetType == PaperSizeId.CUSTOM.name
+            ) {
+                return
+            }
+        }
+
+        val apply: (Boolean) -> Unit = { scale ->
+            viewModel.setSheetType(id, customWidthPt, customHeightPt, scaleContent = scale)
+            syncDrawerPageLayout()
+        }
+
+        if (!TemplatePageSizeHelper.hasLayoutContent(template)) {
+            apply(false)
+            return
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.sheet_resize_title)
+            .setMessage(R.string.sheet_resize_message)
+            .setPositiveButton(R.string.sheet_resize_scale) { _, _ -> apply(true) }
+            .setNegativeButton(R.string.sheet_resize_keep) { _, _ -> apply(false) }
+            .setNeutralButton(R.string.cancel) { _, _ -> syncDrawerPageLayout() }
+            .setOnCancelListener { syncDrawerPageLayout() }
+            .show()
+    }
+
+    private fun applyCustomSheetSize() {
+        val widthRaw = drawerEditCustomWidth.text?.toString()?.toDoubleOrNull()
+        val heightRaw = drawerEditCustomHeight.text?.toString()?.toDoubleOrNull()
+        if (widthRaw == null || heightRaw == null || widthRaw <= 0 || heightRaw <= 0) {
+            Toast.makeText(requireContext(), R.string.invalid_custom_sheet_size, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val widthPt = if (customSizeUsesMm) {
+            PaperSizeCatalog.mmToPt(widthRaw)
+        } else {
+            PaperSizeCatalog.clampSizePt(widthRaw.roundToInt())
+        }
+        val heightPt = if (customSizeUsesMm) {
+            PaperSizeCatalog.mmToPt(heightRaw)
+        } else {
+            PaperSizeCatalog.clampSizePt(heightRaw.roundToInt())
+        }
+        requestSheetTypeChange(PaperSizeId.CUSTOM, widthPt, heightPt)
+    }
+
+    private fun fillCustomSizeFieldsFromTemplate() {
+        val template = viewModel.template.value ?: return
+        if (customSizeUsesMm) {
+            drawerEditCustomWidth.setText(
+                PaperSizeCatalog.ptToMm(template.pageWidthPt).roundToInt().toString()
+            )
+            drawerEditCustomHeight.setText(
+                PaperSizeCatalog.ptToMm(template.pageHeightPt).roundToInt().toString()
+            )
+        } else {
+            drawerEditCustomWidth.setText(template.pageWidthPt.toString())
+            drawerEditCustomHeight.setText(template.pageHeightPt.toString())
+        }
+    }
+
+    private fun convertCustomSizeFields(toMm: Boolean) {
+        val widthRaw = drawerEditCustomWidth.text?.toString()?.toDoubleOrNull() ?: return
+        val heightRaw = drawerEditCustomHeight.text?.toString()?.toDoubleOrNull() ?: return
+        if (toMm) {
+            drawerEditCustomWidth.setText(PaperSizeCatalog.ptToMm(widthRaw.roundToInt()).roundToInt().toString())
+            drawerEditCustomHeight.setText(PaperSizeCatalog.ptToMm(heightRaw.roundToInt()).roundToInt().toString())
+        } else {
+            drawerEditCustomWidth.setText(PaperSizeCatalog.mmToPt(widthRaw).toString())
+            drawerEditCustomHeight.setText(PaperSizeCatalog.mmToPt(heightRaw).toString())
         }
     }
 

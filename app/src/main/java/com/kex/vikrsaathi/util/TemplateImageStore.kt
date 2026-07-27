@@ -47,4 +47,11 @@ object TemplateImageStore {
     fun clearAll(context: Context) {
         storageDir(context).listFiles()?.forEach { it.delete() }
     }
+
+    fun deleteForTemplate(context: Context, templateId: Long) {
+        val prefix = "${templateId}_"
+        storageDir(context).listFiles()
+            ?.filter { it.name.startsWith(prefix) }
+            ?.forEach { it.delete() }
+    }
 }

@@ -145,3 +145,11 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         )
     }
 }
+
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE invoice_templates ADD COLUMN sheetType TEXT NOT NULL DEFAULT 'A4'"
+        )
+    }
+}

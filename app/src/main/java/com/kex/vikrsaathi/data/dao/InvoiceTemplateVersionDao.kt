@@ -28,6 +28,9 @@ interface InvoiceTemplateVersionDao {
     @Query("DELETE FROM invoice_template_versions WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM invoice_template_versions WHERE templateId = :templateId")
+    suspend fun deleteByTemplateId(templateId: Long)
+
     @Query("DELETE FROM invoice_template_versions")
     suspend fun deleteAll()
 }

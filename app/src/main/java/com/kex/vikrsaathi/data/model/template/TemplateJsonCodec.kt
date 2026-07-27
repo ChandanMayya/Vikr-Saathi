@@ -10,6 +10,7 @@ object TemplateJsonCodec {
             put("id", template.id)
             put("name", template.name)
             put("isDefault", template.isDefault)
+            put("sheetType", template.sheetType)
             put("pageWidthPt", template.pageWidthPt)
             put("pageHeightPt", template.pageHeightPt)
             put("marginLeft", template.marginLeft.toDouble())
@@ -41,12 +42,18 @@ object TemplateJsonCodec {
         for (i in 0 until guidesArray.length()) {
             guides.add(guideFromJson(guidesArray.getJSONObject(i)))
         }
+        val pageWidthPt = root.optInt("pageWidthPt", InvoiceTemplate.PAGE_WIDTH_PT)
+        val pageHeightPt = root.optInt("pageHeightPt", InvoiceTemplate.PAGE_HEIGHT_PT)
+        val sheetType = root.optString("sheetType", "").ifBlank {
+            PaperSizeCatalog.match(pageWidthPt, pageHeightPt).name
+        }
         return InvoiceTemplate(
             id = id.takeIf { it > 0 } ?: root.optLong("id", 0),
             name = name.ifEmpty { root.optString("name", "Template") },
             isDefault = isDefault || root.optBoolean("isDefault", false),
-            pageWidthPt = root.optInt("pageWidthPt", InvoiceTemplate.PAGE_WIDTH_PT),
-            pageHeightPt = root.optInt("pageHeightPt", InvoiceTemplate.PAGE_HEIGHT_PT),
+            sheetType = sheetType,
+            pageWidthPt = pageWidthPt,
+            pageHeightPt = pageHeightPt,
             marginLeft = root.optDouble("marginLeft", 40.0).toFloat(),
             marginTop = root.optDouble("marginTop", 40.0).toFloat(),
             marginRight = root.optDouble("marginRight", 40.0).toFloat(),

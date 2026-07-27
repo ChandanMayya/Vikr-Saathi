@@ -9,6 +9,7 @@ data class InvoiceTemplateEntity(
     val id: Long = 0,
     val name: String,
     val isDefault: Boolean,
+    val sheetType: String = "A4",
     val pageWidthPt: Int,
     val pageHeightPt: Int,
     val marginLeft: Float,

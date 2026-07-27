@@ -36,10 +36,16 @@ object TableCellLayout {
     fun columnWidth(tableWidth: Float, column: TableColumn): Float =
         tableWidth * (column.widthPercent / 100f)
 
-    fun lineHeight(paint: Paint): Float = paint.textSize + LINE_GAP
+    fun lineHeight(paint: Paint): Float =
+        paint.textSize + (paint.textSize * 0.2f).coerceIn(1f, LINE_GAP)
 
-    fun rowBaselineY(rowTopY: Float, paint: Paint): Float =
-        rowTopY + ROW_EXTRA_PADDING / 2f + paint.textSize
+    fun rowBaselineY(rowTopY: Float, paint: Paint): Float {
+        val extra = rowExtraPadding(paint)
+        return rowTopY + extra / 2f + paint.textSize
+    }
+
+    private fun rowExtraPadding(paint: Paint): Float =
+        (paint.textSize * 0.55f).coerceIn(2f, ROW_EXTRA_PADDING)
 
     fun drawTableGrid(
         canvas: Canvas,
@@ -91,7 +97,7 @@ object TableCellLayout {
                 1
             }
         }.coerceAtLeast(1)
-        return ROW_EXTRA_PADDING + maxLines * lineHeight(paint)
+        return rowExtraPadding(paint) + maxLines * lineHeight(paint)
     }
 
     fun drawTableRow(
@@ -110,14 +116,17 @@ object TableCellLayout {
             val lines = if (shouldWrap(column.key)) {
                 wrapTextToLines(text, paint, colWidth, column.key)
             } else {
-                listOf(text)
+                listOf(fitSingleLine(text, paint, colWidth, column.key))
             }
+            val save = canvas.save()
+            canvas.clipRect(x, baselineY - paint.textSize - 2f, x + colWidth, baselineY + lineHeight(paint) * lines.size)
             var lineY = baselineY
             lines.forEach { line ->
                 val drawX = cellAlignedX(paint, line, x, colWidth, column.align, column.key)
                 canvas.drawText(line, drawX, lineY, paint)
                 lineY += lineHeight(paint)
             }
+            canvas.restoreToCount(save)
             x += colWidth
         }
     }
@@ -129,7 +138,7 @@ object TableCellLayout {
         columnKey: String = ""
     ): List<String> {
         if (text.isBlank()) return listOf("")
-        val maxWidth = (columnWidth - horizontalPadding(columnKey) * 2f).coerceAtLeast(1f)
+        val maxWidth = (columnWidth - horizontalPadding(columnKey, columnWidth) * 2f).coerceAtLeast(1f)
         if (paint.measureText(text) <= maxWidth) return listOf(text)
 
         val lines = mutableListOf<String>()
@@ -175,8 +184,34 @@ object TableCellLayout {
 
     private fun shouldWrap(columnKey: String): Boolean = columnKey in wrapColumnKeys
 
-    private fun horizontalPadding(columnKey: String): Float =
-        if (columnKey in currencyColumnKeys) CURRENCY_CELL_HORIZONTAL_PADDING else CELL_HORIZONTAL_PADDING
+    private fun horizontalPadding(columnKey: String, columnWidth: Float = Float.MAX_VALUE): Float {
+        val preferred = if (columnKey in currencyColumnKeys) {
+            CURRENCY_CELL_HORIZONTAL_PADDING
+        } else {
+            CELL_HORIZONTAL_PADDING
+        }
+        // Keep usable text width on narrow half-sheet columns
+        return preferred.coerceAtMost((columnWidth * 0.12f).coerceAtLeast(2f))
+    }
+
+    private fun fitSingleLine(
+        text: String,
+        paint: Paint,
+        columnWidth: Float,
+        columnKey: String
+    ): String {
+        if (text.isBlank()) return ""
+        val maxWidth = (columnWidth - horizontalPadding(columnKey, columnWidth) * 2f).coerceAtLeast(1f)
+        if (paint.measureText(text) <= maxWidth) return text
+        val ellipsis = "…"
+        val ellipsisWidth = paint.measureText(ellipsis)
+        if (ellipsisWidth >= maxWidth) return ""
+        var end = text.length
+        while (end > 0 && paint.measureText(text.substring(0, end)) + ellipsisWidth > maxWidth) {
+            end--
+        }
+        return if (end <= 0) ellipsis else text.substring(0, end) + ellipsis
+    }
 
     private fun cellAlignedX(
         paint: Paint,
@@ -187,7 +222,7 @@ object TableCellLayout {
         columnKey: String = ""
     ): Float {
         val textWidth = paint.measureText(text)
-        val pad = horizontalPadding(columnKey)
+        val pad = horizontalPadding(columnKey, columnWidth)
         val innerLeft = columnLeft + pad
         val innerRight = columnLeft + columnWidth - pad
         val innerWidth = (innerRight - innerLeft).coerceAtLeast(1f)

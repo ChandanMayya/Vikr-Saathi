@@ -131,6 +131,7 @@ data class InvoiceTemplate(
     val id: Long = 0,
     val name: String,
     val isDefault: Boolean = false,
+    val sheetType: String = PaperSizeId.A4.name,
     val pageWidthPt: Int = PAGE_WIDTH_PT,
     val pageHeightPt: Int = PAGE_HEIGHT_PT,
     val marginLeft: Float = 40f,
@@ -144,6 +145,9 @@ data class InvoiceTemplate(
 ) {
     val sortedElements: List<TemplateElement>
         get() = elements.filter { it.visible }.sortedBy { it.zIndex }
+
+    val paperSizeId: PaperSizeId
+        get() = PaperSizeId.fromStored(sheetType)
 
     companion object {
         const val PAGE_WIDTH_PT = 595
