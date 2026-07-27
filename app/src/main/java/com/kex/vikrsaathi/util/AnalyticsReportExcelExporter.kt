@@ -146,6 +146,6 @@ object AnalyticsReportExcelExporter {
     private fun formatDayLabel(dayOfWeek: Int): String {
         return java.util.Calendar.getInstance().apply {
             set(java.util.Calendar.DAY_OF_WEEK, dayOfWeek)
-        }.getDisplayName(java.util.Calendar.SHORT, java.util.Calendar.SHORT, Locale.getDefault()) ?: "?"
+        }.getDisplayName(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.SHORT, Locale.getDefault()) ?: "?"
     }
 }

@@ -241,7 +241,7 @@ class AnalysisFragment : Fragment() {
     private fun formatDayOfWeekLabel(dayOfWeek: Int): String {
         return Calendar.getInstance().apply {
             set(Calendar.DAY_OF_WEEK, dayOfWeek)
-        }.getDisplayName(Calendar.SHORT, Calendar.SHORT, Locale.getDefault()) ?: "?"
+        }.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT, Locale.getDefault()) ?: "?"
     }
 
     private fun setupOptionsMenu() {
