@@ -1,4 +1,8 @@
 <resources>
+    <dimen name="content_shell_corner_radius">10dp</dimen>
+    <dimen name="content_shell_overlap">6dp</dimen>
+    <dimen name="content_shell_overlap_neg">-6dp</dimen>
+    <dimen name="content_shell_inner_top_padding">10dp</dimen>
     <dimen name="fab_margin">16dp</dimen>
     <dimen name="fragment_horizontal_margin">16dp</dimen>
     <dimen name="item_transform_image_length">48dp</dimen>

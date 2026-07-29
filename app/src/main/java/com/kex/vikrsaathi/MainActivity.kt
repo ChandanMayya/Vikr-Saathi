@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
         SystemBarInsets.applyMainActivity(
             activity = this,
             appBar = binding.appBarLayout,
-            content = binding.navHostFragment
+            content = binding.contentShell
         )
 
         val navHostFragment = supportFragmentManager

@@ -32,6 +32,9 @@
     <color name="text_primary_dark">#212121</color>
     <color name="text_secondary_dark">#5D4037</color>
 
+    <!-- Curved main content shell (overridden in values-night) -->
+    <color name="content_shell_bg">#FFFFFF</color>
+
     <!-- Semantic surfaces (overridden in values-night) -->
     <color name="surface_card">#FFFFFF</color>
     <color name="surface_panel">#FFFFFF</color>

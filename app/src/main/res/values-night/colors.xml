@@ -6,6 +6,8 @@
     <color name="text_secondary_dark">#BCAAA4</color>
     <color name="skeleton">#4E342E</color>
 
+    <color name="content_shell_bg">#1E1E1E</color>
+
     <color name="surface_card">#1E1E1E</color>
     <color name="surface_panel">#252525</color>
     <color name="surface_muted">#2C2419</color>
