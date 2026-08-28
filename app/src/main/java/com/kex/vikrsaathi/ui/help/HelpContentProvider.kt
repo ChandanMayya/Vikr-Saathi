@@ -86,6 +86,12 @@ object HelpContentProvider {
                 R.string.help_general_settings_overview,
                 section(R.string.help_general_settings_s1_title, R.array.help_general_settings_s1)
             )
+            HelpScreen.SECURITY_SETTINGS -> guide(
+                context,
+                R.string.help_security_settings_title,
+                R.string.help_security_settings_overview,
+                section(R.string.help_security_settings_s1_title, R.array.help_security_settings_s1)
+            )
             HelpScreen.INVENTORY_SETTINGS -> guide(
                 context,
                 R.string.help_inventory_settings_title,

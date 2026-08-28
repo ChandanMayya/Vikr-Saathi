@@ -193,6 +193,13 @@
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
+            android:id="@+id/action_settings_to_security"
+            app:destination="@id/securitySettingsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
             android:id="@+id/action_settings_to_inventory"
             app:destination="@id/inventorySettingsFragment"
             app:enterAnim="@anim/nav_fade_in"
@@ -227,6 +234,12 @@
         android:name="com.kex.vikrsaathi.ui.settings.GeneralSettingsFragment"
         android:label="@string/settings_general_title"
         tools:layout="@layout/fragment_general_settings" />
+
+    <fragment
+        android:id="@+id/securitySettingsFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.SecuritySettingsFragment"
+        android:label="@string/settings_security_title"
+        tools:layout="@layout/fragment_security_settings" />
 
     <fragment
         android:id="@+id/inventorySettingsFragment"

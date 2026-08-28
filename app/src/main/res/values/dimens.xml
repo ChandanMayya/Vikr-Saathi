@@ -10,4 +10,12 @@
     <dimen name="reflow_text_block_horizontal_gap">8dp</dimen>
     <dimen name="reflow_text_title_size">22sp</dimen>
     <dimen name="reflow_text_description_size">13sp</dimen>
+    <dimen name="pin_key_size">72dp</dimen>
+    <dimen name="pin_key_spacing">16dp</dimen>
+    <dimen name="pin_dot_size">16dp</dimen>
+    <dimen name="pin_screen_horizontal_padding">28dp</dimen>
+    <dimen name="pin_header_top_padding">32dp</dimen>
+    <dimen name="pin_section_top_margin">36dp</dimen>
+    <dimen name="pin_keypad_bottom_margin">20dp</dimen>
+    <dimen name="pin_icon_size">24dp</dimen>
 </resources>

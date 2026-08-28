@@ -13,6 +13,8 @@ import com.kex.vikrsaathi.data.repository.SettingsRepository
 import com.kex.vikrsaathi.data.backup.BackupManager
 import com.kex.vikrsaathi.data.reset.ResetHistoryStore
 import com.kex.vikrsaathi.data.reset.ResetManager
+import com.kex.vikrsaathi.data.security.AppLockManager
+import com.kex.vikrsaathi.data.security.AppLockStore
 import com.kex.vikrsaathi.util.BillsHistoryPreferences
 import com.kex.vikrsaathi.util.InvoiceBuilderPreferences
 import com.kex.vikrsaathi.util.ListViewPreferences
@@ -62,6 +64,8 @@ class VikrSaathiApp : Application() {
     val invoiceBuilderPreferences by lazy { InvoiceBuilderPreferences(this) }
     val billsHistoryPreferences by lazy { BillsHistoryPreferences(this) }
     val listViewPreferences by lazy { ListViewPreferences(this) }
+    val appLockStore by lazy { AppLockStore(this) }
+    val appLockManager by lazy { AppLockManager(appLockStore) }
     val backupManager by lazy {
         BackupManager(
             context = this,

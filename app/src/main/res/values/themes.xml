@@ -120,4 +120,50 @@
         <item name="android:textColor">@color/button_outlined_text_destructive</item>
         <item name="strokeColor">@color/button_outlined_stroke_destructive</item>
     </style>
+
+    <style name="VikrSaathiPinDot">
+        <item name="android:layout_width">@dimen/pin_dot_size</item>
+        <item name="android:layout_height">@dimen/pin_dot_size</item>
+        <item name="android:layout_marginHorizontal">10dp</item>
+        <item name="android:background">@drawable/bg_pin_dot_empty</item>
+    </style>
+
+    <style name="VikrSaathiPinKeyRow">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:layout_marginBottom">@dimen/pin_key_spacing</item>
+    </style>
+
+    <style name="VikrSaathiPinKeyButton" parent="Widget.Material3.Button.TextButton">
+        <item name="android:layout_width">@dimen/pin_key_size</item>
+        <item name="android:layout_height">@dimen/pin_key_size</item>
+        <item name="android:layout_marginHorizontal">8dp</item>
+        <item name="android:insetLeft">0dp</item>
+        <item name="android:insetRight">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceHeadlineSmall</item>
+        <item name="android:textColor">@color/pin_key_text</item>
+        <item name="android:textStyle">bold</item>
+        <item name="backgroundTint">@color/pin_key_surface</item>
+        <item name="cornerRadius">36dp</item>
+        <item name="elevation">3dp</item>
+        <item name="rippleColor">@color/pin_key_ripple</item>
+    </style>
+
+    <style name="VikrSaathiPinIconKeyButton" parent="VikrSaathiPinKeyButton">
+        <item name="android:paddingLeft">24dp</item>
+        <item name="android:paddingTop">24dp</item>
+        <item name="android:paddingRight">24dp</item>
+        <item name="android:paddingBottom">24dp</item>
+        <item name="android:minWidth">@dimen/pin_key_size</item>
+        <item name="android:minHeight">@dimen/pin_key_size</item>
+        <item name="android:text">@null</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">0dp</item>
+        <item name="iconSize">@dimen/pin_icon_size</item>
+        <item name="iconTint">@null</item>
+    </style>
 </resources>

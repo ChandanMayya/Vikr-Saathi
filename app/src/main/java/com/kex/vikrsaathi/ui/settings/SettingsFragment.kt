@@ -22,6 +22,13 @@ class SettingsFragment : SettingsNavHubFragment() {
                     findNavController().navigate(R.id.action_settings_to_general)
                 },
                 SettingsNavEntry(
+                    iconRes = R.drawable.ic_settings_security,
+                    title = getString(R.string.settings_security_title),
+                    subtitle = getString(R.string.settings_security_subtitle)
+                ) {
+                    findNavController().navigate(R.id.action_settings_to_security)
+                },
+                SettingsNavEntry(
                     iconRes = R.drawable.ic_settings_inventory,
                     title = getString(R.string.settings_inventory_title),
                     subtitle = getString(R.string.settings_inventory_subtitle)

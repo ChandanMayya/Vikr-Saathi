@@ -50,6 +50,8 @@ dependencies {
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.blurview)
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.biometric)
     implementation(libs.material)
 
     implementation(libs.androidx.room.runtime)

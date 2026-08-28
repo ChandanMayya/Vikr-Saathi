@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/lockOverlayRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_app_lock_gradient"
+    android:clickable="true"
+    android:elevation="28dp"
+    android:focusable="true"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:id="@+id/lockContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/pin_screen_horizontal_padding">
+
+        <TextView
+            android:id="@+id/textLockTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/app_lock_unlock_title"
+            android:textAppearance="?attr/textAppearanceHeadlineSmall"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textLockSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/app_lock_unlock_subtitle"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="@color/splash_subtitle_text" />
+
+        <LinearLayout
+            android:id="@+id/layoutPinSection"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/pin_section_top_margin"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/layoutPinDots"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <View
+                    android:id="@+id/dot1"
+                    style="@style/VikrSaathiPinDot" />
+
+                <View
+                    android:id="@+id/dot2"
+                    style="@style/VikrSaathiPinDot" />
+
+                <View
+                    android:id="@+id/dot3"
+                    style="@style/VikrSaathiPinDot" />
+
+                <View
+                    android:id="@+id/dot4"
+                    style="@style/VikrSaathiPinDot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/textLockError"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:minHeight="20dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="#FFCDD2"
+                android:visibility="invisible" />
+        </LinearLayout>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:id="@+id/layoutKeypad"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/pin_keypad_bottom_margin"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <LinearLayout style="@style/VikrSaathiPinKeyRow">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKey1"
+                    style="@style/VikrSaathiPinKeyButton"
+                    android:text="1" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKey2"
+                    style="@style/VikrSaathiPinKeyButton"
+                    android:text="2" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKey3"
+                    style="@style/VikrSaathiPinKeyButton"
+                    android:text="3" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/VikrSaathiPinKeyRow">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKey4"
+                    style="@style/VikrSaathiPinKeyButton"
+                    android:text="4" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKey5"
+                    style="@style/VikrSaathiPinKeyButton"
+                    android:text="5" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKey6"
+                    style="@style/VikrSaathiPinKeyButton"
+                    android:text="6" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/VikrSaathiPinKeyRow">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKey7"
+                    style="@style/VikrSaathiPinKeyButton"
+                    android:text="7" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKey8"
+                    style="@style/VikrSaathiPinKeyButton"
+                    android:text="8" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKey9"
+                    style="@style/VikrSaathiPinKeyButton"
+                    android:text="9" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/VikrSaathiPinKeyRow">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKeyBiometric"
+                    style="@style/VikrSaathiPinIconKeyButton"
+                    android:contentDescription="@string/app_lock_use_biometric"
+                    app:icon="@drawable/ic_fingerprint" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKey0"
+                    style="@style/VikrSaathiPinKeyButton"
+                    android:text="0" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonKeyBackspace"
+                    style="@style/VikrSaathiPinIconKeyButton"
+                    android:contentDescription="@string/app_lock_backspace"
+                    app:icon="@drawable/ic_backspace" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/textLockFooter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:gravity="center"
+            android:text="@string/app_lock_footer_hint"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textColor="@color/splash_subtitle_text" />
+    </LinearLayout>
+</FrameLayout>

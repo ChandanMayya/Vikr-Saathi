@@ -161,6 +161,7 @@
     <string name="help_settings_s1_title">Sections</string>
     <string-array name="help_settings_s1">
         <item>General — shop name, currency, default discount, appearance.</item>
+        <item>Security — app lock, PIN, and biometric unlock.</item>
         <item>Inventory Settings — shortfall policy and low-stock threshold.</item>
         <item>Invoice Configuration — images, counter, and layout templates.</item>
         <item>Backup &amp; Restore — export and import your full data.</item>
@@ -178,6 +179,18 @@
         <item>Appearance — Light, Dark, Auto (day/night), or follow your phone theme.</item>
         <item>Master view mode — default list density for Customers, Items, Inventory, and Bills History. A choice on a screen overrides this for that screen only.</item>
         <item>Changes save automatically when you leave a field.</item>
+    </string-array>
+
+    <!-- Security settings -->
+    <string name="help_security_settings_title">Security</string>
+    <string name="help_security_settings_overview">Protect Vikr Saathi with a PIN and optional fingerprint or face unlock.</string>
+    <string name="help_security_settings_s1_title">Options</string>
+    <string-array name="help_security_settings_s1">
+        <item>Enable app lock — requires a 4-digit PIN to open the app.</item>
+        <item>Change PIN — update your unlock code anytime.</item>
+        <item>Biometric unlock — faster unlock when your phone supports it.</item>
+        <item>Auto-lock — choose how soon the app locks after you switch away.</item>
+        <item>After 5 wrong PIN attempts, unlock is blocked for 30 seconds.</item>
     </string-array>
 
     <!-- Inventory settings -->
