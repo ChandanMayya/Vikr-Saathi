@@ -23,7 +23,9 @@ class AppLockManager(
     fun shouldShowLock(): Boolean = isLockEnabled && !unlocked
 
     fun markBackground(now: Long = System.currentTimeMillis()) {
-        backgroundAtMillis = now
+        if (isLockEnabled && unlocked) {
+            backgroundAtMillis = now
+        }
     }
 
     fun shouldLockOnResume(now: Long = System.currentTimeMillis()): Boolean {

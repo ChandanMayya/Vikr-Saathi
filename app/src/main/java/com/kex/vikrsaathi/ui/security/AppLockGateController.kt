@@ -156,6 +156,7 @@ class AppLockGateController(
     }
 
     private fun completeUnlock() {
+        appLockManager.unlock()
         overlayRoot.animate()
             .alpha(0f)
             .setDuration(UNLOCK_FADE_MS)
