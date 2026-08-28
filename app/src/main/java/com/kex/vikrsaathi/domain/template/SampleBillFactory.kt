@@ -18,7 +18,8 @@ object SampleBillFactory {
             id = 1,
             billNumber = "1001",
             customerId = 1,
-            total = 1250.0,
+            total = 1279.50,
+            roundOff = -0.50,
             date = System.currentTimeMillis()
         )
         val items = listOf(
@@ -29,7 +30,8 @@ object SampleBillFactory {
                 quantity = 2,
                 mrp = 500.0,
                 discount = 10.0,
-                finalPrice = 450.0
+                finalPrice = 450.0,
+                roundOff = 0.25
             ),
             BillItem(
                 billId = 1,
@@ -38,7 +40,8 @@ object SampleBillFactory {
                 quantity = 1,
                 mrp = 400.0,
                 discount = 5.0,
-                finalPrice = 380.0
+                finalPrice = 380.0,
+                roundOff = -0.25
             )
         )
         return BillWithDetails(bill = bill, customer = customer, items = items)

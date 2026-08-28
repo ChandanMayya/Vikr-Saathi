@@ -16,6 +16,7 @@ object BillDraftCodec {
                     put("mrp", line.mrp)
                     put("discount", line.discount)
                     put("quantity", line.quantity)
+                    put("roundOff", line.roundOff)
                 }
             )
         }
@@ -35,7 +36,8 @@ object BillDraftCodec {
                             name = obj.getString("name"),
                             mrp = obj.getDouble("mrp"),
                             discount = obj.getDouble("discount"),
-                            quantity = obj.optInt("quantity", 1).coerceAtLeast(1)
+                            quantity = obj.optInt("quantity", 1).coerceAtLeast(1),
+                            roundOff = obj.optDouble("roundOff", 0.0)
                         )
                     )
                 }

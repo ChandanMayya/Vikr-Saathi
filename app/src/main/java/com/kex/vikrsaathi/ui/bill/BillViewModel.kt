@@ -10,6 +10,7 @@ import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.data.draft.HeldBillRestore
 import com.kex.vikrsaathi.data.draft.HeldDraftSummary
+import com.kex.vikrsaathi.data.repository.BillTotalsCalculator
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.BillDraftRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
@@ -56,6 +57,15 @@ class BillViewModel(
 
     private val _totalDiscount = MutableLiveData(0.0)
     val totalDiscount: LiveData<Double> = _totalDiscount
+
+    private val _lineRoundOffTotal = MutableLiveData(0.0)
+    val lineRoundOffTotal: LiveData<Double> = _lineRoundOffTotal
+
+    private val _subtotal = MutableLiveData(0.0)
+    val subtotal: LiveData<Double> = _subtotal
+
+    private val _billRoundOff = MutableLiveData(0.0)
+    val billRoundOff: LiveData<Double> = _billRoundOff
 
     private val _totalInWords = MutableLiveData("")
     val totalInWords: LiveData<String> = _totalInWords
@@ -146,7 +156,8 @@ class BillViewModel(
                 customerName = name,
                 buyerAddress = buyerAddress,
                 buyerPhone = buyerPhone,
-                lineItems = lines
+                lineItems = lines,
+                billRoundOff = _billRoundOff.value ?: 0.0
             )
             clearBill()
             onHeld(summary)
@@ -167,6 +178,7 @@ class BillViewModel(
             editingBillId = null
             _selectedCustomer.value = restored.customerId?.let { customerRepository.getById(it) }
             _lineItems.value = restored.lineItems
+            _billRoundOff.value = restored.roundOff
             recalculate()
             onRestored(restored)
         }
@@ -195,9 +207,11 @@ class BillViewModel(
                     name = it.itemName,
                     mrp = it.mrp,
                     discount = it.discount,
-                    quantity = it.quantity
+                    quantity = it.quantity,
+                    roundOff = it.roundOff
                 )
             }
+            _billRoundOff.value = bill.bill.roundOff
             recalculate()
         }
     }
@@ -206,6 +220,7 @@ class BillViewModel(
         editingBillId = null
         _selectedCustomer.value = null
         _lineItems.value = emptyList()
+        _billRoundOff.value = 0.0
         recalculate()
     }
 
@@ -288,6 +303,19 @@ class BillViewModel(
         recalculate()
     }
 
+    fun updateLineRoundOff(index: Int, roundOff: Double) {
+        val items = _lineItems.value?.toMutableList() ?: return
+        if (index !in items.indices) return
+        items[index] = items[index].copy(roundOff = roundOff)
+        _lineItems.value = items
+        recalculate()
+    }
+
+    fun updateBillRoundOff(roundOff: Double) {
+        _billRoundOff.value = roundOff
+        recalculate()
+    }
+
     fun removeLine(index: Int) {
         val items = _lineItems.value?.toMutableList() ?: return
         if (index !in items.indices) return
@@ -318,6 +346,7 @@ class BillViewModel(
             val id = billRepository.saveBill(
                 customerId = resolvedCustomer?.id,
                 lineItems = resolvedLines,
+                billRoundOff = _billRoundOff.value ?: 0.0,
                 existingBillId = editingBillId
             )
             editingBillId = id
@@ -378,8 +407,13 @@ class BillViewModel(
         val totalDiscount = lines.sumOf {
             PriceCalculator.discountAmount(it.mrp, it.discount, it.quantity)
         }
-        val total = lines.sumOf { it.lineTotal }
+        val lineRoundOff = BillTotalsCalculator.lineItemsRoundOffTotal(lines)
+        val subtotal = BillTotalsCalculator.lineItemsSubtotal(lines)
+        val billRoundOff = _billRoundOff.value ?: 0.0
+        val total = subtotal + billRoundOff
         _totalDiscount.value = totalDiscount
+        _lineRoundOffTotal.value = lineRoundOff
+        _subtotal.value = subtotal
         _grandTotal.value = total
         _totalInWords.value = NumberToWords.convert(total)
     }

@@ -16,6 +16,7 @@ class BillLineItemAdapter(
     private val currencySymbol: String,
     private val onQuantityChange: (Int, Int) -> Unit,
     private val onDiscountChange: (Int, Double) -> Unit,
+    private val onRoundOffChange: (Int, Double) -> Unit,
     private val onRemove: (Int) -> Unit
 ) : ListAdapter<BillLineItem, BillLineItemAdapter.ViewHolder>(DiffCallback()) {
 
@@ -106,6 +107,38 @@ class BillLineItemAdapter(
                 suppressUpdates = false
             }
 
+            binding.editRoundOff.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    if (suppressUpdates || readOnly) return
+                    val pos = bindingAdapterPosition
+                    if (pos == RecyclerView.NO_POSITION) return
+                    val text = s?.toString()?.trim().orEmpty()
+                    val roundOff = if (text.isEmpty() || text == "-" || text == "+") {
+                        0.0
+                    } else {
+                        text.toDoubleOrNull() ?: return
+                    }
+                    updateLineTotalForRoundOff(getItem(pos), roundOff)
+                    if (roundOff != getItem(pos).roundOff) {
+                        onRoundOffChange(pos, roundOff)
+                    }
+                }
+            })
+
+            binding.editRoundOff.setOnFocusChangeListener { _, hasFocus ->
+                if (suppressUpdates || readOnly || hasFocus) return@setOnFocusChangeListener
+                val pos = bindingAdapterPosition
+                if (pos == RecyclerView.NO_POSITION) return@setOnFocusChangeListener
+                val roundOff = binding.editRoundOff.text?.toString()?.trim()?.toDoubleOrNull() ?: 0.0
+                val formatted = String.format("%.2f", roundOff)
+                suppressUpdates = true
+                binding.editRoundOff.setText(formatted)
+                binding.editRoundOff.setSelection(binding.editRoundOff.text?.length ?: 0)
+                suppressUpdates = false
+            }
+
             binding.buttonRemoveLine.setOnClickListener {
                 if (!readOnly) {
                     val pos = bindingAdapterPosition
@@ -121,12 +154,14 @@ class BillLineItemAdapter(
             binding.textMrp.text = PriceCalculator.formatAmount(line.mrp, currencySymbol)
             setQuantityTextIfNeeded(line.quantity)
             setDiscountTextIfNeeded(line.discount)
+            setRoundOffTextIfNeeded(line.roundOff)
             binding.textPrice.text = PriceCalculator.formatAmount(line.lineTotal, currencySymbol)
             suppressUpdates = false
 
             binding.buttonRemoveLine.visibility = if (readOnly) View.GONE else View.VISIBLE
             binding.editDiscount.isEnabled = !readOnly
             binding.editQuantity.isEnabled = !readOnly
+            binding.editRoundOff.isEnabled = !readOnly
         }
 
         fun updateLineTotal(line: BillLineItem) {
@@ -134,12 +169,17 @@ class BillLineItemAdapter(
         }
 
         private fun updateLineTotalForQuantity(line: BillLineItem, quantity: Int) {
-            val total = PriceCalculator.priceAfterDiscount(line.mrp, line.discount) * quantity
+            val total = PriceCalculator.priceAfterDiscount(line.mrp, line.discount) * quantity + line.roundOff
             binding.textPrice.text = PriceCalculator.formatAmount(total, currencySymbol)
         }
 
         private fun updateLineTotalForDiscount(line: BillLineItem, discount: Double) {
-            val total = PriceCalculator.priceAfterDiscount(line.mrp, discount) * line.quantity
+            val total = PriceCalculator.priceAfterDiscount(line.mrp, discount) * line.quantity + line.roundOff
+            binding.textPrice.text = PriceCalculator.formatAmount(total, currencySymbol)
+        }
+
+        private fun updateLineTotalForRoundOff(line: BillLineItem, roundOff: Double) {
+            val total = PriceCalculator.priceAfterDiscount(line.mrp, line.discount) * line.quantity + roundOff
             binding.textPrice.text = PriceCalculator.formatAmount(total, currencySymbol)
         }
 
@@ -167,6 +207,20 @@ class BillLineItemAdapter(
             edit.setText(formatted)
             edit.setSelection(edit.text?.length ?: 0)
         }
+
+        private fun setRoundOffTextIfNeeded(roundOff: Double) {
+            val edit = binding.editRoundOff
+            if (edit.hasFocus()) return
+
+            val current = edit.text?.toString()?.trim().orEmpty()
+            if (current.toDoubleOrNull()?.let { kotlin.math.abs(it - roundOff) < 0.005 } == true) {
+                return
+            }
+
+            val formatted = String.format("%.2f", roundOff)
+            edit.setText(formatted)
+            edit.setSelection(edit.text?.length ?: 0)
+        }
     }
 
     private class DiffCallback : DiffUtil.ItemCallback<BillLineItem>() {
@@ -183,7 +237,10 @@ class BillLineItemAdapter(
             ) {
                 return null
             }
-            if (oldItem.quantity != newItem.quantity || oldItem.discount != newItem.discount) {
+            if (oldItem.quantity != newItem.quantity ||
+                oldItem.discount != newItem.discount ||
+                oldItem.roundOff != newItem.roundOff
+            ) {
                 return PAYLOAD_LINE_TOTAL
             }
             return null

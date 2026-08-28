@@ -32,5 +32,6 @@ data class BillItem(
     val quantity: Int = 1,
     val mrp: Double,
     val discount: Double,
-    val finalPrice: Double
+    val finalPrice: Double,
+    val roundOff: Double = 0.0
 )

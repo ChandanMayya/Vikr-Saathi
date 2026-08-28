@@ -153,3 +153,17 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         )
     }
 }
+
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE bills ADD COLUMN roundOff REAL NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            "ALTER TABLE bill_items ADD COLUMN roundOff REAL NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            "ALTER TABLE bill_drafts ADD COLUMN roundOff REAL NOT NULL DEFAULT 0"
+        )
+    }
+}

@@ -11,6 +11,7 @@ object TableTotalRowBuilder {
     private val quantityColumnKeys = setOf("quantity", "qty")
     private val discountPercentColumnKeys = setOf("discount", "disc")
     private val discountAmountColumnKeys = setOf("discountAmount", "discAmt", "discount_amount")
+    private val roundOffColumnKeys = setOf("roundOff", "round_off", "lineRoundOff")
     private val amountColumnKeys = setOf("lineTotal", "amount", "total")
 
     fun build(
@@ -24,7 +25,8 @@ object TableTotalRowBuilder {
                 name = item.itemName,
                 mrp = item.mrp,
                 discount = item.discount,
-                quantity = item.quantity
+                quantity = item.quantity,
+                roundOff = item.roundOff
             )
         }
 
@@ -54,6 +56,17 @@ object TableTotalRowBuilder {
                     )
                 }
                 in discountPercentColumnKeys -> values[column.key] = ""
+                in roundOffColumnKeys -> {
+                    val totalRoundOff = lines.sumOf { it.roundOff }
+                    values[column.key] = if (kotlin.math.abs(totalRoundOff) < 0.005) {
+                        ""
+                    } else {
+                        PriceCalculator.formatSignedAmount(
+                            totalRoundOff,
+                            context.currencySymbol
+                        )
+                    }
+                }
                 in amountColumnKeys -> {
                     val totalAmount = lines.sumOf { it.lineTotal }
                     values[column.key] = PriceCalculator.formatAmount(

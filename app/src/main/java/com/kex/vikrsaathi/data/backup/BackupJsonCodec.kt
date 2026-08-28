@@ -327,6 +327,7 @@ object BackupJsonCodec {
             put("invoiceCounter", details.bill.invoiceCounter)
             details.bill.customerId?.let { put("customerLegacyId", it) }
             put("total", details.bill.total)
+            put("roundOff", details.bill.roundOff)
             put("date", details.bill.date)
             put("items", JSONArray().apply {
                 details.items.forEach { item -> put(encodeBillItem(item)) }
@@ -342,6 +343,7 @@ object BackupJsonCodec {
             put("mrp", item.mrp)
             put("discount", item.discount)
             put("finalPrice", item.finalPrice)
+            put("roundOff", item.roundOff)
         }
     }
 
@@ -357,7 +359,8 @@ object BackupJsonCodec {
                     quantity = itemObj.getInt("quantity"),
                     mrp = itemObj.getDouble("mrp"),
                     discount = itemObj.getDouble("discount"),
-                    finalPrice = itemObj.getDouble("finalPrice")
+                    finalPrice = itemObj.getDouble("finalPrice"),
+                    roundOff = itemObj.optDouble("roundOff", 0.0)
                 )
             )
         }
@@ -367,6 +370,7 @@ object BackupJsonCodec {
             invoiceCounter = obj.optInt("invoiceCounter", 0),
             customerLegacyId = obj.optLong("customerLegacyId").takeIf { obj.has("customerLegacyId") },
             total = obj.getDouble("total"),
+            roundOff = obj.optDouble("roundOff", 0.0),
             date = obj.getLong("date"),
             items = items
         )
@@ -476,6 +480,7 @@ data class BillBackup(
     val invoiceCounter: Int,
     val customerLegacyId: Long?,
     val total: Double,
+    val roundOff: Double = 0.0,
     val date: Long,
     val items: List<BillLineItemBackup>
 )
@@ -486,14 +491,16 @@ data class BillLineItemBackup(
     val quantity: Int,
     val mrp: Double,
     val discount: Double,
-    val finalPrice: Double
+    val finalPrice: Double,
+    val roundOff: Double = 0.0
 ) {
     fun toLineItem(mappedItemId: Long?): BillLineItem = BillLineItem(
         itemId = mappedItemId,
         name = itemName,
         mrp = mrp,
         discount = discount,
-        quantity = quantity
+        quantity = quantity,
+        roundOff = roundOff
     )
 }
 

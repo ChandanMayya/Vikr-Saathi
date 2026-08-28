@@ -10,11 +10,15 @@ data class BillLineItem(
     val name: String,
     val mrp: Double,
     val discount: Double,
-    var quantity: Int = 1
+    var quantity: Int = 1,
+    val roundOff: Double = 0.0
 ) {
     val unitPriceAfterDiscount: Double
         get() = PriceCalculator.priceAfterDiscount(mrp, discount)
 
-    val lineTotal: Double
+    val rawLineTotal: Double
         get() = unitPriceAfterDiscount * quantity
+
+    val lineTotal: Double
+        get() = rawLineTotal + roundOff
 }

@@ -195,6 +195,11 @@
     <string name="discount_label">Disc:</string>
     <string name="discount_short">Disc %</string>
     <string name="qty_short">Qty</string>
+    <string name="round_off_short">R/off</string>
+    <string name="line_round_off">Line Round Off: %1$s</string>
+    <string name="bill_round_off">Bill round off</string>
+    <string name="bill_round_off_label">Bill Round Off: %1$s</string>
+    <string name="subtotal">Subtotal: %1$s</string>
     <string name="quantity_label">Qty:</string>
     <string name="bill_items">Items</string>
     <string name="bills_list">Bills</string>
@@ -525,7 +530,7 @@
     <string name="template_import_failed">Could not import template</string>
     <string name="template_export_failed">Could not export template</string>
     <string name="table_columns">Table columns</string>
-    <string name="table_columns_hint">Key must match bill item fields (sl, name, quantity, mrp, discount, discountAmount, lineTotal).</string>
+    <string name="table_columns_hint">Key must match bill item fields (sl, name, quantity, mrp, discount, discountAmount, roundOff, lineTotal).</string>
     <string name="table_border_width_dp">Border width (dp)</string>
     <string name="table_border_width_hint">Typical: 1 = thin, 2 = medium, 3+ = bold. Range 0.25–8.</string>
     <string name="table_show_total_row">Show total row</string>

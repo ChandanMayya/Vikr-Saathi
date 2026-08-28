@@ -13,4 +13,12 @@ object PriceCalculator {
     fun formatAmount(amount: Double, currencySymbol: String): String {
         return "$currencySymbol${String.format("%.2f", amount)}"
     }
+
+    fun formatSignedAmount(amount: Double, currencySymbol: String): String {
+        if (kotlin.math.abs(amount) < 0.005) {
+            return formatAmount(0.0, currencySymbol)
+        }
+        val sign = if (amount > 0) "+" else "-"
+        return "$sign$currencySymbol${String.format("%.2f", kotlin.math.abs(amount))}"
+    }
 }

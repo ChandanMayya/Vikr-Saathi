@@ -41,15 +41,17 @@ class BillRepository(
     suspend fun saveBill(
         customerId: Long?,
         lineItems: List<BillLineItem>,
+        billRoundOff: Double = 0.0,
         existingBillId: Long? = null
     ): Long {
-        val total = lineItems.sumOf { it.lineTotal }
+        val subtotal = BillTotalsCalculator.lineItemsSubtotal(lineItems)
+        val total = subtotal + billRoundOff
         val billId: Long
         val oldQuantities: Map<Long, Int>
 
         if (existingBillId != null) {
             val existing = billDao.getBillById(existingBillId)
-                ?: return saveBill(customerId, lineItems, null)
+                ?: return saveBill(customerId, lineItems, billRoundOff, null)
             oldQuantities = StockDeltaCalculator.aggregateQuantities(
                 billItemDao.getItemsForBill(existingBillId).map { it.itemId to it.quantity }
             )
@@ -58,6 +60,7 @@ class BillRepository(
                 existing.copy(
                     customerId = customerId,
                     total = total,
+                    roundOff = billRoundOff,
                     date = System.currentTimeMillis()
                 )
             )
@@ -69,7 +72,8 @@ class BillRepository(
                 billNumber = billNumber,
                 invoiceCounter = counter,
                 customerId = customerId,
-                total = total
+                total = total,
+                roundOff = billRoundOff
             )
             billId = billDao.insertBill(bill)
         }
@@ -82,7 +86,8 @@ class BillRepository(
                 quantity = line.quantity,
                 mrp = line.mrp,
                 discount = line.discount,
-                finalPrice = line.unitPriceAfterDiscount
+                finalPrice = line.unitPriceAfterDiscount,
+                roundOff = line.roundOff
             )
         }
         billItemDao.insertAll(billItems)
@@ -102,10 +107,11 @@ class BillRepository(
                 name = item.itemName,
                 mrp = item.mrp,
                 discount = item.discount,
-                quantity = item.quantity
+                quantity = item.quantity,
+                roundOff = item.roundOff
             )
         }
-        return saveBill(source.bill.customerId, duplicatedLines)
+        return saveBill(source.bill.customerId, duplicatedLines, source.bill.roundOff)
     }
 
     suspend fun billNumberExists(billNumber: String): Boolean =
@@ -130,17 +136,20 @@ class BillRepository(
         invoiceCounter: Int,
         date: Long,
         customerId: Long?,
-        lineItems: List<BillLineItem>
+        lineItems: List<BillLineItem>,
+        billRoundOff: Double = 0.0
     ): Long? {
         if (billNumber.isBlank() || lineItems.isEmpty()) return null
         if (billDao.countByBillNumber(billNumber) > 0) return null
 
-        val total = lineItems.sumOf { it.lineTotal }
+        val subtotal = BillTotalsCalculator.lineItemsSubtotal(lineItems)
+        val total = subtotal + billRoundOff
         val bill = Bill(
             billNumber = billNumber,
             invoiceCounter = invoiceCounter.coerceAtLeast(0),
             customerId = customerId,
             total = total,
+            roundOff = billRoundOff,
             date = date
         )
         val billId = billDao.insertBill(bill)
@@ -152,7 +161,8 @@ class BillRepository(
                 quantity = line.quantity,
                 mrp = line.mrp,
                 discount = line.discount,
-                finalPrice = line.unitPriceAfterDiscount
+                finalPrice = line.unitPriceAfterDiscount,
+                roundOff = line.roundOff
             )
         }
         billItemDao.insertAll(billItems)

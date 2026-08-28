@@ -367,7 +367,8 @@ class BackupManager(
                         invoiceCounter = backup.invoiceCounter,
                         date = backup.date,
                         customerId = customerId,
-                        lineItems = lineItems
+                        lineItems = lineItems,
+                        billRoundOff = backup.roundOff
                     )
                     if (imported == null) {
                         billsSkipped++

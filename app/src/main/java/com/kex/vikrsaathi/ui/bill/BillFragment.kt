@@ -55,6 +55,7 @@ class BillFragment : Fragment() {
     private var lastItemSearchQuery: String = ""
     private var suppressCustomerSearch = false
     private var suppressItemSearch = false
+    private var suppressBillRoundOffUpdates = false
     private var isReadOnly = false
 
     private val scannerLauncher = registerForActivityResult(
@@ -89,6 +90,7 @@ class BillFragment : Fragment() {
             currencySymbol = viewModel.currencySymbol,
             onQuantityChange = { index, qty -> viewModel.updateLineQuantity(index, qty) },
             onDiscountChange = { index, discount -> viewModel.updateLineDiscount(index, discount) },
+            onRoundOffChange = { index, roundOff -> viewModel.updateLineRoundOff(index, roundOff) },
             onRemove = { index -> viewModel.removeLine(index) }
         )
         binding.recyclerBillItems.layoutManager = LinearLayoutManager(requireContext())
@@ -141,8 +143,83 @@ class BillFragment : Fragment() {
                 PriceCalculator.formatAmount(discount, viewModel.currencySymbol)
             )
         }
+        viewModel.lineRoundOffTotal.observe(viewLifecycleOwner) { lineRoundOff ->
+            val visible = kotlin.math.abs(lineRoundOff) >= 0.005
+            binding.textLineRoundOffTotal.visibility = if (visible) View.VISIBLE else View.GONE
+            if (visible) {
+                binding.textLineRoundOffTotal.text = getString(
+                    R.string.line_round_off,
+                    PriceCalculator.formatSignedAmount(lineRoundOff, viewModel.currencySymbol)
+                )
+            }
+        }
+        viewModel.subtotal.observe(viewLifecycleOwner) { subtotal ->
+            val billRoundOff = viewModel.billRoundOff.value ?: 0.0
+            val visible = kotlin.math.abs(billRoundOff) >= 0.005
+            binding.textSubtotal.visibility = if (visible) View.VISIBLE else View.GONE
+            if (visible) {
+                binding.textSubtotal.text = getString(
+                    R.string.subtotal,
+                    PriceCalculator.formatAmount(subtotal, viewModel.currencySymbol)
+                )
+            }
+        }
+        viewModel.billRoundOff.observe(viewLifecycleOwner) { roundOff ->
+            if (!isReadOnly) {
+                if (!binding.editBillRoundOff.hasFocus()) {
+                    suppressBillRoundOffUpdates = true
+                    binding.editBillRoundOff.setText(String.format("%.2f", roundOff))
+                    suppressBillRoundOffUpdates = false
+                }
+            } else {
+                val visible = kotlin.math.abs(roundOff) >= 0.005
+                binding.textBillRoundOffReadOnly.visibility = if (visible) View.VISIBLE else View.GONE
+                if (visible) {
+                    binding.textBillRoundOffReadOnly.text = getString(
+                        R.string.bill_round_off_label,
+                        PriceCalculator.formatSignedAmount(roundOff, viewModel.currencySymbol)
+                    )
+                }
+            }
+            viewModel.subtotal.value?.let { subtotal ->
+                val visible = kotlin.math.abs(roundOff) >= 0.005
+                binding.textSubtotal.visibility = if (visible) View.VISIBLE else View.GONE
+                if (visible) {
+                    binding.textSubtotal.text = getString(
+                        R.string.subtotal,
+                        PriceCalculator.formatAmount(subtotal, viewModel.currencySymbol)
+                    )
+                }
+            }
+        }
         viewModel.totalInWords.observe(viewLifecycleOwner) { words ->
             binding.textTotalInWords.text = getString(R.string.total_in_words, words)
+        }
+
+        binding.editBillRoundOff.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                if (suppressBillRoundOffUpdates || isReadOnly) return
+                val text = s?.toString()?.trim().orEmpty()
+                val roundOff = if (text.isEmpty() || text == "-" || text == "+") {
+                    0.0
+                } else {
+                    text.toDoubleOrNull() ?: return
+                }
+                if (roundOff != (viewModel.billRoundOff.value ?: 0.0)) {
+                    viewModel.updateBillRoundOff(roundOff)
+                }
+            }
+        })
+
+        binding.editBillRoundOff.setOnFocusChangeListener { _, hasFocus ->
+            if (suppressBillRoundOffUpdates || isReadOnly || hasFocus) return@setOnFocusChangeListener
+            val roundOff = binding.editBillRoundOff.text?.toString()?.trim()?.toDoubleOrNull() ?: 0.0
+            suppressBillRoundOffUpdates = true
+            binding.editBillRoundOff.setText(String.format("%.2f", roundOff))
+            binding.editBillRoundOff.setSelection(binding.editBillRoundOff.text?.length ?: 0)
+            suppressBillRoundOffUpdates = false
         }
 
         binding.buttonScanBarcode.setOnClickListener {
@@ -331,6 +408,7 @@ class BillFragment : Fragment() {
         binding.editBuyerPhone.isEnabled = !isReadOnly
         binding.layoutAddItem.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.buttonSaveBill.visibility = if (isReadOnly) View.GONE else View.VISIBLE
+        binding.layoutBillRoundOff.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.layoutViewBillActions.visibility = if (isReadOnly) View.VISIBLE else View.GONE
         updateDrawerVisibility()
         updateTitle()

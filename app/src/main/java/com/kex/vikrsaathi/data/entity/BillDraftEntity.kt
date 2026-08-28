@@ -13,6 +13,7 @@ data class BillDraftEntity(
     val buyerPhone: String,
     val lineItemsJson: String,
     val grandTotal: Double,
+    val roundOff: Double = 0.0,
     val itemCount: Int,
     val heldAt: Long = System.currentTimeMillis()
 )

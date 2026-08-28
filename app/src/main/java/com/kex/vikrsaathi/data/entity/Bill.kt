@@ -24,5 +24,6 @@ data class Bill(
     val invoiceCounter: Int = 0,
     val customerId: Long? = null,
     val total: Double,
+    val roundOff: Double = 0.0,
     val date: Long = System.currentTimeMillis()
 )

@@ -14,5 +14,6 @@ data class HeldBillRestore(
     val customerName: String,
     val buyerAddress: String,
     val buyerPhone: String,
-    val lineItems: List<com.kex.vikrsaathi.data.model.BillLineItem>
+    val lineItems: List<com.kex.vikrsaathi.data.model.BillLineItem>,
+    val roundOff: Double = 0.0
 )

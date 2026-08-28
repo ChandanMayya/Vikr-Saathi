@@ -38,6 +38,16 @@ class TemplateBindingResolver {
             DataBindingKey.CUSTOMER_NAME -> context.bill.customer?.name ?: "-"
             DataBindingKey.CUSTOMER_ADDRESS -> context.bill.customer?.formattedAddress()?.ifBlank { "-" } ?: "-"
             DataBindingKey.CUSTOMER_PHONE -> context.bill.customer?.phone?.ifBlank { "-" } ?: "-"
+            DataBindingKey.BILL_SUBTOTAL -> {
+                val subtotal = context.bill.bill.total - context.bill.bill.roundOff
+                PriceCalculator.formatAmount(subtotal, context.currencySymbol)
+            }
+            DataBindingKey.BILL_LINE_ROUND_OFF -> {
+                val total = context.bill.items.sumOf { it.roundOff }
+                PriceCalculator.formatSignedAmount(total, context.currencySymbol)
+            }
+            DataBindingKey.BILL_ROUND_OFF ->
+                PriceCalculator.formatSignedAmount(context.bill.bill.roundOff, context.currencySymbol)
             DataBindingKey.BILL_TOTAL -> PriceCalculator.formatAmount(context.bill.bill.total, context.currencySymbol)
             DataBindingKey.BILL_TOTAL_WORDS -> NumberToWords.convert(context.bill.bill.total)
             DataBindingKey.HEADER_IMAGE, DataBindingKey.SIGNATURE_IMAGE, DataBindingKey.SHOP_LOGO,
@@ -66,7 +76,8 @@ class TemplateBindingResolver {
                 name = item.itemName,
                 mrp = item.mrp,
                 discount = item.discount,
-                quantity = item.quantity
+                quantity = item.quantity,
+                roundOff = item.roundOff
             )
             TableRowData(
                 mapOf(
@@ -79,6 +90,11 @@ class TemplateBindingResolver {
                         PriceCalculator.discountAmount(line.mrp, line.discount, line.quantity),
                         context.currencySymbol
                     ),
+                    "roundOff" to if (kotlin.math.abs(line.roundOff) < 0.005) {
+                        ""
+                    } else {
+                        PriceCalculator.formatSignedAmount(line.roundOff, context.currencySymbol)
+                    },
                     "lineTotal" to PriceCalculator.formatAmount(line.lineTotal, context.currencySymbol),
                     "amount" to PriceCalculator.formatAmount(line.lineTotal, context.currencySymbol)
                 )

@@ -20,6 +20,9 @@ object BindingOptionLabels {
         Option(DataBindingKey.CUSTOMER_NAME.name, "Customer name"),
         Option(DataBindingKey.CUSTOMER_ADDRESS.name, "Customer address"),
         Option(DataBindingKey.CUSTOMER_PHONE.name, "Customer phone"),
+        Option(DataBindingKey.BILL_SUBTOTAL.name, "Bill subtotal"),
+        Option(DataBindingKey.BILL_LINE_ROUND_OFF.name, "Line round off total"),
+        Option(DataBindingKey.BILL_ROUND_OFF.name, "Bill round off"),
         Option(DataBindingKey.BILL_TOTAL.name, "Bill total"),
         Option(DataBindingKey.BILL_TOTAL_WORDS.name, "Total in words")
     )

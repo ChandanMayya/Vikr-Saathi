@@ -13,9 +13,10 @@ object DefaultInvoiceTemplate {
         TableColumn("name", "Particulars", 30f, TextAlign.LEFT),
         TableColumn("quantity", "Qty", 9f, TextAlign.CENTER),
         TableColumn("mrp", "MRP", 9f, TextAlign.RIGHT),
-        TableColumn("discount", "Disc%", 9f, TextAlign.CENTER),
-        TableColumn("discountAmount", "Discount Amt", 14f, TextAlign.RIGHT),
-        TableColumn("lineTotal", "Amount", 23f, TextAlign.RIGHT)
+        TableColumn("discount", "Disc%", 8f, TextAlign.CENTER),
+        TableColumn("discountAmount", "Discount Amt", 12f, TextAlign.RIGHT),
+        TableColumn("roundOff", "R/off", 8f, TextAlign.RIGHT),
+        TableColumn("lineTotal", "Amount", 18f, TextAlign.RIGHT)
     )
 
     fun create(): InvoiceTemplate {

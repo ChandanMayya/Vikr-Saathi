@@ -149,6 +149,47 @@
                         android:textColor="@color/text_secondary_dark" />
 
                     <TextView
+                        android:id="@+id/textLineRoundOffTotal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textColor="@color/text_secondary_dark"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/textSubtotal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textColor="@color/text_secondary_dark"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutBillRoundOff"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="@string/bill_round_off">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/editBillRoundOff"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="numberDecimal|numberSigned" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <TextView
+                        android:id="@+id/textBillRoundOffReadOnly"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textColor="@color/text_secondary_dark"
+                        android:visibility="gone" />
+
+                    <TextView
                         android:id="@+id/textGrandTotal"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

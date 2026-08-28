@@ -5,6 +5,7 @@ import com.kex.vikrsaathi.data.draft.BillDraftCodec
 import com.kex.vikrsaathi.data.draft.HeldBillRestore
 import com.kex.vikrsaathi.data.draft.HeldDraftSummary
 import com.kex.vikrsaathi.data.entity.BillDraftEntity
+import com.kex.vikrsaathi.data.repository.BillTotalsCalculator
 import com.kex.vikrsaathi.data.model.BillLineItem
 
 class BillDraftRepository(
@@ -19,9 +20,11 @@ class BillDraftRepository(
         customerName: String,
         buyerAddress: String,
         buyerPhone: String,
-        lineItems: List<BillLineItem>
+        lineItems: List<BillLineItem>,
+        billRoundOff: Double = 0.0
     ): HeldDraftSummary {
-        val total = lineItems.sumOf { it.lineTotal }
+        val subtotal = BillTotalsCalculator.lineItemsSubtotal(lineItems)
+        val total = subtotal + billRoundOff
         val id = billDraftDao.insert(
             BillDraftEntity(
                 customerId = customerId,
@@ -30,6 +33,7 @@ class BillDraftRepository(
                 buyerPhone = buyerPhone,
                 lineItemsJson = BillDraftCodec.encodeLineItems(lineItems),
                 grandTotal = total,
+                roundOff = billRoundOff,
                 itemCount = lineItems.sumOf { it.quantity },
                 heldAt = System.currentTimeMillis()
             )
@@ -53,7 +57,8 @@ class BillDraftRepository(
             customerName = draft.customerName,
             buyerAddress = draft.buyerAddress,
             buyerPhone = draft.buyerPhone,
-            lineItems = BillDraftCodec.decodeLineItems(draft.lineItemsJson)
+            lineItems = BillDraftCodec.decodeLineItems(draft.lineItemsJson),
+            roundOff = draft.roundOff
         )
     }
 
