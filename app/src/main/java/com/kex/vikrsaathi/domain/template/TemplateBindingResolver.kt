@@ -23,7 +23,8 @@ data class TemplateRenderContext(
 
 data class TableRowData(
     val values: Map<String, String>,
-    val isTotalRow: Boolean = false
+    val isTotalRow: Boolean = false,
+    val isBillRoundOffRow: Boolean = false
 )
 
 class TemplateBindingResolver {
@@ -105,8 +106,22 @@ class TemplateBindingResolver {
             return itemRows
         }
 
-        val totalValues = TableTotalRowBuilder.build(context, columns, totalRowLabel)
-        return itemRows + TableRowData(totalValues, isTotalRow = true)
+        val trailingRows = mutableListOf<TableRowData>()
+        if (kotlin.math.abs(context.bill.bill.roundOff) >= 0.005) {
+            trailingRows.add(
+                TableRowData(
+                    values = TableBillRoundOffRowBuilder.build(context, columns),
+                    isBillRoundOffRow = true
+                )
+            )
+        }
+        trailingRows.add(
+            TableRowData(
+                values = TableTotalRowBuilder.build(context, columns, totalRowLabel),
+                isTotalRow = true
+            )
+        )
+        return itemRows + trailingRows
     }
 
     fun parseBindingKey(raw: String?): DataBindingKey? {

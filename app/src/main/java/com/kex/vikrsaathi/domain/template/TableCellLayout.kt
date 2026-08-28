@@ -10,19 +10,36 @@ import com.kex.vikrsaathi.data.model.template.TextAlign
 object TableCellLayout {
 
     private const val CELL_HORIZONTAL_PADDING = 6f
-    private const val CURRENCY_CELL_HORIZONTAL_PADDING = 10f
+    private const val CURRENCY_CELL_HORIZONTAL_PADDING = 8f
     private const val LINE_GAP = 2f
     private const val ROW_EXTRA_PADDING = 6f
-    private val wrapColumnKeys = setOf("name", "discountAmount")
-    private val currencyColumnKeys = setOf(
+    private const val MIN_SCALED_TEXT_SIZE = 7f
+
+    private val singleLineColumnKeys = setOf(
+        "sl",
+        "sno",
+        "sr",
+        "#",
+        "quantity",
+        "qty",
+        "discount",
+        "disc",
         "mrp",
         "discountAmount",
         "discAmt",
         "discount_amount",
+        "roundOff",
+        "round_off",
+        "lineRoundOff",
         "lineTotal",
         "amount",
         "price",
         "total"
+    )
+
+    private data class ResolvedCell(
+        val lines: List<String>,
+        val paint: Paint
     )
 
     fun normalizeColumns(columns: List<TableColumn>): List<TableColumn> {
@@ -85,17 +102,14 @@ object TableCellLayout {
         columns: List<TableColumn>,
         values: Map<String, String>,
         tableWidth: Float,
-        paint: Paint
+        paint: Paint,
+        headerRow: Boolean = false
     ): Float {
         val normalized = normalizeColumns(columns)
         val maxLines = normalized.maxOf { column ->
             val colWidth = columnWidth(tableWidth, column)
             val text = values[column.key].orEmpty()
-            if (shouldWrap(column.key)) {
-                wrapTextToLines(text, paint, colWidth, column.key).size
-            } else {
-                1
-            }
+            resolveCell(text, paint, colWidth, column.key, headerRow).lines.size
         }.coerceAtLeast(1)
         return rowExtraPadding(paint) + maxLines * lineHeight(paint)
     }
@@ -106,43 +120,91 @@ object TableCellLayout {
         values: Map<String, String>,
         bounds: ElementBounds,
         baselineY: Float,
-        paint: Paint
+        paint: Paint,
+        headerRow: Boolean = false
     ) {
         val normalized = normalizeColumns(columns)
         var x = bounds.x
         normalized.forEach { column ->
             val colWidth = columnWidth(bounds.width, column)
             val text = values[column.key].orEmpty()
-            val lines = if (shouldWrap(column.key)) {
-                wrapTextToLines(text, paint, colWidth, column.key)
-            } else {
-                listOf(fitSingleLine(text, paint, colWidth, column.key))
-            }
+            val cell = resolveCell(text, paint, colWidth, column.key, headerRow)
+            val rowTop = baselineY - cell.paint.textSize - 2f
+            val rowBottom = baselineY + lineHeight(cell.paint) * cell.lines.size
             val save = canvas.save()
-            canvas.clipRect(x, baselineY - paint.textSize - 2f, x + colWidth, baselineY + lineHeight(paint) * lines.size)
+            canvas.clipRect(x, rowTop, x + colWidth, rowBottom)
             var lineY = baselineY
-            lines.forEach { line ->
-                val drawX = cellAlignedX(paint, line, x, colWidth, column.align, column.key)
-                canvas.drawText(line, drawX, lineY, paint)
-                lineY += lineHeight(paint)
+            cell.lines.forEach { line ->
+                val drawX = cellAlignedX(cell.paint, line, x, colWidth, column.align, column.key)
+                canvas.drawText(line, drawX, lineY, cell.paint)
+                lineY += lineHeight(cell.paint)
             }
             canvas.restoreToCount(save)
             x += colWidth
         }
     }
 
-    fun wrapTextToLines(
+    private fun resolveCell(
+        text: String,
+        paint: Paint,
+        columnWidth: Float,
+        columnKey: String,
+        headerRow: Boolean = false
+    ): ResolvedCell {
+        return if (!headerRow && columnKey in singleLineColumnKeys) {
+            fitSingleLine(text, paint, columnWidth, columnKey)
+        } else {
+            ResolvedCell(wrapLabelLines(text, paint, columnWidth, columnKey), paint)
+        }
+    }
+
+    private fun fitSingleLine(
+        text: String,
+        paint: Paint,
+        columnWidth: Float,
+        columnKey: String
+    ): ResolvedCell {
+        if (text.isBlank()) return ResolvedCell(listOf(""), paint)
+
+        val maxWidth = innerTextWidth(columnWidth, columnKey)
+        if (paint.measureText(text) <= maxWidth) {
+            return ResolvedCell(listOf(text), paint)
+        }
+
+        val scaled = Paint(paint)
+        var size = paint.textSize
+        while (scaled.measureText(text) > maxWidth && size > MIN_SCALED_TEXT_SIZE) {
+            size -= 0.5f
+            scaled.textSize = size
+        }
+        return ResolvedCell(listOf(text), scaled)
+    }
+
+    fun wrapLabelLines(
         text: String,
         paint: Paint,
         columnWidth: Float,
         columnKey: String = ""
     ): List<String> {
         if (text.isBlank()) return listOf("")
-        val maxWidth = (columnWidth - horizontalPadding(columnKey, columnWidth) * 2f).coerceAtLeast(1f)
+
+        val maxWidth = innerTextWidth(columnWidth, columnKey)
+        val paragraphs = text.split("\n")
+        val lines = mutableListOf<String>()
+        paragraphs.forEach { paragraph ->
+            lines.addAll(wrapWordsOnly(paragraph.trim(), paint, maxWidth))
+        }
+        return lines.ifEmpty { listOf(text) }
+    }
+
+    private fun wrapWordsOnly(text: String, paint: Paint, maxWidth: Float): List<String> {
+        if (text.isBlank()) return listOf("")
         if (paint.measureText(text) <= maxWidth) return listOf(text)
 
-        val lines = mutableListOf<String>()
         val words = text.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (words.isEmpty()) return listOf(text)
+
+        val lines = mutableListOf<String>()
         var current = StringBuilder()
 
         fun flush() {
@@ -153,64 +215,29 @@ object TableCellLayout {
         }
 
         for (word in words) {
-            if (paint.measureText(word) > maxWidth) {
-                flush()
-                var start = 0
-                while (start < word.length) {
-                    var end = start + 1
-                    while (end <= word.length &&
-                        paint.measureText(word.substring(start, end)) <= maxWidth
-                    ) {
-                        end++
-                    }
-                    val pieceEnd = if (end > start + 1) end - 1 else start + 1
-                    lines.add(word.substring(start, pieceEnd))
-                    start = pieceEnd
-                }
-                continue
-            }
-
             val candidate = if (current.isEmpty()) word else "$current $word"
-            if (paint.measureText(candidate) > maxWidth) {
+            if (paint.measureText(candidate) <= maxWidth) {
+                current = StringBuilder(candidate)
+            } else {
                 flush()
                 current = StringBuilder(word)
-            } else {
-                current = StringBuilder(candidate)
             }
         }
         flush()
         return lines.ifEmpty { listOf(text) }
     }
 
-    private fun shouldWrap(columnKey: String): Boolean = columnKey in wrapColumnKeys
+    private fun innerTextWidth(columnWidth: Float, columnKey: String): Float {
+        return (columnWidth - horizontalPadding(columnKey, columnWidth) * 2f).coerceAtLeast(1f)
+    }
 
     private fun horizontalPadding(columnKey: String, columnWidth: Float = Float.MAX_VALUE): Float {
-        val preferred = if (columnKey in currencyColumnKeys) {
+        val preferred = if (columnKey in singleLineColumnKeys) {
             CURRENCY_CELL_HORIZONTAL_PADDING
         } else {
             CELL_HORIZONTAL_PADDING
         }
-        // Keep usable text width on narrow half-sheet columns
-        return preferred.coerceAtMost((columnWidth * 0.12f).coerceAtLeast(2f))
-    }
-
-    private fun fitSingleLine(
-        text: String,
-        paint: Paint,
-        columnWidth: Float,
-        columnKey: String
-    ): String {
-        if (text.isBlank()) return ""
-        val maxWidth = (columnWidth - horizontalPadding(columnKey, columnWidth) * 2f).coerceAtLeast(1f)
-        if (paint.measureText(text) <= maxWidth) return text
-        val ellipsis = "…"
-        val ellipsisWidth = paint.measureText(ellipsis)
-        if (ellipsisWidth >= maxWidth) return ""
-        var end = text.length
-        while (end > 0 && paint.measureText(text.substring(0, end)) + ellipsisWidth > maxWidth) {
-            end--
-        }
-        return if (end <= 0) ellipsis else text.substring(0, end) + ellipsis
+        return preferred.coerceAtMost((columnWidth * 0.1f).coerceAtLeast(2f))
     }
 
     private fun cellAlignedX(

@@ -9,14 +9,14 @@ import com.kex.vikrsaathi.domain.template.TableTotalRowSettings
 object DefaultInvoiceTemplate {
 
     private val defaultTableColumns = listOf(
-        TableColumn("sl", "Sl", 6f, TextAlign.CENTER),
-        TableColumn("name", "Particulars", 30f, TextAlign.LEFT),
-        TableColumn("quantity", "Qty", 9f, TextAlign.CENTER),
-        TableColumn("mrp", "MRP", 9f, TextAlign.RIGHT),
-        TableColumn("discount", "Disc%", 8f, TextAlign.CENTER),
-        TableColumn("discountAmount", "Discount Amt", 12f, TextAlign.RIGHT),
+        TableColumn("sl", "Sl", 5f, TextAlign.CENTER),
+        TableColumn("name", "Particulars", 26f, TextAlign.LEFT),
+        TableColumn("quantity", "Qty", 8f, TextAlign.CENTER),
+        TableColumn("mrp", "MRP", 13f, TextAlign.RIGHT),
+        TableColumn("discount", "Disc%", 7f, TextAlign.CENTER),
+        TableColumn("discountAmount", "Discount\nAmt", 11f, TextAlign.RIGHT),
         TableColumn("roundOff", "R/off", 8f, TextAlign.RIGHT),
-        TableColumn("lineTotal", "Amount", 18f, TextAlign.RIGHT)
+        TableColumn("lineTotal", "Amount", 22f, TextAlign.RIGHT)
     )
 
     fun create(): InvoiceTemplate {

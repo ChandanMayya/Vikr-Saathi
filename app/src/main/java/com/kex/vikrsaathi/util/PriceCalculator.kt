@@ -1,6 +1,15 @@
 package com.kex.vikrsaathi.util
 
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
+
 object PriceCalculator {
+
+    private val indianAmountFormat = DecimalFormat(
+        "#,##,##0.00",
+        DecimalFormatSymbols(Locale("en", "IN"))
+    )
 
     fun priceAfterDiscount(mrp: Double, discountPercent: Double): Double {
         return mrp - (mrp * discountPercent / 100.0)
@@ -10,8 +19,10 @@ object PriceCalculator {
         return mrp * discountPercent / 100.0 * quantity
     }
 
+    fun formatIndianNumber(amount: Double): String = indianAmountFormat.format(amount)
+
     fun formatAmount(amount: Double, currencySymbol: String): String {
-        return "$currencySymbol${String.format("%.2f", amount)}"
+        return "$currencySymbol${formatIndianNumber(amount)}"
     }
 
     fun formatSignedAmount(amount: Double, currencySymbol: String): String {
@@ -19,6 +30,6 @@ object PriceCalculator {
             return formatAmount(0.0, currencySymbol)
         }
         val sign = if (amount > 0) "+" else "-"
-        return "$sign$currencySymbol${String.format("%.2f", kotlin.math.abs(amount))}"
+        return "$sign$currencySymbol${formatIndianNumber(kotlin.math.abs(amount))}"
     }
 }

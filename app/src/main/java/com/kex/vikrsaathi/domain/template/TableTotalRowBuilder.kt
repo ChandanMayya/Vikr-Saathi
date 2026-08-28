@@ -57,20 +57,19 @@ object TableTotalRowBuilder {
                 }
                 in discountPercentColumnKeys -> values[column.key] = ""
                 in roundOffColumnKeys -> {
-                    val totalRoundOff = lines.sumOf { it.roundOff }
-                    values[column.key] = if (kotlin.math.abs(totalRoundOff) < 0.005) {
+                    val lineRoundOff = lines.sumOf { it.roundOff }
+                    values[column.key] = if (kotlin.math.abs(lineRoundOff) < 0.005) {
                         ""
                     } else {
                         PriceCalculator.formatSignedAmount(
-                            totalRoundOff,
+                            lineRoundOff,
                             context.currencySymbol
                         )
                     }
                 }
                 in amountColumnKeys -> {
-                    val totalAmount = lines.sumOf { it.lineTotal }
                     values[column.key] = PriceCalculator.formatAmount(
-                        totalAmount,
+                        context.bill.bill.total,
                         context.currencySymbol
                     )
                 }

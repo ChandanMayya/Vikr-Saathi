@@ -101,7 +101,7 @@ object TemplatePdfRenderer {
         if (includeHeader && element.content["showHeader"] == "true") {
             val headerValues = columns.associate { it.key to it.label }
             val headerHeight = TableCellLayout.measureRowHeight(
-                columns, headerValues, bounds.width, headerPaint
+                columns, headerValues, bounds.width, headerPaint, headerRow = true
             )
             TableCellLayout.drawTableRow(
                 canvas,
@@ -109,7 +109,8 @@ object TemplatePdfRenderer {
                 headerValues,
                 bounds,
                 TableCellLayout.rowBaselineY(y, headerPaint),
-                headerPaint
+                headerPaint,
+                headerRow = true
             )
             y += headerHeight
             rowSeparators.add(y)
