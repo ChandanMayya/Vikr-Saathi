@@ -74,6 +74,12 @@ object HelpContentProvider {
                 R.string.help_excel_upload_overview,
                 section(R.string.help_excel_upload_s1_title, R.array.help_excel_upload_s1)
             )
+            HelpScreen.INVENTORY_IMPORT -> guide(
+                context,
+                R.string.help_inventory_import_title,
+                R.string.help_inventory_import_overview,
+                section(R.string.help_inventory_import_s1_title, R.array.help_inventory_import_s1)
+            )
             HelpScreen.SETTINGS -> guide(
                 context,
                 R.string.help_settings_title,

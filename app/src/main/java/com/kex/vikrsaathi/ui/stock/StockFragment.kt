@@ -20,7 +20,12 @@ import com.kex.vikrsaathi.databinding.DialogStockAdjustBinding
 import com.kex.vikrsaathi.databinding.FragmentStockBinding
 import com.kex.vikrsaathi.databinding.ItemStockMovementBinding
 import com.kex.vikrsaathi.ui.common.applyListViewMode
-import com.kex.vikrsaathi.ui.common.installListViewOptionsDrawer
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
+import com.kex.vikrsaathi.ui.common.installInventoryOptionsDrawer
+import com.kex.vikrsaathi.util.FileShareHelper
+import com.kex.vikrsaathi.util.ItemCatalogExcelExporter
+import kotlinx.coroutines.launch
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.ListViewMode
@@ -59,13 +64,18 @@ class StockFragment : Fragment() {
         viewMode = listViewPrefs.getMode(ListViewScreen.INVENTORY)
 
         installHelpMenu(HelpScreen.STOCK)
-        installListViewOptionsDrawer(
+        installInventoryOptionsDrawer(
             drawerLayout = binding.drawerLayout,
+            drawerRoot = binding.optionsDrawer.root,
             optionsTitleView = binding.optionsDrawer.textOptionsTitle,
             titleRes = R.string.inventory_options,
             radioViewMode = binding.optionsDrawer.radioViewMode,
             currentMode = { viewMode },
-            onModeSelected = ::applyViewMode
+            onModeSelected = ::applyViewMode,
+            onImportClick = {
+                findNavController().navigate(R.id.action_stock_to_inventory_import)
+            },
+            onExportClick = ::exportInventory
         )
 
         adapter = StockAdapter(
@@ -177,6 +187,40 @@ class StockFragment : Fragment() {
         StockMovementType.OPENING.name -> getString(R.string.movement_type_opening)
         StockMovementType.IMPORT.name -> getString(R.string.movement_type_import)
         else -> type
+    }
+
+    private fun exportInventory() {
+        lifecycleScope.launch {
+            val items = (requireActivity().application as VikrSaathiApp).itemRepository.getAllSync()
+            if (items.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.inventory_export_no_data, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val file = ItemCatalogExcelExporter.exportItems(requireContext(), items)
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.inventory_export)
+                .setMessage(getString(R.string.inventory_export_success))
+                .setPositiveButton(R.string.open_file) { _, _ ->
+                    try {
+                        FileShareHelper.openFile(
+                            requireContext(),
+                            file,
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                    } catch (_: Exception) {
+                        Toast.makeText(requireContext(), file.absolutePath, Toast.LENGTH_LONG).show()
+                    }
+                }
+                .setNegativeButton(R.string.share_file) { _, _ ->
+                    FileShareHelper.shareFile(
+                        requireContext(),
+                        file,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        getString(R.string.inventory_export)
+                    )
+                }
+                .show()
+        }
     }
 
     override fun onDestroyView() {

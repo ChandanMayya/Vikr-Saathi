@@ -16,7 +16,12 @@ import com.kex.vikrsaathi.databinding.DialogItemFormBinding
 import com.kex.vikrsaathi.databinding.DialogStockAdjustBinding
 import com.kex.vikrsaathi.databinding.FragmentItemsBinding
 import com.kex.vikrsaathi.ui.common.applyListViewMode
-import com.kex.vikrsaathi.ui.common.installListViewOptionsDrawer
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
+import com.kex.vikrsaathi.ui.common.installInventoryOptionsDrawer
+import com.kex.vikrsaathi.util.FileShareHelper
+import com.kex.vikrsaathi.util.ItemCatalogExcelExporter
+import kotlinx.coroutines.launch
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.ListViewMode
@@ -54,13 +59,18 @@ class ItemFragment : Fragment() {
         viewMode = listViewPrefs.getMode(ListViewScreen.ITEMS)
 
         installHelpMenu(HelpScreen.ITEMS)
-        installListViewOptionsDrawer(
+        installInventoryOptionsDrawer(
             drawerLayout = binding.drawerLayout,
+            drawerRoot = binding.optionsDrawer.root,
             optionsTitleView = binding.optionsDrawer.textOptionsTitle,
             titleRes = R.string.items_options,
             radioViewMode = binding.optionsDrawer.radioViewMode,
             currentMode = { viewMode },
-            onModeSelected = ::applyViewMode
+            onModeSelected = ::applyViewMode,
+            onImportClick = {
+                findNavController().navigate(R.id.action_item_to_inventory_import)
+            },
+            onExportClick = ::exportInventory
         )
 
         adapter = ItemAdapter(
@@ -175,6 +185,40 @@ class ItemFragment : Fragment() {
             .setPositiveButton(R.string.delete) { _, _ -> viewModel.deleteItem(item) }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun exportInventory() {
+        lifecycleScope.launch {
+            val items = (requireActivity().application as VikrSaathiApp).itemRepository.getAllSync()
+            if (items.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.inventory_export_no_data, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val file = ItemCatalogExcelExporter.exportItems(requireContext(), items)
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.inventory_export)
+                .setMessage(getString(R.string.inventory_export_success))
+                .setPositiveButton(R.string.open_file) { _, _ ->
+                    try {
+                        FileShareHelper.openFile(
+                            requireContext(),
+                            file,
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                    } catch (_: Exception) {
+                        Toast.makeText(requireContext(), file.absolutePath, Toast.LENGTH_LONG).show()
+                    }
+                }
+                .setNegativeButton(R.string.share_file) { _, _ ->
+                    FileShareHelper.shareFile(
+                        requireContext(),
+                        file,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        getString(R.string.inventory_export)
+                    )
+                }
+                .show()
+        }
     }
 
     override fun onDestroyView() {

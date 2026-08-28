@@ -103,7 +103,7 @@
         <item>Each card shows name, MRP, discount, selling price, and stock.</item>
         <item>Stock highlighted in orange when at or below the low-stock threshold.</item>
         <item>Tap Edit to change details; Adjust stock to add or remove quantity.</item>
-        <item>Menu (⋮) — open options to switch View mode: Comfortable, Compact (2 columns), or Details.</item>
+        <item>Menu (⋮) — open options to switch View mode, import from Excel/CSV, or export your catalog.</item>
     </string-array>
     <string name="help_items_s2_title">Add / edit item</string>
     <string-array name="help_items_s2">
@@ -123,7 +123,8 @@
         <item>Stock in / Adjust — change quantity with an optional note.</item>
         <item>Tap a row to view recent stock movements (sales, adjustments, opening).</item>
         <item>Sales deduct stock on bill save; deleting a bill restores stock.</item>
-        <item>Menu (⋮) — open options to switch View mode: Comfortable, Compact (2 columns), or Details.</item>
+        <item>Menu (⋮) — open options to switch View mode, import from Excel/CSV, or export your catalog.</item>
+        <item>Import adds new items or updates existing ones; stock from the file is added to current quantity.</item>
     </string-array>
 
     <!-- Bills history -->
@@ -153,6 +154,17 @@
         <item>Use a file exported from Vikr Saathi or matching the required column format.</item>
         <item>Duplicate bill numbers are skipped automatically.</item>
         <item>Review the preview before confirming import.</item>
+    </string-array>
+
+    <!-- Inventory import -->
+    <string name="help_inventory_import_title">Import Inventory</string>
+    <string name="help_inventory_import_overview">Bulk add or update items from an Excel or CSV file. Download the template first to get the correct column headers.</string>
+    <string name="help_inventory_import_s1_title">Before you import</string>
+    <string-array name="help_inventory_import_s1">
+        <item>Item Name and MRP are required on every row.</item>
+        <item>Matching barcode or name updates the existing item and adds stock to current quantity.</item>
+        <item>Review the preview, then tap Import inventory to apply changes.</item>
+        <item>Errors are shown after import — fix those rows in your file and re-import if needed.</item>
     </string-array>
 
     <!-- Settings hub -->

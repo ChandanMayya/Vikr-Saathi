@@ -90,6 +90,21 @@ class InventoryRepository(
             note = note?.trim()?.ifEmpty { null }
         )
 
+    suspend fun importStock(itemId: Long, delta: Int, note: String? = null): Result<Item> {
+        if (delta <= 0) {
+            val item = itemDao.getItemById(itemId)
+                ?: return Result.failure(IllegalArgumentException("Item not found"))
+            return Result.success(item)
+        }
+        return applyMovement(
+            itemId = itemId,
+            delta = delta,
+            type = StockMovementType.IMPORT,
+            referenceType = StockReferenceType.MANUAL,
+            note = note?.trim()?.ifEmpty { null } ?: "Excel import"
+        )
+    }
+
     /**
      * Available stock for bill validation. When editing [existingBillId], quantities
      * already on that bill are treated as still available.

@@ -54,5 +54,5 @@
 
     <include
         android:id="@+id/optionsDrawer"
-        layout="@layout/layout_list_view_options_drawer" />
+        layout="@layout/layout_inventory_options_drawer" />
 </androidx.drawerlayout.widget.DrawerLayout>

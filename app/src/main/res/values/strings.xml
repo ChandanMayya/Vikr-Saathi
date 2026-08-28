@@ -412,6 +412,25 @@
     <string name="export_excel_success">Excel report ready</string>
     <string name="open_file">Open</string>
     <string name="share_file">Share</string>
+
+    <string name="inventory_import_export_section">Import / Export</string>
+    <string name="inventory_import">Import inventory</string>
+    <string name="inventory_export">Export inventory</string>
+    <string name="inventory_import_instructions_title">How inventory import works</string>
+    <string name="inventory_import_instructions">Upload an Excel (.xlsx) or CSV file with your item catalog.\n\nRequired columns (first row must be headers):\n• Item Name\n• MRP\n\nOptional columns:\n• Barcode, Discount %, Selling Price, Unit, Stock Qty\n\nIf an item with the same barcode or name already exists, its details are updated and the Stock Qty from the file is added to the current inventory.\n\nDownload the template below to see the correct column format.</string>
+    <string name="download_import_template">Download template</string>
+    <string name="select_inventory_file">Select Excel or CSV file</string>
+    <string name="import_inventory">Import inventory</string>
+    <string name="importing">Importing…</string>
+    <string name="inventory_rows_found">%1$d items found in file</string>
+    <string name="no_inventory_rows_found">No valid items found in file</string>
+    <string name="inventory_import_complete">Added %1$d items, updated %2$d items</string>
+    <string name="inventory_import_errors_header">Errors:</string>
+    <string name="inventory_import_errors_more">…and %1$d more errors</string>
+    <string name="inventory_template_saved">Import template ready</string>
+    <string name="inventory_export_success">Inventory export ready</string>
+    <string name="inventory_export_no_data">No items to export</string>
+
     <string name="future_options_placeholder">Future: GST, Online Sync, Reports, Thermal Printer, WhatsApp Sharing, Cloud Backup, Multi-user Login</string>
 
     <string name="scan_barcode_hint">Point camera at barcode</string>
