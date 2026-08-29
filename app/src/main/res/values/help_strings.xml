@@ -196,6 +196,7 @@
         <item>Invoice Configuration — images, counter, and layout templates.</item>
         <item>Backup &amp; Restore — export and import your full data.</item>
         <item>Reset — clear data or restore from a JSON backup.</item>
+        <item>Log out — lock the app and return to the home screen (requires app lock).</item>
     </string-array>
 
     <!-- General settings -->

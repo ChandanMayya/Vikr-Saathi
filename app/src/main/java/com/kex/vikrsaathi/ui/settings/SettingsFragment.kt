@@ -2,12 +2,19 @@ package com.kex.vikrsaathi.ui.settings
 
 import android.os.Bundle
 import android.view.View
+import androidx.core.view.isVisible
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.kex.vikrsaathi.MainActivity
 import com.kex.vikrsaathi.R
+import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
 
 class SettingsFragment : SettingsNavHubFragment() {
+
+    private val appLockManager
+        get() = (requireActivity().application as VikrSaathiApp).appLockManager
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -58,8 +65,30 @@ class SettingsFragment : SettingsNavHubFragment() {
                 }
             ),
             subtitle = getString(R.string.settings_hub_subtitle),
-            footer = getString(R.string.settings_app_version, appVersionName())
+            footer = getString(R.string.settings_app_version, appVersionName()),
+            showLogout = appLockManager.isLockEnabled,
+            onLogout = ::confirmLogout
         )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        binding.buttonLogout.isVisible = appLockManager.isLockEnabled
+    }
+
+    private fun confirmLogout() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.settings_logout_confirm_title)
+            .setMessage(R.string.settings_logout_confirm_message)
+            .setPositiveButton(R.string.settings_logout) { _, _ ->
+                val activity = requireActivity()
+                if (activity is MainActivity) {
+                    activity.navigateToDashboard()
+                    activity.requestAppLock()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun appVersionName(): String = runCatching {

@@ -303,6 +303,9 @@
     <string name="settings_invoice_layout_configuration">Invoice Layout Configuration</string>
     <string name="settings_invoice_layout_configuration_subtitle">Manage printable invoice templates and layout</string>
     <string name="settings_app_version">Vikr Saathi v%1$s</string>
+    <string name="settings_logout">Log out</string>
+    <string name="settings_logout_confirm_title">Log out?</string>
+    <string name="settings_logout_confirm_message">The app will lock and you will need your PIN to use it again.</string>
     <string name="settings_branding">Branding images</string>
     <string name="settings_branding_hint">Used on invoices via Invoice Builder data fields.</string>
     <string name="settings_invoices">Invoices</string>

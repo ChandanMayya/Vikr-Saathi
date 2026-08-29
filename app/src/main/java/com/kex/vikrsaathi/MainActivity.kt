@@ -146,6 +146,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun requestAppLock() {
+        val manager = (application as VikrSaathiApp).appLockManager
+        if (!manager.isLockEnabled) return
+        manager.lock()
+        lockGate.show()
+    }
+
+    fun navigateToDashboard() {
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        navHostFragment.navController.popBackStack(R.id.dashboardFragment, false)
+    }
+
     companion object {
         private const val SPLASH_FADE_IN_MS = 500L
         private const val SPLASH_HOLD_MS = 2_000L

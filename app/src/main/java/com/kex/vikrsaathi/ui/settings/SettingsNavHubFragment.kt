@@ -26,7 +26,9 @@ open class SettingsNavHubFragment : Fragment() {
     protected fun bindNavHub(
         entries: List<SettingsNavEntry>,
         subtitle: String? = null,
-        footer: String? = null
+        footer: String? = null,
+        showLogout: Boolean = false,
+        onLogout: (() -> Unit)? = null
     ) {
         binding.recyclerSettingsNav.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerSettingsNav.adapter = SettingsNavAdapter(entries)
@@ -34,6 +36,8 @@ open class SettingsNavHubFragment : Fragment() {
         binding.textHubTitle.text = subtitle.orEmpty()
         binding.textHubFooter.isVisible = !footer.isNullOrBlank()
         binding.textHubFooter.text = footer.orEmpty()
+        binding.buttonLogout.isVisible = showLogout
+        binding.buttonLogout.setOnClickListener { onLogout?.invoke() }
     }
 
     override fun onDestroyView() {
