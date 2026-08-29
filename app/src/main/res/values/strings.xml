@@ -274,7 +274,9 @@
     <string name="app_lock_device_credential_title">Verify device password</string>
     <string name="app_lock_device_credential_subtitle">Confirm your phone lock to reset the app PIN</string>
     <string name="app_lock_reset_pin_title">Set new PIN</string>
-    <string name="app_lock_reset_pin_message">Choose a new 4-digit PIN for VikrSaathi.</string>
+    <string name="app_lock_reset_pin_message">Choose a new 4-digit PIN, or continue with your existing PIN.</string>
+    <string name="app_lock_save_new_pin">Save new PIN</string>
+    <string name="app_lock_continue_without_reset">Continue without reset</string>
     <string name="app_lock_back_to_unlock">Back to unlock</string>
     <string name="app_lock_recovery_code_title">Save your recovery code</string>
     <string name="app_lock_recovery_code_message">Save this recovery code in a safe place. You will not see it again.\n\n%1$s\n\nUse it with Forgot PIN? if you forget your app PIN.</string>

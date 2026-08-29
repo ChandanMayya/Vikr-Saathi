@@ -180,8 +180,8 @@
     <string name="help_app_lock_s2_title">Forgot PIN?</string>
     <string-array name="help_app_lock_s2">
         <item>Tap Forgot PIN? at the bottom of this help panel.</item>
-        <item>Use device password — confirm your phone\'s screen lock, then set a new app PIN.</item>
-        <item>Use recovery code — enter the code shown once when you first set up app lock.</item>
+        <item>Use device password — confirm your phone\'s screen lock, then set a new app PIN or continue without reset.</item>
+        <item>Use recovery code — enter the code shown once when you first set up app lock, then set a new PIN or continue without reset.</item>
         <item>Save your recovery code when shown — VikrSaathi cannot display it again.</item>
     </string-array>
 

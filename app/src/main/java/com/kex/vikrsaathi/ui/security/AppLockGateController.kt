@@ -303,46 +303,52 @@ class AppLockGateController(
     }
 
     private fun showResetPinDialog() {
-        val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_pin_setup, null)
+        val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_reset_pin, null)
         val layoutPin = dialogView.findViewById<TextInputLayout>(R.id.layoutPin)
         val layoutConfirm = dialogView.findViewById<TextInputLayout>(R.id.layoutPinConfirm)
         val editPin = dialogView.findViewById<EditText>(R.id.editPin)
         val editConfirm = dialogView.findViewById<EditText>(R.id.editPinConfirm)
 
-        MaterialAlertDialogBuilder(activity)
+        val dialog = MaterialAlertDialogBuilder(activity)
             .setTitle(R.string.app_lock_reset_pin_title)
-            .setMessage(R.string.app_lock_reset_pin_message)
             .setView(dialogView)
-            .setPositiveButton(R.string.save, null)
-            .setNegativeButton(R.string.cancel, null)
+            .setCancelable(true)
             .create()
-            .also { dialog ->
-                dialog.setOnShowListener {
-                    dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                        layoutPin.error = null
-                        layoutConfirm.error = null
-                        val pin = editPin.text?.toString().orEmpty()
-                        val confirm = editConfirm.text?.toString().orEmpty()
-                        when {
-                            !PinHasher.isValidPinFormat(pin) -> {
-                                layoutPin.error = activity.getString(R.string.app_lock_pin_invalid)
-                            }
-                            pin != confirm -> {
-                                layoutConfirm.error = activity.getString(R.string.app_lock_pin_mismatch)
-                            }
-                            appLockManager.resetPin(pin) -> {
-                                dialog.dismiss()
-                                showUnlockPanel()
-                                completeUnlock()
-                            }
-                            else -> {
-                                layoutPin.error = activity.getString(R.string.app_lock_pin_invalid)
-                            }
-                        }
-                    }
+
+        dialogView.findViewById<MaterialButton>(R.id.buttonSaveNewPin).setOnClickListener {
+            layoutPin.error = null
+            layoutConfirm.error = null
+            val pin = editPin.text?.toString().orEmpty()
+            val confirm = editConfirm.text?.toString().orEmpty()
+            when {
+                !PinHasher.isValidPinFormat(pin) -> {
+                    layoutPin.error = activity.getString(R.string.app_lock_pin_invalid)
                 }
-                dialog.show()
+                pin != confirm -> {
+                    layoutConfirm.error = activity.getString(R.string.app_lock_pin_mismatch)
+                }
+                appLockManager.resetPin(pin) -> {
+                    dialog.dismiss()
+                    unlockAfterIdentityVerified()
+                }
+                else -> {
+                    layoutPin.error = activity.getString(R.string.app_lock_pin_invalid)
+                }
             }
+        }
+        dialogView.findViewById<MaterialButton>(R.id.buttonContinueWithoutReset).setOnClickListener {
+            dialog.dismiss()
+            unlockAfterIdentityVerified()
+        }
+        dialogView.findViewById<MaterialButton>(R.id.buttonCancelResetPin).setOnClickListener {
+            dialog.dismiss()
+        }
+        dialog.show()
+    }
+
+    private fun unlockAfterIdentityVerified() {
+        showUnlockPanel()
+        completeUnlock()
     }
 
     private fun bindDigitKey(id: Int, digit: String) {
