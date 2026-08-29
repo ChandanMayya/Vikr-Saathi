@@ -91,30 +91,48 @@
         android:textAppearance="?attr/textAppearanceBodySmall"
         android:textColor="@color/splash_subtitle_text" />
 
-    <com.google.android.material.textfield.TextInputLayout
+    <LinearLayout
         android:id="@+id/layoutRecoveryCode"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:hint="@string/app_lock_recovery_code_input_hint"
-        android:visibility="gone"
-        app:boxBackgroundColor="@android:color/white">
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_recovery_code_field"
+        android:orientation="vertical"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="12dp"
+        android:visibility="gone">
 
-        <com.google.android.material.textfield.TextInputEditText
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/app_lock_recovery_code_input_hint"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="@color/pin_key_text" />
+
+        <EditText
             android:id="@+id/editRecoveryCode"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="@android:color/transparent"
+            android:fontFamily="monospace"
+            android:imeOptions="actionDone"
+            android:importantForAutofill="no"
             android:inputType="textCapCharacters"
-            android:maxLines="1" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:maxLines="1"
+            android:textColor="@color/pin_key_text"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/buttonSubmitRecoveryCode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
+        android:backgroundTint="@android:color/white"
         android:text="@string/continue_label"
+        android:textColor="@color/orange_primary"
         android:visibility="gone" />
 
     <TextView

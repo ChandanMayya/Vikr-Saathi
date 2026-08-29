@@ -42,7 +42,6 @@ class AppLockGateController(
     private val biometricButton: View
     private val forgotPinErrorView: TextView
     private val recoveryCodeLayout: View
-    private val recoveryCodeInputLayout: TextInputLayout
     private val recoveryCodeInput: EditText
     private val submitRecoveryButton: View
     private val executor: Executor = ContextCompat.getMainExecutor(activity)
@@ -99,7 +98,6 @@ class AppLockGateController(
         biometricButton = overlayRoot.findViewById(R.id.buttonKeyBiometric)
         forgotPinErrorView = overlayRoot.findViewById(R.id.textForgotPinError)
         recoveryCodeLayout = overlayRoot.findViewById(R.id.layoutRecoveryCode)
-        recoveryCodeInputLayout = recoveryCodeLayout as TextInputLayout
         recoveryCodeInput = overlayRoot.findViewById(R.id.editRecoveryCode)
         submitRecoveryButton = overlayRoot.findViewById(R.id.buttonSubmitRecoveryCode)
 
@@ -272,19 +270,18 @@ class AppLockGateController(
         recoveryCodeLayout.isVisible = true
         submitRecoveryButton.isVisible = true
         recoveryCodeInput.text = null
-        recoveryCodeInputLayout.error = null
         clearForgotPinError()
         recoveryCodeInput.requestFocus()
     }
 
     private fun submitRecoveryCode() {
-        recoveryCodeInputLayout.error = null
         val code = recoveryCodeInput.text?.toString().orEmpty()
         if (code.isBlank()) {
-            recoveryCodeInputLayout.error = activity.getString(R.string.app_lock_recovery_code_required)
+            showForgotPinError(activity.getString(R.string.app_lock_recovery_code_required))
             return
         }
         if (appLockManager.verifyRecoveryCode(code)) {
+            clearForgotPinError()
             showResetPinDialog()
         } else {
             showForgotPinError(activity.getString(R.string.app_lock_recovery_code_invalid))

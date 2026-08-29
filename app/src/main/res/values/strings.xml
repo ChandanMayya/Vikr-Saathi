@@ -279,6 +279,9 @@
     <string name="app_lock_recovery_code_title">Save your recovery code</string>
     <string name="app_lock_recovery_code_message">Save this recovery code in a safe place. You will not see it again.\n\n%1$s\n\nUse it with Forgot PIN? if you forget your app PIN.</string>
     <string name="app_lock_recovery_code_warning">Save this — we cannot show your PIN or recovery code again.</string>
+    <string name="app_lock_recovery_code_footer">Use this code with Forgot PIN? if you forget your app PIN.</string>
+    <string name="app_lock_recovery_code_copied">Recovery code copied</string>
+    <string name="copy">Copy</string>
     <string name="settings_inventory_title">Inventory Settings</string>
     <string name="settings_inventory_subtitle">Stock shortfall policy and low-stock threshold</string>
     <string name="settings_inventory_page_hint">Control how bills behave when stock is short, and when items are marked as low stock.</string>

@@ -1,16 +1,21 @@
 package com.kex.vikrsaathi.ui.settings
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.TextView
+import android.widget.Toast
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputLayout
 import com.kex.vikrsaathi.R
@@ -379,13 +384,27 @@ class SecuritySettingsFragment : Fragment() {
     }
 
     private fun showRecoveryCodeDialog(code: String) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_recovery_code, null)
+        val codeView = dialogView.findViewById<TextView>(R.id.textRecoveryCodeValue)
+        val copyButton = dialogView.findViewById<MaterialButton>(R.id.buttonCopyRecoveryCode)
+        codeView.text = code
+        copyButton.setOnClickListener {
+            val clipboard = requireContext().getSystemService(ClipboardManager::class.java)
+            clipboard?.setPrimaryClip(
+                ClipData.newPlainText(getString(R.string.app_lock_recovery_code_title), code)
+            )
+            Toast.makeText(
+                requireContext(),
+                R.string.app_lock_recovery_code_copied,
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.app_lock_recovery_code_title)
-            .setMessage(
-                getString(R.string.app_lock_recovery_code_warning) + "\n\n" +
-                    getString(R.string.app_lock_recovery_code_message, code)
-            )
+            .setView(dialogView)
             .setPositiveButton(android.R.string.ok, null)
+            .setCancelable(false)
             .show()
     }
 
