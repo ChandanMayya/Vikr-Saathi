@@ -13,7 +13,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceTitleSmall"
-        android:textColor="@color/text_primary_dark"
+        android:textColor="@color/help_text_primary"
         android:textStyle="bold" />
 
     <TextView
@@ -23,5 +23,5 @@
         android:layout_marginTop="6dp"
         android:lineSpacingExtra="4dp"
         android:textAppearance="?attr/textAppearanceBodyMedium"
-        android:textColor="@color/text_secondary_dark" />
+        android:textColor="@color/help_text_secondary" />
 </LinearLayout>

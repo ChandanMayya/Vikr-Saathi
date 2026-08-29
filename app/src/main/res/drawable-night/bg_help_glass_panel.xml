@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Dark-mode variant: subtle dark fill with a faint white border -->
+<!-- Dark-mode: opaque panel so help text has stable contrast over blurred UI -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/help_panel_fill" />
+            <corners android:radius="@dimen/help_glass_corner_radius" />
+        </shape>
+    </item>
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="270"
                 android:centerColor="#0AFFFFFF"
                 android:endColor="#00FFFFFF"
-                android:startColor="#14FFFFFF"
+                android:startColor="#18FFFFFF"
                 android:type="linear" />
             <corners android:radius="@dimen/help_glass_corner_radius" />
         </shape>

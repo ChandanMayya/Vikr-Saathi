@@ -71,6 +71,10 @@
     <color name="help_glass_icon_tint">#F57C00</color>
     <color name="help_glass_close_bg">#BCFFFFFF</color>
     <color name="help_section_surface">#C3FFFFFF</color>
+    <color name="help_panel_fill">#F2FFFFFF</color>
+    <color name="help_text_primary">#212121</color>
+    <color name="help_text_secondary">#5D4037</color>
+    <color name="help_text_icon">#5D4037</color>
 
     <!-- PIN unlock screen -->
     <color name="pin_key_surface">#F2FFFFFF</color>

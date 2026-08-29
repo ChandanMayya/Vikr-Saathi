@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Dark-mode: very subtle white-tinted surface card -->
+<!-- Dark-mode: opaque section cards for readable body copy -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <solid android:color="@color/help_section_surface" />
     <corners android:radius="16dp" />
     <stroke
         android:width="0.75dp"
-        android:color="#28FFFFFF" />
+        android:color="@color/help_glass_border_soft" />
 </shape>

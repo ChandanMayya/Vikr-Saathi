@@ -84,7 +84,7 @@
                                 android:layout_weight="1"
                                 android:letterSpacing="0.01"
                                 android:textAppearance="?attr/textAppearanceTitleLarge"
-                                android:textColor="@color/text_primary_dark"
+                                android:textColor="@color/help_text_primary"
                                 android:textStyle="bold" />
 
                             <ImageButton
@@ -96,7 +96,7 @@
                                 android:padding="10dp"
                                 android:scaleType="centerInside"
                                 android:src="@android:drawable/ic_menu_close_clear_cancel"
-                                app:tint="@color/text_secondary_dark" />
+                                app:tint="@color/help_text_icon" />
                         </LinearLayout>
 
                         <androidx.core.widget.NestedScrollView
@@ -122,7 +122,7 @@
                                     android:layout_height="wrap_content"
                                     android:lineSpacingExtra="4dp"
                                     android:textAppearance="?attr/textAppearanceBodyLarge"
-                                    android:textColor="@color/text_primary_dark" />
+                                    android:textColor="@color/help_text_primary" />
 
                                 <LinearLayout
                                     android:id="@+id/layoutHelpSections"
@@ -139,8 +139,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="12dp"
+                            android:textColor="@color/help_glass_icon_tint"
                             android:visibility="gone"
-                            app:strokeColor="@color/stroke_button" />
+                            app:strokeColor="@color/help_glass_icon_tint" />
                     </LinearLayout>
                 </FrameLayout>
             </eightbitlab.com.blurview.BlurView>
