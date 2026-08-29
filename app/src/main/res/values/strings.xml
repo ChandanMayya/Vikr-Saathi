@@ -238,6 +238,8 @@
     <string name="settings_security_timeout_1_min">After 1 minute</string>
     <string name="settings_security_timeout_5_min">After 5 minutes</string>
     <string name="settings_security_timeout_15_min">After 15 minutes</string>
+    <string name="settings_security_unlock_title">Confirm to open Security</string>
+    <string name="settings_security_unlock_biometric_subtitle">Verify it\'s you before changing security settings</string>
     <string name="settings_security_setup_pin_title">Set a 4-digit PIN</string>
     <string name="settings_security_disable_pin_title">Enter PIN to disable app lock</string>
     <string name="settings_security_current_pin_title">Enter current PIN</string>

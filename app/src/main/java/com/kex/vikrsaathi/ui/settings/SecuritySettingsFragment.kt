@@ -6,7 +6,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputLayout
 import com.kex.vikrsaathi.R
@@ -29,6 +33,13 @@ class SecuritySettingsFragment : Fragment() {
     private var suppressLockSwitch = false
     private var suppressBiometricSwitch = false
     private var suppressTimeoutSelection = false
+    private var accessGranted = false
+    private var uiBound = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        accessGranted = savedInstanceState?.getBoolean(KEY_ACCESS_GRANTED) == true
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -42,9 +53,44 @@ class SecuritySettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         appLockManager = (requireActivity().application as VikrSaathiApp).appLockManager
-        installHelpMenu(HelpScreen.SECURITY_SETTINGS)
-        bindState()
 
+        if (accessGranted || !appLockManager.isLockEnabled) {
+            grantAccessAndShow()
+        } else {
+            binding.root.isVisible = false
+            requestSecurityAccess(
+                onGranted = { grantAccessAndShow() },
+                onDenied = {
+                    if (isAdded) findNavController().popBackStack()
+                }
+            )
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEY_ACCESS_GRANTED, accessGranted)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+        uiBound = false
+    }
+
+    private fun grantAccessAndShow() {
+        if (!isAdded || _binding == null) return
+        accessGranted = true
+        binding.root.isVisible = true
+        if (!uiBound) {
+            uiBound = true
+            installHelpMenu(HelpScreen.SECURITY_SETTINGS)
+            bindState()
+            bindListeners()
+        }
+    }
+
+    private fun bindListeners() {
         binding.switchAppLock.setOnCheckedChangeListener { _, isChecked ->
             if (suppressLockSwitch) return@setOnCheckedChangeListener
             if (isChecked) {
@@ -67,9 +113,60 @@ class SecuritySettingsFragment : Fragment() {
         }
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    private fun requestSecurityAccess(onGranted: () -> Unit, onDenied: () -> Unit) {
+        if (appLockManager.biometricEnabled && canUseBiometric()) {
+            showAccessBiometricPrompt(onGranted, onDenied)
+        } else {
+            promptCurrentPin(
+                title = getString(R.string.settings_security_unlock_title),
+                onVerified = { onGranted() },
+                onCancel = onDenied
+            )
+        }
+    }
+
+    private fun showAccessBiometricPrompt(onGranted: () -> Unit, onDenied: () -> Unit) {
+        val executor = ContextCompat.getMainExecutor(requireContext())
+        val prompt = BiometricPrompt(
+            this,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    onGranted()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    when (errorCode) {
+                        BiometricPrompt.ERROR_NEGATIVE_BUTTON -> {
+                            promptCurrentPin(
+                                title = getString(R.string.settings_security_unlock_title),
+                                onVerified = { onGranted() },
+                                onCancel = onDenied
+                            )
+                        }
+                        BiometricPrompt.ERROR_USER_CANCELED,
+                        BiometricPrompt.ERROR_CANCELED -> onDenied()
+                        else -> {
+                            promptCurrentPin(
+                                title = getString(R.string.settings_security_unlock_title),
+                                onVerified = { onGranted() },
+                                onCancel = onDenied
+                            )
+                        }
+                    }
+                }
+            }
+        )
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(getString(R.string.settings_security_unlock_title))
+            .setSubtitle(getString(R.string.settings_security_unlock_biometric_subtitle))
+            .setNegativeButtonText(getString(R.string.app_lock_use_pin))
+            .setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                    BiometricManager.Authenticators.BIOMETRIC_WEAK
+            )
+            .build()
+        prompt.authenticate(promptInfo)
     }
 
     private fun bindState() {
@@ -295,5 +392,9 @@ class SecuritySettingsFragment : Fragment() {
     private fun formatLockout(remainingMillis: Long): String {
         val seconds = ((remainingMillis + 999) / 1000).toInt()
         return getString(R.string.app_lock_locked_out, seconds)
+    }
+
+    companion object {
+        private const val KEY_ACCESS_GRANTED = "security_settings_access_granted"
     }
 }

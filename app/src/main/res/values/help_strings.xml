@@ -217,6 +217,7 @@
     <string name="help_security_settings_s1_title">Options</string>
     <string-array name="help_security_settings_s1">
         <item>Enable app lock — requires a 4-digit PIN to open the app.</item>
+        <item>Opening Security while app lock is on requires fingerprint or PIN first.</item>
         <item>When you first set a PIN, save the one-time recovery code shown on screen.</item>
         <item>Change PIN — update your unlock code anytime.</item>
         <item>Biometric unlock — faster unlock when your phone supports it.</item>
