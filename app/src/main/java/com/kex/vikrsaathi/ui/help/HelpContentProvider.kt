@@ -80,6 +80,13 @@ object HelpContentProvider {
                 R.string.help_inventory_import_overview,
                 section(R.string.help_inventory_import_s1_title, R.array.help_inventory_import_s1)
             )
+            HelpScreen.APP_LOCK -> guide(
+                context,
+                R.string.help_app_lock_title,
+                R.string.help_app_lock_overview,
+                section(R.string.help_app_lock_s1_title, R.array.help_app_lock_s1),
+                section(R.string.help_app_lock_s2_title, R.array.help_app_lock_s2)
+            )
             HelpScreen.SETTINGS -> guide(
                 context,
                 R.string.help_settings_title,

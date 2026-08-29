@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/forgotPinContent"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingHorizontal="@dimen/pin_screen_horizontal_padding"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/buttonForgotPinBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/app_lock_back_to_unlock"
+            android:padding="8dp"
+            android:src="@android:drawable/ic_menu_revert"
+            app:tint="@android:color/white" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:text="@string/app_lock_forgot_pin_title"
+        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+        android:textColor="@android:color/white"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:lineSpacingExtra="4dp"
+        android:text="@string/app_lock_forgot_pin_subtitle"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@color/splash_subtitle_text" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonDevicePasswordReset"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:text="@string/app_lock_reset_with_device_password"
+        app:strokeColor="@android:color/white"
+        android:textColor="@android:color/white" />
+
+    <TextView
+        android:id="@+id/textDevicePasswordHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:text="@string/app_lock_device_password_hint"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="@color/splash_subtitle_text" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonRecoveryCodeReset"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/app_lock_reset_with_recovery_code"
+        app:strokeColor="@android:color/white"
+        android:textColor="@android:color/white" />
+
+    <TextView
+        android:id="@+id/textRecoveryCodeHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:text="@string/app_lock_recovery_code_hint"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="@color/splash_subtitle_text" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layoutRecoveryCode"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:hint="@string/app_lock_recovery_code_input_hint"
+        android:visibility="gone"
+        app:boxBackgroundColor="@android:color/white">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editRecoveryCode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textCapCharacters"
+            android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonSubmitRecoveryCode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/continue_label"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/textForgotPinError"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="#FFCDD2"
+        android:visibility="gone" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonBackToUnlock"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text="@string/app_lock_back_to_unlock"
+        android:textColor="@color/splash_subtitle_text" />
+</LinearLayout>

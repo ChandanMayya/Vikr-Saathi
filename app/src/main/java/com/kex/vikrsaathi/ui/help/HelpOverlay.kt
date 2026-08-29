@@ -15,6 +15,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.core.view.isVisible
 import eightbitlab.com.blurview.BlurTarget
 import eightbitlab.com.blurview.BlurView
 import com.kex.vikrsaathi.R
@@ -31,15 +32,19 @@ object HelpOverlay {
         return helpDialog?.isShowing == true
     }
 
-    fun show(activity: FragmentActivity, screen: HelpScreen) {
-        showGuide(activity, HelpContentProvider.get(activity, screen))
+    fun show(activity: FragmentActivity, screen: HelpScreen, footerAction: HelpFooterAction? = null) {
+        showGuide(activity, HelpContentProvider.get(activity, screen), footerAction)
     }
 
-    fun showTopic(activity: FragmentActivity, topic: HelpTopic) {
-        showGuide(activity, HelpContentProvider.getTopic(activity, topic))
+    fun showTopic(activity: FragmentActivity, topic: HelpTopic, footerAction: HelpFooterAction? = null) {
+        showGuide(activity, HelpContentProvider.getTopic(activity, topic), footerAction)
     }
 
-    private fun showGuide(activity: FragmentActivity, guide: HelpGuide) {
+    private fun showGuide(
+        activity: FragmentActivity,
+        guide: HelpGuide,
+        footerAction: HelpFooterAction? = null
+    ) {
         dismiss(activity, animate = false)
 
         val binding = BottomSheetHelpBinding.inflate(LayoutInflater.from(activity))
@@ -55,6 +60,18 @@ object HelpOverlay {
             sectionBinding.textSectionTitle.text = section.title
             sectionBinding.textSectionBody.text = section.items.joinToString("\n") { "• $it" }
             binding.layoutHelpSections.addView(sectionBinding.root)
+        }
+
+        if (footerAction != null) {
+            binding.buttonHelpFooterAction.isVisible = true
+            binding.buttonHelpFooterAction.text = footerAction.label
+            binding.buttonHelpFooterAction.setOnClickListener {
+                dismiss(activity)
+                footerAction.onClick()
+            }
+        } else {
+            binding.buttonHelpFooterAction.isVisible = false
+            binding.buttonHelpFooterAction.setOnClickListener(null)
         }
 
         binding.buttonCloseHelp.setOnClickListener { dismiss(activity) }

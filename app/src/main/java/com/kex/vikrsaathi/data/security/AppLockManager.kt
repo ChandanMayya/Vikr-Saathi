@@ -1,9 +1,18 @@
 package com.kex.vikrsaathi.data.security
 
+import android.app.KeyguardManager
+import android.content.Context
+import androidx.biometric.BiometricManager
+
 sealed class PinVerifyResult {
     data object Success : PinVerifyResult()
     data object InvalidPin : PinVerifyResult()
     data class LockedOut(val remainingMillis: Long) : PinVerifyResult()
+}
+
+sealed class PinSetupResult {
+    data class Success(val recoveryCode: String?) : PinSetupResult()
+    data object InvalidFormat : PinSetupResult()
 }
 
 class AppLockManager(
@@ -68,10 +77,30 @@ class AppLockManager(
         }
     }
 
-    fun setupPin(pin: String): Boolean {
-        if (!PinHasher.isValidPinFormat(pin)) return false
-        store.savePin(pin)
+    fun setupPin(pin: String): PinSetupResult {
+        if (!PinHasher.isValidPinFormat(pin)) return PinSetupResult.InvalidFormat
+        val recoveryCode = store.setupPinWithRecovery(pin)
+        return PinSetupResult.Success(recoveryCode)
+    }
+
+    fun resetPin(newPin: String): Boolean {
+        if (!PinHasher.isValidPinFormat(newPin)) return false
+        store.savePinHash(newPin)
+        unlock()
         return true
+    }
+
+    fun verifyRecoveryCode(code: String): Boolean = store.verifyRecoveryCode(code)
+
+    fun hasRecoveryCode(): Boolean = store.hasRecoveryCode()
+
+    fun canUseDeviceCredential(context: Context): Boolean {
+        val keyguard = context.getSystemService(KeyguardManager::class.java) ?: return false
+        if (!keyguard.isDeviceSecure) return false
+        val status = BiometricManager.from(context).canAuthenticate(
+            BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        )
+        return status == BiometricManager.BIOMETRIC_SUCCESS
     }
 
     fun changePin(currentPin: String, newPin: String): PinVerifyResult {
@@ -81,7 +110,7 @@ class AppLockManager(
             PinVerifyResult.Success -> Unit
         }
         if (!PinHasher.isValidPinFormat(newPin)) return PinVerifyResult.InvalidPin
-        store.savePin(newPin)
+        store.savePinHash(newPin)
         return PinVerifyResult.Success
     }
 

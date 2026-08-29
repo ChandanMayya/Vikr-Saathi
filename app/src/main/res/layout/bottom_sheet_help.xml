@@ -132,6 +132,15 @@
                                     android:orientation="vertical" />
                             </LinearLayout>
                         </androidx.core.widget.NestedScrollView>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonHelpFooterAction"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:visibility="gone"
+                            app:strokeColor="@color/stroke_button" />
                     </LinearLayout>
                 </FrameLayout>
             </eightbitlab.com.blurview.BlurView>

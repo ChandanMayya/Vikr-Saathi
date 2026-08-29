@@ -166,14 +166,32 @@
             </LinearLayout>
         </LinearLayout>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonLockHelp"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="40dp"
+            android:text="@string/help"
+            android:textAppearance="?attr/textAppearanceLabelLarge"
+            android:textColor="@android:color/white"
+            app:icon="@drawable/ic_help"
+            app:iconGravity="textStart"
+            app:iconPadding="6dp"
+            app:iconSize="18dp"
+            app:iconTint="@android:color/white" />
+
         <TextView
             android:id="@+id/textLockFooter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:layout_marginBottom="12dp"
             android:gravity="center"
             android:text="@string/app_lock_footer_hint"
             android:textAppearance="?attr/textAppearanceLabelSmall"
             android:textColor="@color/splash_subtitle_text" />
     </LinearLayout>
+
+    <include layout="@layout/layout_app_lock_forgot_pin" />
 </FrameLayout>

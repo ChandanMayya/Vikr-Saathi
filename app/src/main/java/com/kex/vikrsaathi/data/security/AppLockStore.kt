@@ -44,19 +44,60 @@ class AppLockStore(context: Context) {
         get() = prefs.getLong(KEY_LOCKOUT_UNTIL, 0L)
         private set(value) = prefs.edit().putLong(KEY_LOCKOUT_UNTIL, value).apply()
 
+    var recoverySalt: String
+        get() = prefs.getString(KEY_RECOVERY_SALT, "").orEmpty()
+        private set(value) = prefs.edit().putString(KEY_RECOVERY_SALT, value).apply()
+
+    var recoveryHash: String
+        get() = prefs.getString(KEY_RECOVERY_HASH, "").orEmpty()
+        private set(value) = prefs.edit().putString(KEY_RECOVERY_HASH, value).apply()
+
     fun hasPin(): Boolean = pinHash.isNotBlank() && pinSalt.isNotBlank()
 
-    fun savePin(pin: String) {
+    fun hasRecoveryCode(): Boolean = recoveryHash.isNotBlank() && recoverySalt.isNotBlank()
+
+    /** Saves PIN hash. Returns a new recovery code when one is created for first-time setup. */
+    fun setupPinWithRecovery(pin: String): String? {
+        savePinHash(pin)
+        if (hasRecoveryCode()) return null
+        val code = RecoveryCodeGenerator.generate()
+        saveRecoveryCode(code)
+        return code
+    }
+
+    fun savePinHash(pin: String) {
         val salt = PinHasher.createSalt()
         pinSalt = salt
         pinHash = PinHasher.hashPin(pin, salt)
         resetFailedAttempts()
     }
 
+    fun savePin(pin: String) {
+        savePinHash(pin)
+    }
+
+    private fun saveRecoveryCode(code: String) {
+        val salt = PinHasher.createSalt()
+        recoverySalt = salt
+        recoveryHash = PinHasher.hashPin(RecoveryCodeGenerator.normalize(code), salt)
+    }
+
+    fun verifyRecoveryCode(code: String): Boolean {
+        if (!hasRecoveryCode()) return false
+        if (!RecoveryCodeGenerator.isValidFormat(code)) return false
+        return PinHasher.verifyPin(
+            RecoveryCodeGenerator.normalize(code),
+            recoverySalt,
+            recoveryHash
+        )
+    }
+
     fun clearPin() {
         prefs.edit()
             .remove(KEY_PIN_SALT)
             .remove(KEY_PIN_HASH)
+            .remove(KEY_RECOVERY_SALT)
+            .remove(KEY_RECOVERY_HASH)
             .apply()
         resetFailedAttempts()
     }
@@ -97,5 +138,7 @@ class AppLockStore(context: Context) {
         private const val KEY_PIN_HASH = "pin_hash"
         private const val KEY_FAILED_ATTEMPTS = "failed_attempts"
         private const val KEY_LOCKOUT_UNTIL = "lockout_until"
+        private const val KEY_RECOVERY_SALT = "recovery_salt"
+        private const val KEY_RECOVERY_HASH = "recovery_hash"
     }
 }

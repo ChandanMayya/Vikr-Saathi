@@ -167,6 +167,24 @@
         <item>Errors are shown after import — fix those rows in your file and re-import if needed.</item>
     </string-array>
 
+    <!-- App lock -->
+    <string name="help_app_lock_title">Unlock VikrSaathi</string>
+    <string name="help_app_lock_overview">Enter your 4-digit PIN or use fingerprint/face if enabled. Your shop data stays on this device and is protected while the app is locked.</string>
+    <string name="help_app_lock_s1_title">Unlock options</string>
+    <string-array name="help_app_lock_s1">
+        <item>Enter your 4-digit PIN on the keypad.</item>
+        <item>Tap the fingerprint button if biometric unlock is enabled.</item>
+        <item>After 5 wrong PIN attempts, unlock is blocked for 30 seconds.</item>
+        <item>Tap Help below the keypad for this guide and Forgot PIN options.</item>
+    </string-array>
+    <string name="help_app_lock_s2_title">Forgot PIN?</string>
+    <string-array name="help_app_lock_s2">
+        <item>Tap Forgot PIN? at the bottom of this help panel.</item>
+        <item>Use device password — confirm your phone\'s screen lock, then set a new app PIN.</item>
+        <item>Use recovery code — enter the code shown once when you first set up app lock.</item>
+        <item>Save your recovery code when shown — VikrSaathi cannot display it again.</item>
+    </string-array>
+
     <!-- Settings hub -->
     <string name="help_settings_title">Settings</string>
     <string name="help_settings_overview">Configure your shop, invoices, backups, and data management.</string>
@@ -199,6 +217,7 @@
     <string name="help_security_settings_s1_title">Options</string>
     <string-array name="help_security_settings_s1">
         <item>Enable app lock — requires a 4-digit PIN to open the app.</item>
+        <item>When you first set a PIN, save the one-time recovery code shown on screen.</item>
         <item>Change PIN — update your unlock code anytime.</item>
         <item>Biometric unlock — faster unlock when your phone supports it.</item>
         <item>Auto-lock — choose how soon the app locks after you switch away.</item>

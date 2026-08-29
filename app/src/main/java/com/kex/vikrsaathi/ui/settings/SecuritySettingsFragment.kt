@@ -14,6 +14,7 @@ import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.security.AppLockManager
 import com.kex.vikrsaathi.data.security.AppLockTimeout
 import com.kex.vikrsaathi.data.security.PinHasher
+import com.kex.vikrsaathi.data.security.PinSetupResult
 import com.kex.vikrsaathi.data.security.PinVerifyResult
 import com.kex.vikrsaathi.databinding.FragmentSecuritySettingsBinding
 import com.kex.vikrsaathi.ui.help.HelpScreen
@@ -179,11 +180,15 @@ class SecuritySettingsFragment : Fragment() {
                                 layoutConfirm.error = getString(R.string.app_lock_pin_mismatch)
                             }
                             else -> {
-                                if (appLockManager.setupPin(pin)) {
-                                    dialog.dismiss()
-                                    onSuccess(pin)
-                                } else {
-                                    layoutPin.error = getString(R.string.app_lock_pin_invalid)
+                                when (val result = appLockManager.setupPin(pin)) {
+                                    is PinSetupResult.Success -> {
+                                        dialog.dismiss()
+                                        result.recoveryCode?.let { showRecoveryCodeDialog(it) }
+                                        onSuccess(pin)
+                                    }
+                                    PinSetupResult.InvalidFormat -> {
+                                        layoutPin.error = getString(R.string.app_lock_pin_invalid)
+                                    }
                                 }
                             }
                         }
@@ -272,6 +277,17 @@ class SecuritySettingsFragment : Fragment() {
     private fun showMessage(message: String) {
         MaterialAlertDialogBuilder(requireContext())
             .setMessage(message)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun showRecoveryCodeDialog(code: String) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.app_lock_recovery_code_title)
+            .setMessage(
+                getString(R.string.app_lock_recovery_code_warning) + "\n\n" +
+                    getString(R.string.app_lock_recovery_code_message, code)
+            )
             .setPositiveButton(android.R.string.ok, null)
             .show()
     }
