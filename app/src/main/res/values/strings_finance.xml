@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_accounts_title">Accounts</string>
+    <string name="settings_accounts_subtitle">Customer balances and vendors</string>
+    <string name="accounts_settings_hint">These switches only show or hide workflows. Turning one off keeps vendors, purchase records, and ledger entries. It does not delete them. Reset is separate and asks before anything is removed.</string>
+    <string name="enable_customer_balances">Enable Customer Balance Management</string>
+    <string name="enable_customer_balances_hint">When this is on, new bills can be paid by cash, UPI, credit, or a split. Credit needs a saved customer. Older bills stay Legacy / unknown until you record a payment yourself. They are not turned into debt automatically.</string>
+    <string name="enable_vendor_management">Enable Vendor Management</string>
+    <string name="enable_vendor_management_hint">When this is on, you can keep vendors, quotes, purchase orders, goods receipts, invoices, and vendor balances. Ordering stock is not the same as receiving it, and receiving it is not the same as paying the invoice.</string>
+    <string name="customer_balance_sign">Positive balance: the customer owes the shop. Negative balance: the shop owes the customer or holds an advance.</string>
+    <string name="vendor_balance_sign">Positive balance: the shop owes the vendor. Negative balance: the vendor owes the shop or the shop holds a credit.</string>
+    <string name="payment_section">Payment</string>
+    <string name="payment_cash">Cash</string>
+    <string name="payment_upi">UPI</string>
+    <string name="payment_credit">Credit</string>
+    <string name="payment_split">Split</string>
+    <string name="payment_keep_legacy">Keep as legacy / unknown</string>
+    <string name="payment_legacy_hint">This bill was saved before payments were tracked. Leaving it as legacy does not create a customer debt.</string>
+    <string name="payment_split_hint">Enter one amount for each selected type. The amounts must add up exactly to the bill total. One type cannot be split across more than one destination.</string>
+    <string name="payment_cash_amount">Cash amount</string>
+    <string name="payment_upi_amount">UPI amount</string>
+    <string name="payment_credit_amount">Credit amount</string>
+    <string name="payment_summary_legacy">Payment: Legacy / unknown</string>
+    <string name="payment_summary_method">Payment: %1$s</string>
+    <string name="payment_outstanding">Outstanding on this bill: %1$s</string>
+    <string name="payment_error_empty">Enter a payment that matches the bill total.</string>
+    <string name="payment_error_duplicate">Each payment type can be used only once.</string>
+    <string name="payment_error_amount">Enter an amount greater than zero.</string>
+    <string name="payment_error_total">Payment amounts must add up exactly to the bill total.</string>
+    <string name="payment_error_credit_customer">Credit needs a registered customer. A walk-in sale can be paid in full by cash or UPI.</string>
+    <string name="payment_error_changed_while_off">This bill has saved payments that no longer match the total. Turn Customer Balance Management back on to update them. Existing balances were not changed.</string>
+    <string name="payment_error_legacy_recorded">A bill that already has payments cannot be marked legacy.</string>
+    <string name="payment_error_reason">A reason is required.</string>
+    <string name="payment_error_nothing">Enter a quantity, a refund, or a credit adjustment.</string>
+    <string name="payment_error_return_qty">Returned quantity is higher than the quantity still on the bill.</string>
+    <string name="payment_error_vendor">Enter a vendor name.</string>
+    <string name="payment_error_vendor_history">This vendor has purchase or balance history, so it was archived instead of deleted.</string>
+    <string name="payment_error_customer_ledger">This customer has balance history. The record was kept.</string>
+    <string name="payment_error_lines">Add at least one item line.</string>
+    <string name="payment_error_receipt">Check received, damaged, and rejected quantities.</string>
+    <string name="payment_error_generic">Could not save. Check the amounts and try again.</string>
+    <string name="customer_balance_title">Customer balance</string>
+    <string name="opening_balance_action">Opening balance</string>
+    <string name="add_payment_action">Add payment</string>
+    <string name="sales_return_action">Sales return</string>
+    <string name="correction_action">Correction</string>
+    <string name="share_statement">Share statement</string>
+    <string name="outstanding_customers">Outstanding customers</string>
+    <string name="ledger_title">Ledger</string>
+    <string name="ledger_from">From (dd/MM/yyyy)</string>
+    <string name="ledger_to">To (dd/MM/yyyy)</string>
+    <string name="ledger_apply">Apply dates</string>
+    <string name="ledger_opening">Opening: %1$s</string>
+    <string name="ledger_closing">Closing: %1$s</string>
+    <string name="ledger_empty">No ledger entries in this period.</string>
+    <string name="amount_label">Amount</string>
+    <string name="date_label">Date (dd/MM/yyyy)</string>
+    <string name="note_label">Note</string>
+    <string name="reason_label">Reason</string>
+    <string name="method_label">Method</string>
+    <string name="owes_shop">Customer owes the shop</string>
+    <string name="shop_owes_customer">Shop owes the customer / advance</string>
+    <string name="shop_owes_vendor">Shop owes the vendor</string>
+    <string name="vendor_owes_shop">Vendor owes the shop / credit</string>
+    <string name="opening_saved">Opening balance added. It was not overwritten.</string>
+    <string name="payment_saved">Payment saved. Allocated %1$s. Unallocated %2$s still reduces the balance.</string>
+    <string name="money_refunded">Money refunded</string>
+    <string name="credit_adjustment">Credit adjustment (reduces what they owe)</string>
+    <string name="return_qty">Qty returned</string>
+    <string name="correction_increase">Increase what they owe</string>
+    <string name="correction_decrease">Decrease what they owe</string>
+    <string name="entry_opening">Opening balance</string>
+    <string name="entry_credit_sale">Credit sale</string>
+    <string name="entry_payment">Payment received</string>
+    <string name="entry_return">Sales return</string>
+    <string name="entry_adjustment">Credit adjustment</string>
+    <string name="entry_reversal">Reversal</string>
+    <string name="entry_purchase">Purchase invoice</string>
+    <string name="entry_vendor_payment">Vendor payment</string>
+    <string name="entry_purchase_return">Purchase return</string>
+    <string name="age_current">0–30 days</string>
+    <string name="age_31">31–60 days</string>
+    <string name="age_61">61–90 days</string>
+    <string name="age_90">Over 90 days</string>
+    <string name="age_none">No due date</string>
+    <string name="outstanding_empty">No outstanding customer balances.</string>
+    <string name="advances_header">Advances (shop owes the customer)</string>
+    <string name="dues_header">Customers who owe the shop</string>
+    <string name="vendors">Vendors</string>
+    <string name="add_vendor">Add vendor</string>
+    <string name="vendor_name">Vendor name</string>
+    <string name="edit_vendor">Edit vendor</string>
+    <string name="archive_vendor">Archive</string>
+    <string name="vendor_archived">Archived vendors stay on old purchases. They are hidden from new orders.</string>
+    <string name="vendor_phone">Phone</string>
+    <string name="vendor_email">Email</string>
+    <string name="vendor_address">Address</string>
+    <string name="vendor_notes">Notes</string>
+    <string name="vendor_balance">Balance: %1$s</string>
+    <string name="purchasing">Purchasing</string>
+    <string name="new_purchase_order">New purchase order</string>
+    <string name="new_goods_receipt">Goods receipt</string>
+    <string name="new_purchase_invoice">Purchase invoice</string>
+    <string name="new_quote">Vendor quote</string>
+    <string name="compare_quotes">Compare quotes</string>
+    <string name="create_order_from_quote">Create order from selected quote</string>
+    <string name="expected_delivery">Expected delivery (dd/MM/yyyy)</string>
+    <string name="quote_valid_until">Valid until (dd/MM/yyyy)</string>
+    <string name="delivery_charges">Delivery charges</string>
+    <string name="other_charges">Other charges</string>
+    <string name="quote_discount">Discount</string>
+    <string name="rate_label">Rate</string>
+    <string name="available_qty">Available qty</string>
+    <string name="ordered_qty">Ordered</string>
+    <string name="received_qty">Received</string>
+    <string name="damaged_qty">Damaged</string>
+    <string name="rejected_qty">Rejected</string>
+    <string name="invoice_number_label">Supplier invoice number</string>
+    <string name="direct_receipt">Direct receipt (no order)</string>
+    <string name="link_order_optional">Order id (optional)</string>
+    <string name="link_receipt_optional">Receipt id (optional)</string>
+    <string name="link_invoice_optional">Allocate to invoice id first (optional)</string>
+    <string name="preferred_vendor">Preferred vendor</string>
+    <string name="preferred_vendor_none">No preferred vendor</string>
+    <string name="dashboard_outstanding">Customer dues: %1$s</string>
+    <string name="dashboard_payables">Vendor payables: %1$s</string>
+    <string name="reset_include_customer_balances">Customer balances (keeps customers and bills)</string>
+    <string name="reset_include_vendors">Vendors, purchases, and vendor balances</string>
+    <string name="reset_category_customer_balances">Customer balances</string>
+    <string name="reset_category_vendors">Vendors</string>
+    <string name="reset_balances_hint">Resetting customer balances removes ledger entries, receipts, and bill payment rows, and marks bills as legacy. It does not delete the bills or the customers. Returned stock is reversed. Resetting vendors removes purchase documents and reverses stock that came from goods receipts.</string>
+    <string name="statement_subject">Customer statement</string>
+    <string name="quote_landed_hint">Landed total uses each quoted quantity (at least 1) times the rate, plus delivery charges, minus the quote discount.</string>
+    <string name="recon_line">%1$s: ordered %2$d, accepted %3$d, invoiced %4$d</string>
+    <string name="saved">Saved</string>
+    <string name="vendor_search">Search vendors</string>
+    <string name="show_archived">Show archived</string>
+    <string name="customer_ledger_action">Balance</string>
+    <string name="unallocated_advance">Unallocated %1$s (advance or opening balance)</string>
+    <string name="help_accounts_title">Accounts</string>
+    <string name="help_accounts_overview">Customer balances and vendor purchases are optional. Switching them off hides the screens and keeps the data.</string>
+    <string name="help_accounts_s1_title">Switches</string>
+    <string-array name="help_accounts_s1">
+        <item>Enable Customer Balance Management to record cash, UPI, credit, and split payments on bills.</item>
+        <item>Enable Vendor Management for vendors, quotes, orders, receipts, invoices, and vendor balances.</item>
+        <item>Turning a switch off does not delete ledger entries, vendors, or purchases.</item>
+    </string-array>
+    <string name="help_customer_ledger_title">Customer balance</string>
+    <string name="help_customer_ledger_overview">The balance is the sum of ledger entries. A positive amount means the customer owes the shop.</string>
+    <string name="help_customer_ledger_s1_title">Entries</string>
+    <string-array name="help_customer_ledger_s1">
+        <item>Opening balance is added only when you enter it. It is not guessed from old bills.</item>
+        <item>Cash and UPI on a sale are settled. Only the credit portion increases the balance.</item>
+        <item>A payment reduces the balance. Anything above the debt stays as an advance.</item>
+        <item>A sales return can restock goods, refund money, and reduce credit. Those are separate.</item>
+        <item>Corrections need a reason and stay in the ledger as their own entries.</item>
+    </string-array>
+    <string name="help_vendors_title">Vendors</string>
+    <string name="help_vendors_overview">A vendor with purchase or balance history is archived, not deleted.</string>
+    <string name="help_vendors_s1_title">Purchasing</string>
+    <string-array name="help_vendors_s1">
+        <item>A purchase order does not add stock.</item>
+        <item>A goods receipt adds stock only for accepted quantity: received, minus damaged, minus rejected.</item>
+        <item>A purchase invoice is what you owe. It is separate from the receipt and from the payment.</item>
+        <item>Quotes can be for one item or many. Comparison shows rates and a landed total that includes delivery charges.</item>
+    </string-array>
+    <string name="help_new_bill_payment_note">When customer balances are enabled, choose cash, UPI, credit, or split before saving.</string>
+</resources>

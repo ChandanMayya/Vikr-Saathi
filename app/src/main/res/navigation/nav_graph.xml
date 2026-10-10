@@ -59,6 +59,20 @@
             app:exitAnim="@anim/nav_fade_out"
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
+            android:id="@+id/action_dashboard_to_outstanding"
+            app:destination="@id/outstandingCustomersFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
+            android:id="@+id/action_dashboard_to_vendors"
+            app:destination="@id/vendorListFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
@@ -139,7 +153,14 @@
         android:id="@+id/customerFragment"
         android:name="com.kex.vikrsaathi.ui.customer.CustomerFragment"
         android:label="@string/customers"
-        tools:layout="@layout/fragment_customers" />
+        tools:layout="@layout/fragment_customers">
+        <action
+            android:id="@+id/action_customers_to_ledger"
+            app:destination="@id/customerLedgerFragment" />
+        <action
+            android:id="@+id/action_customers_to_outstanding"
+            app:destination="@id/outstandingCustomersFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/itemFragment"
@@ -249,6 +270,13 @@
             app:exitAnim="@anim/nav_fade_out"
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
+            android:id="@+id/action_settings_to_accounts"
+            app:destination="@id/accountsSettingsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
@@ -343,6 +371,57 @@
         <argument
             android:name="templateId"
             android:defaultValue="-1L"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/accountsSettingsFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.AccountsSettingsFragment"
+        android:label="@string/settings_accounts_title"
+        tools:layout="@layout/fragment_accounts_settings" />
+
+    <fragment
+        android:id="@+id/customerLedgerFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.CustomerLedgerFragment"
+        android:label="@string/customer_balance_title"
+        tools:layout="@layout/fragment_party_ledger">
+        <argument
+            android:name="customerId"
+            android:defaultValue="0L"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/outstandingCustomersFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.OutstandingCustomersFragment"
+        android:label="@string/outstanding_customers"
+        tools:layout="@layout/fragment_finance_list" />
+
+    <fragment
+        android:id="@+id/vendorListFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.VendorListFragment"
+        android:label="@string/vendors"
+        tools:layout="@layout/fragment_vendors" />
+
+    <fragment
+        android:id="@+id/vendorDetailFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.VendorDetailFragment"
+        android:label="@string/vendors"
+        tools:layout="@layout/fragment_party_ledger">
+        <argument
+            android:name="vendorId"
+            android:defaultValue="0L"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/purchasingFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.PurchasingFragment"
+        android:label="@string/purchasing"
+        tools:layout="@layout/fragment_purchasing">
+        <argument
+            android:name="vendorId"
+            android:defaultValue="0L"
             app:argType="long" />
     </fragment>
 </navigation>

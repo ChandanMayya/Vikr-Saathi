@@ -378,6 +378,13 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <include
+                android:id="@+id/billPayment"
+                layout="@layout/layout_bill_payment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonSaveBill"
                 android:layout_width="match_parent"

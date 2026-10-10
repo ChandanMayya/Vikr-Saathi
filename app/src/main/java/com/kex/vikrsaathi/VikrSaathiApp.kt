@@ -41,10 +41,32 @@ class VikrSaathiApp : Application() {
     }
     val billRepository by lazy {
         BillRepository(
-            database.billDao(),
-            database.billItemDao(),
-            settingsRepository,
-            inventoryRepository
+            database = database,
+            billDao = database.billDao(),
+            billItemDao = database.billItemDao(),
+            billPaymentDao = database.billPaymentDao(),
+            customerLedgerDao = database.customerLedgerDao(),
+            settingsRepository = settingsRepository,
+            inventoryRepository = inventoryRepository
+        )
+    }
+    val customerFinanceRepository by lazy {
+        com.kex.vikrsaathi.data.repository.CustomerFinanceRepository(
+            database = database,
+            ledgerDao = database.customerLedgerDao(),
+            billDao = database.billDao(),
+            billItemDao = database.billItemDao(),
+            billPaymentDao = database.billPaymentDao(),
+            inventoryRepository = inventoryRepository
+        )
+    }
+    val vendorRepository by lazy {
+        com.kex.vikrsaathi.data.repository.VendorRepository(
+            database = database,
+            vendorDao = database.vendorDao(),
+            purchaseDao = database.purchaseDao(),
+            itemDao = database.itemDao(),
+            inventoryRepository = inventoryRepository
         )
     }
     val analyticsRepository by lazy {
@@ -87,7 +109,9 @@ class VikrSaathiApp : Application() {
             settingsRepository = settingsRepository,
             invoiceTemplateRepository = invoiceTemplateRepository,
             invoiceBuilderPreferences = invoiceBuilderPreferences,
-            historyStore = resetHistoryStore
+            historyStore = resetHistoryStore,
+            customerFinanceRepository = customerFinanceRepository,
+            vendorRepository = vendorRepository
         )
     }
 

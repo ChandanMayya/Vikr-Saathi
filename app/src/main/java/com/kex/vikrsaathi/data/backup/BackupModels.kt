@@ -6,11 +6,14 @@ data class BackupExportOptions(
     val includeInvoiceConfig: Boolean = false,
     val includeTemplates: Boolean = true,
     val includeItems: Boolean = true,
-    val includeCustomers: Boolean = true
+    val includeCustomers: Boolean = true,
+    val includeCustomerBalances: Boolean = true,
+    val includeVendors: Boolean = true
 ) {
     fun hasAnySelected(): Boolean =
         includeSales || includeSettings || includeInvoiceConfig ||
-            includeTemplates || includeItems || includeCustomers
+            includeTemplates || includeItems || includeCustomers ||
+            includeCustomerBalances || includeVendors
 }
 
 data class BackupManifest(

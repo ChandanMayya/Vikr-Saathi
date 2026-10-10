@@ -22,6 +22,9 @@ import com.kex.vikrsaathi.data.repository.SettingsRepository
 import com.kex.vikrsaathi.data.repository.StockShortfall
 import android.content.Context
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
+import com.kex.vikrsaathi.domain.finance.BillPaymentRequest
+import com.kex.vikrsaathi.domain.finance.BillPaymentStatus
+import com.kex.vikrsaathi.domain.finance.PaymentPortion
 import com.kex.vikrsaathi.domain.inventory.StockDeltaCalculator
 import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.NumberToWords
@@ -89,6 +92,15 @@ class BillViewModel(
 
     val isNewBillSession: Boolean
         get() = editingBillId == null
+
+    val customerBalanceEnabled: Boolean
+        get() = settingsRepository.customerBalanceEnabled
+
+    private val _loadedPaymentStatus = MutableLiveData(BillPaymentStatus.LEGACY)
+    val loadedPaymentStatus: LiveData<String> = _loadedPaymentStatus
+
+    private val _loadedPortions = MutableLiveData<List<PaymentPortion>>(emptyList())
+    val loadedPortions: LiveData<List<PaymentPortion>> = _loadedPortions
 
     /**
      * Checks stock without saving or creating masters.
@@ -217,6 +229,8 @@ class BillViewModel(
                 )
             }
             _billRoundOff.value = bill.bill.roundOff
+            _loadedPaymentStatus.value = bill.bill.paymentStatus
+            _loadedPortions.value = bill.payments.map { PaymentPortion(it.method, it.amountPaise) }
             recalculate()
         }
     }
@@ -226,6 +240,8 @@ class BillViewModel(
         _selectedCustomer.value = null
         _lineItems.value = emptyList()
         _billRoundOff.value = 0.0
+        _loadedPaymentStatus.value = BillPaymentStatus.LEGACY
+        _loadedPortions.value = emptyList()
         recalculate()
     }
 
@@ -342,6 +358,7 @@ class BillViewModel(
         buyerName: String,
         buyerAddress: String,
         buyerPhone: String,
+        payment: BillPaymentRequest = BillPaymentRequest.LeaveUnchanged,
         onError: (Throwable) -> Unit = {},
         onSaved: (Long, AutoRegisterResult) -> Unit
     ) {
@@ -365,7 +382,8 @@ class BillViewModel(
                         customerId = customer?.id,
                         lineItems = resolvedLines,
                         billRoundOff = billRoundOff,
-                        existingBillId = existingBillId
+                        existingBillId = existingBillId,
+                        payment = payment
                     )
                     SaveOutcome(id, customer, customerCreated, resolvedLines, createdItemsCount)
                 }

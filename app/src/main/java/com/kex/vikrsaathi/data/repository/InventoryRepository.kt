@@ -42,26 +42,44 @@ class InventoryRepository(
             return Result.success(item)
         }
         return try {
-            database.withTransaction {
-                val item = itemDao.getItemById(itemId)
-                    ?: throw IllegalArgumentException("Item not found")
-                val quantityAfter = item.stockQty + delta
-                itemDao.updateStockQty(itemId, quantityAfter)
-                stockMovementDao.insert(
-                    StockMovement(
-                        itemId = itemId,
-                        delta = delta,
-                        quantityAfter = quantityAfter,
-                        type = type.name,
-                        referenceType = referenceType,
-                        referenceId = referenceId,
-                        note = note
-                    )
-                )
-                Result.success(item.copy(stockQty = quantityAfter))
-            }
+            Result.success(
+                applyMovementUnchecked(itemId, delta, type, referenceType, referenceId, note)
+            )
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Applies a stock movement and throws on failure so an outer Room transaction can roll back.
+     */
+    suspend fun applyMovementUnchecked(
+        itemId: Long,
+        delta: Int,
+        type: StockMovementType,
+        referenceType: String? = null,
+        referenceId: Long? = null,
+        note: String? = null
+    ): Item {
+        if (delta == 0) {
+            return itemDao.getItemById(itemId) ?: throw IllegalArgumentException("Item not found")
+        }
+        return database.withTransaction {
+            val item = itemDao.getItemById(itemId) ?: throw IllegalArgumentException("Item not found")
+            val quantityAfter = item.stockQty + delta
+            itemDao.updateStockQty(itemId, quantityAfter)
+            stockMovementDao.insert(
+                StockMovement(
+                    itemId = itemId,
+                    delta = delta,
+                    quantityAfter = quantityAfter,
+                    type = type.name,
+                    referenceType = referenceType,
+                    referenceId = referenceId,
+                    note = note
+                )
+            )
+            item.copy(stockQty = quantityAfter)
         }
     }
 

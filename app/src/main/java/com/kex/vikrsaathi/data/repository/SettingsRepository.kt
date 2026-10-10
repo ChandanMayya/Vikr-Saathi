@@ -44,6 +44,16 @@ class SettingsRepository(context: Context) {
         get() = prefs.getInt(KEY_LOW_STOCK_THRESHOLD, DEFAULT_LOW_STOCK_THRESHOLD).coerceAtLeast(0)
         set(value) = prefs.edit().putInt(KEY_LOW_STOCK_THRESHOLD, value.coerceAtLeast(0)).apply()
 
+    /** When false, payment and ledger screens are hidden. Stored rows are kept. */
+    var customerBalanceEnabled: Boolean
+        get() = prefs.getBoolean(KEY_CUSTOMER_BALANCE, false)
+        set(value) = prefs.edit().putBoolean(KEY_CUSTOMER_BALANCE, value).apply()
+
+    /** When false, vendor and purchase screens are hidden. Stored rows are kept. */
+    var vendorManagementEnabled: Boolean
+        get() = prefs.getBoolean(KEY_VENDOR_MANAGEMENT, false)
+        set(value) = prefs.edit().putBoolean(KEY_VENDOR_MANAGEMENT, value).apply()
+
     var invoicePrefix: String
         get() = prefs.getString(KEY_INVOICE_PREFIX, "") ?: ""
         set(value) = prefs.edit().putString(KEY_INVOICE_PREFIX, value).apply()
@@ -87,6 +97,8 @@ class SettingsRepository(context: Context) {
         defaultDiscount = 0.0
         inventoryMode = InventoryMode.WARN
         lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD
+        customerBalanceEnabled = false
+        vendorManagementEnabled = false
         File(filesDir, HEADER_FILE).delete()
         File(filesDir, SIGNATURE_FILE).delete()
         File(filesDir, LOGO_FILE).delete()
@@ -157,6 +169,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_INVENTORY_MODE = "inventory_mode"
         private const val KEY_LOW_STOCK_THRESHOLD = "low_stock_threshold"
+        private const val KEY_CUSTOMER_BALANCE = "customer_balance_enabled"
+        private const val KEY_VENDOR_MANAGEMENT = "vendor_management_enabled"
         private const val KEY_INVOICE_PREFIX = "invoice_prefix"
         private const val KEY_INVOICE_SUFFIX = "invoice_suffix"
         private const val KEY_INVOICE_SEPARATOR = "invoice_separator"

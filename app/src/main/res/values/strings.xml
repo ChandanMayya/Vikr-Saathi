@@ -91,8 +91,9 @@
     <string name="view_mode_compact">Compact</string>
     <string name="view_mode_details">Details</string>
     <string name="master_view_mode_section">Master view mode</string>
-    <string name="master_view_mode_hint">Default list density for Customers, Items, Inventory, and Bills History. A choice made on a screen overrides this for that screen only.</string>
+    <string name="master_view_mode_hint">Default list density for Customers, Vendors, Items, Inventory, and Bills History. A choice made on a screen overrides this for that screen only.</string>
     <string name="customers_options">Customers options</string>
+    <string name="vendors_options">Vendors options</string>
     <string name="items_options">Items options</string>
     <string name="inventory_options">Inventory options</string>
     <string name="invoice_templates_options">Invoice template options</string>

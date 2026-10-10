@@ -95,7 +95,34 @@ class ItemFragment : Fragment() {
     }
 
     private fun showItemDialog(existing: Item?) {
+        val app = requireActivity().application as VikrSaathiApp
+        if (!app.settingsRepository.vendorManagementEnabled) {
+            presentItemDialog(existing, vendors = null)
+            return
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val vendors = app.vendorRepository.getActive()
+            if (!isAdded) return@launch
+            presentItemDialog(existing, vendors)
+        }
+    }
+
+    private fun presentItemDialog(existing: Item?, vendors: List<com.kex.vikrsaathi.data.entity.Vendor>?) {
         val formBinding = DialogItemFormBinding.inflate(layoutInflater)
+        var selectedVendorId = existing?.preferredVendorId
+        if (vendors != null) {
+            formBinding.layoutPreferredVendor.isVisible = true
+            val none = getString(R.string.preferred_vendor_none)
+            val labels = listOf(none) + vendors.map { it.name }
+            formBinding.editPreferredVendor.setAdapter(
+                android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, labels)
+            )
+            val current = vendors.indexOfFirst { it.id == existing?.preferredVendorId }
+            formBinding.editPreferredVendor.setText(if (current >= 0) vendors[current].name else none, false)
+            formBinding.editPreferredVendor.setOnItemClickListener { _, _, position, _ ->
+                selectedVendorId = if (position == 0) null else vendors[position - 1].id
+            }
+        }
         existing?.let {
             formBinding.editItemName.setText(it.name)
             formBinding.editItemBarcode.setText(it.barcode)
@@ -136,7 +163,8 @@ class ItemFragment : Fragment() {
                     discount = formBinding.editItemDiscount.text.toString().toDoubleOrNull() ?: 0.0,
                     sellingPrice = formBinding.editItemSellingPrice.text.toString().toDoubleOrNull(),
                     remarks = formBinding.editItemUnit.text.toString().trim(),
-                    stockQty = existing?.stockQty ?: 0
+                    stockQty = existing?.stockQty ?: 0,
+                    preferredVendorId = if (vendors == null) existing?.preferredVendorId else selectedVendorId
                 )
                 viewModel.saveItem(item, openingStock = if (existing == null) openingStock else 0) { result ->
                     result.onFailure {

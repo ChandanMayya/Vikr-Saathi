@@ -10,12 +10,17 @@ enum class StockMovementType {
     SALE_REVERSAL,
     ADJUSTMENT,
     OPENING,
-    IMPORT
+    IMPORT,
+    PURCHASE_RECEIPT,
+    PURCHASE_REVERSAL,
+    SALES_RETURN
 }
 
 object StockReferenceType {
     const val BILL = "BILL"
     const val MANUAL = "MANUAL"
+    const val GOODS_RECEIPT = "GOODS_RECEIPT"
+    const val SALES_RETURN = "SALES_RETURN"
 }
 
 @Entity(

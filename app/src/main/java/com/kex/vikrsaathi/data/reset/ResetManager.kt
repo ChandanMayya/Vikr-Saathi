@@ -6,8 +6,10 @@ import com.kex.vikrsaathi.data.backup.BackupExportOptions
 import com.kex.vikrsaathi.data.backup.BackupImportResult
 import com.kex.vikrsaathi.data.backup.BackupManager
 import com.kex.vikrsaathi.data.database.AppDatabase
+import com.kex.vikrsaathi.data.repository.CustomerFinanceRepository
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.data.repository.VendorRepository
 import com.kex.vikrsaathi.util.InvoiceBuilderPreferences
 import com.kex.vikrsaathi.util.TemplateImageStore
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +22,9 @@ class ResetManager(
     private val settingsRepository: SettingsRepository,
     private val invoiceTemplateRepository: InvoiceTemplateRepository,
     private val invoiceBuilderPreferences: InvoiceBuilderPreferences,
-    private val historyStore: ResetHistoryStore
+    private val historyStore: ResetHistoryStore,
+    private val customerFinanceRepository: CustomerFinanceRepository,
+    private val vendorRepository: VendorRepository
 ) {
 
     fun loadHistory(): List<ResetHistoryEntry> = historyStore.loadEntries()
@@ -38,7 +42,9 @@ class ResetManager(
             includeSales = options.resetSales,
             includeTemplates = options.resetTemplates,
             includeSettings = options.resetSettings,
-            includeInvoiceConfig = options.resetInvoiceConfig
+            includeInvoiceConfig = options.resetInvoiceConfig,
+            includeCustomerBalances = options.resetCustomerBalances || options.resetCustomers,
+            includeVendors = options.resetVendors
         )
 
         onProgress("Creating safety snapshot…", 5)
@@ -105,12 +111,22 @@ class ResetManager(
     ) {
         database.withTransaction {
             if (ResetOptions.CATEGORY_SALES in sections) {
-                onProgress("Deleting sales records…", 50)
+                onProgress("Deleting sales records…", 48)
+                customerFinanceRepository.clearBillLinkedFinanceForSalesReset()
                 database.billDao().deleteAll()
+            }
+            if (ResetOptions.CATEGORY_CUSTOMER_BALANCES in sections) {
+                onProgress("Clearing customer balances…", 54)
+                customerFinanceRepository.clearCustomerBalances()
             }
             if (ResetOptions.CATEGORY_CUSTOMERS in sections) {
                 onProgress("Deleting customers…", 58)
+                customerFinanceRepository.reverseSalesReturnStock()
                 database.customerDao().deleteAll()
+            }
+            if (ResetOptions.CATEGORY_VENDORS in sections) {
+                onProgress("Deleting vendors and purchases…", 62)
+                vendorRepository.clearVendors()
             }
             if (ResetOptions.CATEGORY_ITEMS in sections) {
                 onProgress("Deleting items…", 66)

@@ -43,6 +43,7 @@ class ListViewPreferences(context: Context) {
         ListViewScreen.ITEMS -> KEY_ITEMS
         ListViewScreen.BILLS_HISTORY -> KEY_BILLS_HISTORY
         ListViewScreen.INVENTORY -> KEY_INVENTORY
+        ListViewScreen.VENDORS -> KEY_VENDORS
     }
 
     companion object {
@@ -52,5 +53,6 @@ class ListViewPreferences(context: Context) {
         private const val KEY_ITEMS = "items"
         private const val KEY_BILLS_HISTORY = "bills_history"
         private const val KEY_INVENTORY = "inventory"
+        private const val KEY_VENDORS = "vendors"
     }
 }

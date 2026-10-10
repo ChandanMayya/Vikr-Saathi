@@ -29,7 +29,9 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                 DashboardViewModel(
                     app.settingsRepository,
                     app.billRepository,
-                    app.inventoryRepository
+                    app.inventoryRepository,
+                    app.customerFinanceRepository,
+                    app.vendorRepository
                 ) as T
             modelClass.isAssignableFrom(AnalysisViewModel::class.java) ->
                 AnalysisViewModel(

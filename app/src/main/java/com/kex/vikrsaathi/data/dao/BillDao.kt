@@ -67,6 +67,12 @@ interface BillDao {
     @Query("DELETE FROM bills")
     suspend fun deleteAll()
 
+    @Query("UPDATE bills SET paymentStatus = :status, paymentLabel = :label WHERE id = :billId")
+    suspend fun updatePaymentStatus(billId: Long, status: String, label: String)
+
+    @Query("UPDATE bills SET paymentStatus = 'LEGACY', paymentLabel = 'LEGACY'")
+    suspend fun markAllPaymentsLegacy()
+
     @Query(
         """
         SELECT COALESCE(SUM(total), 0) FROM bills

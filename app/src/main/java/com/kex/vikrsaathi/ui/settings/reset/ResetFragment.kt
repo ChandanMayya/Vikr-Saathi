@@ -139,7 +139,9 @@ class ResetFragment : Fragment(), ResetHistoryBottomSheet.Callback {
             resetSales = binding.checkResetSales.isChecked,
             resetTemplates = binding.checkResetTemplates.isChecked,
             resetSettings = binding.checkResetSettings.isChecked,
-            resetInvoiceConfig = binding.checkResetInvoiceConfig.isChecked
+            resetInvoiceConfig = binding.checkResetInvoiceConfig.isChecked,
+            resetCustomerBalances = binding.checkResetCustomerBalances.isChecked,
+            resetVendors = binding.checkResetVendors.isChecked
         )
     }
 

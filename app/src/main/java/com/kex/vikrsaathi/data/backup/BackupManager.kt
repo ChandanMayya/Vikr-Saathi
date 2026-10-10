@@ -60,7 +60,7 @@ class BackupManager(
         onProgress: BackupProgressListener = { _, _ -> }
     ): String = withContext(Dispatchers.IO) {
         collectBackupPayload(options, onProgress).let { payload ->
-            BackupJsonCodec.buildBackupJson(
+            val json = BackupJsonCodec.buildBackupJson(
                 options = options,
                 settings = settingsRepository,
                 customers = payload.customers,
@@ -71,6 +71,9 @@ class BackupManager(
                 templateImages = payload.templateImages,
                 stockMovements = payload.stockMovements
             )
+            val root = JSONObject(json)
+            FinanceBackupCodec.attach(root, options, payload.finance)
+            root.toString(2)
         }
     }
 
@@ -99,7 +102,8 @@ class BackupManager(
         val templates: List<InvoiceTemplateEntity>,
         val templateVersions: List<InvoiceTemplateVersionEntity>,
         val templateImages: List<TemplateImageBackup>,
-        val stockMovements: List<StockMovement>
+        val stockMovements: List<StockMovement>,
+        val finance: FinanceSnapshot
     )
 
     private suspend fun collectBackupPayload(
@@ -162,6 +166,7 @@ class BackupManager(
         }
 
         onProgress("Building backup file…", 88)
+        val finance = collectFinance(options)
         return BackupPayload(
             customers,
             items,
@@ -169,7 +174,62 @@ class BackupManager(
             templates,
             templateVersions,
             templateImages,
-            stockMovements
+            stockMovements,
+            finance
+        )
+    }
+
+    private suspend fun collectFinance(options: BackupExportOptions): FinanceSnapshot {
+        val wantsCustomers = options.includeCustomers || options.includeCustomerBalances || options.includeSales
+        val wantsVendors = options.includeVendors
+        if (!wantsCustomers && !wantsVendors) return FinanceSnapshot()
+        val ledger = if (wantsCustomers) database.customerLedgerDao().getAll() else emptyList()
+        val receipts = if (options.includeCustomers || options.includeCustomerBalances) {
+            database.customerLedgerDao().getAllReceipts()
+        } else emptyList()
+        val allocations = if (options.includeCustomers || options.includeCustomerBalances) {
+            database.customerLedgerDao().getAllAllocations()
+        } else emptyList()
+        val returns = if (wantsCustomers) database.customerLedgerDao().getAllReturns() else emptyList()
+        val returnLines = if (wantsCustomers) database.customerLedgerDao().getAllReturnLines() else emptyList()
+        val payments = if (options.includeSales || options.includeCustomerBalances) {
+            database.billPaymentDao().getAll().map {
+                BillPaymentBackup(it.billId, it.method, it.amountPaise)
+            }
+        } else emptyList()
+        if (!wantsVendors) {
+            return FinanceSnapshot(
+                customerLedger = ledger,
+                receipts = receipts,
+                allocations = allocations,
+                returns = returns,
+                returnLines = returnLines,
+                billPayments = payments
+            )
+        }
+        val items = database.itemDao().getAllItemsSync()
+        return FinanceSnapshot(
+            customerLedger = ledger,
+            receipts = receipts,
+            allocations = allocations,
+            returns = returns,
+            returnLines = returnLines,
+            billPayments = payments,
+            vendors = database.vendorDao().getAll(),
+            vendorLedger = database.vendorDao().getAllLedger(),
+            vendorPayments = database.vendorDao().getAllPayments(),
+            vendorAllocations = database.vendorDao().getAllPaymentAllocations(),
+            orders = database.purchaseDao().getOrders(),
+            orderLines = database.purchaseDao().getAllOrderLines(),
+            goodsReceipts = database.purchaseDao().getReceipts(),
+            goodsReceiptLines = database.purchaseDao().getAllReceiptLines(),
+            invoices = database.purchaseDao().getInvoices(),
+            invoiceLines = database.purchaseDao().getAllInvoiceLines(),
+            quotes = database.purchaseDao().getQuotes(),
+            quoteLines = database.purchaseDao().getAllQuoteLines(),
+            preferredVendorLinks = items.mapNotNull { item ->
+                item.preferredVendorId?.let { PreferredVendorLink(item.id, it) }
+            }
         )
     }
 
@@ -211,6 +271,12 @@ class BackupManager(
         val customerIdMap = mutableMapOf<Long, Long>()
         val itemIdMap = mutableMapOf<Long, Long>()
         val templateIdMap = mutableMapOf<Long, Long>()
+        val billIdMap = mutableMapOf<Long, Long>()
+        val billsAlreadyPaid = mutableSetOf<Long>()
+        val presentCustomerIds = database.customerDao().getAllCustomersSync().map { it.id }.toSet()
+        val presentItemIds = database.itemDao().getAllItemsSync().map { it.id }.toSet()
+        val presentBillIds = database.billDao().getAllBillsWithDetailsSync().map { it.bill.id }.toSet()
+        val presentVendorIds = database.vendorDao().getAll().map { it.id }.toSet()
 
         if ("settings" in includes) {
             onProgress("Restoring shop settings…", 10)
@@ -281,6 +347,11 @@ class BackupManager(
                         )
                     )
                     itemIdMap[backup.legacyId] = id
+                    backup.preferredVendorLegacyId?.let { vendorLegacy ->
+                        if (vendorLegacy in presentVendorIds) {
+                            database.itemDao().setPreferredVendor(id, vendorLegacy)
+                        }
+                    }
                     itemsImported++
                 } catch (e: Exception) {
                     itemsSkipped++
@@ -357,7 +428,13 @@ class BackupManager(
             onProgress("Importing sales…", 80)
             BackupJsonCodec.parseBills(root).forEach { backup ->
                 try {
-                    val customerId = backup.customerLegacyId?.let { customerIdMap[it] }
+                    val customerId = backup.customerLegacyId?.let { legacy ->
+                        com.kex.vikrsaathi.domain.finance.IdRemapper.resolve(
+                            legacy,
+                            customerIdMap,
+                            presentCustomerIds
+                        )
+                    }
                     val lineItems = backup.items.map { line ->
                         val mappedItemId = line.itemLegacyId?.let { itemIdMap[it] }
                         line.toLineItem(mappedItemId)
@@ -368,12 +445,17 @@ class BackupManager(
                         date = backup.date,
                         customerId = customerId,
                         lineItems = lineItems,
-                        billRoundOff = backup.roundOff
+                        billRoundOff = backup.roundOff,
+                        paymentStatus = backup.paymentStatus,
+                        paymentLabel = backup.paymentLabel,
+                        payments = backup.payments
                     )
                     if (imported == null) {
                         billsSkipped++
                     } else {
                         billsImported++
+                        billIdMap[backup.legacyId] = imported
+                        if (backup.payments.isNotEmpty()) billsAlreadyPaid += backup.legacyId
                     }
                 } catch (e: Exception) {
                     billsSkipped++
@@ -381,6 +463,20 @@ class BackupManager(
                 }
             }
         }
+
+        val financeResult = FinanceBackupRestorer(database).restore(
+            root = root,
+            customerIds = customerIdMap,
+            itemIds = itemIdMap,
+            billIds = billIdMap,
+            billsAlreadyPaid = billsAlreadyPaid,
+            presentCustomerIds = presentCustomerIds,
+            presentItemIds = presentItemIds,
+            presentBillIds = presentBillIds,
+            presentVendorIds = presentVendorIds,
+            applyStockEffects = "items" !in includes
+        )
+        errors.addAll(financeResult.errors)
 
         onProgress("Import complete", 100)
         BackupImportResult(
@@ -415,6 +511,8 @@ class BackupManager(
         settingsRepository.themeMode = backup.themeMode
         settingsRepository.inventoryMode = backup.inventoryMode
         settingsRepository.lowStockThreshold = backup.lowStockThreshold
+        backup.customerBalanceEnabled?.let { settingsRepository.customerBalanceEnabled = it }
+        backup.vendorManagementEnabled?.let { settingsRepository.vendorManagementEnabled = it }
         AppThemeManager.apply(backup.themeMode)
 
         BackupJsonCodec.decodeBitmap(backup.headerImageBase64)?.let {

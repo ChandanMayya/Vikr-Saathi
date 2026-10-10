@@ -47,6 +47,12 @@ interface ItemDao {
     @Query("UPDATE items SET stockQty = :stockQty WHERE id = :itemId")
     suspend fun updateStockQty(itemId: Long, stockQty: Int)
 
+    @Query("UPDATE items SET preferredVendorId = NULL")
+    suspend fun clearPreferredVendors()
+
+    @Query("UPDATE items SET preferredVendorId = :vendorId WHERE id = :itemId")
+    suspend fun setPreferredVendor(itemId: Long, vendorId: Long?)
+
     @Query("SELECT * FROM items WHERE stockQty <= :threshold ORDER BY stockQty ASC, name ASC")
     suspend fun getLowStockItems(threshold: Int): List<Item>
 

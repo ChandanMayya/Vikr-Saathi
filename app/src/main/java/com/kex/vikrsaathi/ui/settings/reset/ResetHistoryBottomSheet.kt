@@ -76,6 +76,8 @@ class ResetHistoryBottomSheet : BottomSheetDialogFragment() {
                 "templates" -> context.getString(R.string.reset_category_templates)
                 "settings" -> context.getString(R.string.reset_category_settings)
                 "invoice_config" -> context.getString(R.string.reset_category_invoice_config)
+                "customer_balances" -> context.getString(R.string.reset_category_customer_balances)
+                "vendors" -> context.getString(R.string.reset_category_vendors)
                 else -> key
             }
         }

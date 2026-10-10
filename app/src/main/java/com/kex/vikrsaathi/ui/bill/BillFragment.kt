@@ -239,6 +239,7 @@ class BillFragment : Fragment() {
             )
         }
         binding.buttonSaveBill.setOnClickListener { saveBill() }
+        setupPaymentSection()
 
         binding.buttonViewBillDownloadPdf.setOnClickListener { exportBillPdf(print = false) }
         binding.buttonViewBillPrint.setOnClickListener { exportBillPdf(print = true) }
@@ -841,10 +842,11 @@ class BillFragment : Fragment() {
             buyerName = buyerName,
             buyerAddress = binding.editBuyerAddress.text.toString().trim(),
             buyerPhone = binding.editBuyerPhone.text.toString().trim(),
+            payment = paymentRequest(buyerName) ?: return,
             onError = { error ->
                 Toast.makeText(
                     requireContext(),
-                    error.message ?: getString(R.string.save_failed),
+                    com.kex.vikrsaathi.ui.finance.FinanceUi.message(requireContext(), error),
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -911,6 +913,144 @@ class BillFragment : Fragment() {
         binding.buttonViewBillPrint.isEnabled = enabled
         binding.billDrawer.buttonDrawerDownloadPdf.isEnabled = enabled
         binding.billDrawer.buttonDrawerPrintBill.isEnabled = enabled
+    }
+
+    private fun setupPaymentSection() {
+        val payment = binding.billPayment
+        val enabled = viewModel.customerBalanceEnabled
+        payment.root.isVisible = enabled
+        if (!enabled) return
+        payment.radioPayCash.isChecked = true
+        payment.radioPaymentMode.setOnCheckedChangeListener { _, checkedId ->
+            val split = checkedId == R.id.radioPaySplit
+            val legacy = checkedId == R.id.radioPayLegacy
+            payment.textPaymentHint.isVisible = split || legacy
+            payment.textPaymentHint.setText(
+                if (legacy) R.string.payment_legacy_hint else R.string.payment_split_hint
+            )
+            payment.layoutSplitCash.isVisible = split
+            payment.layoutSplitUpi.isVisible = split
+            payment.layoutSplitCredit.isVisible = split
+        }
+        viewModel.loadedPaymentStatus.observe(viewLifecycleOwner) { status ->
+            val legacy = status == com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LEGACY &&
+                viewModel.currentBillId != null
+            payment.radioPayLegacy.isVisible = legacy && !isReadOnly
+        }
+        viewModel.loadedPortions.observe(viewLifecycleOwner) { portions ->
+            bindPortions(portions)
+        }
+        viewModel.grandTotal.observe(viewLifecycleOwner) { refreshPaymentSummary() }
+        if (isReadOnly) {
+            payment.radioPaymentMode.isVisible = false
+            payment.textPaymentSummary.isVisible = true
+        }
+    }
+
+    private fun bindPortions(portions: List<com.kex.vikrsaathi.domain.finance.PaymentPortion>) {
+        val payment = binding.billPayment
+        if (portions.isEmpty()) {
+            if (viewModel.currentBillId != null) payment.radioPayLegacy.isChecked = true
+            refreshPaymentSummary()
+            return
+        }
+        if (portions.size > 1) {
+            payment.radioPaySplit.isChecked = true
+            payment.editSplitCash.setText(portionText(portions, com.kex.vikrsaathi.domain.finance.PaymentMethod.CASH))
+            payment.editSplitUpi.setText(portionText(portions, com.kex.vikrsaathi.domain.finance.PaymentMethod.UPI))
+            payment.editSplitCredit.setText(portionText(portions, com.kex.vikrsaathi.domain.finance.PaymentMethod.CREDIT))
+        } else {
+            when (portions.first().method) {
+                com.kex.vikrsaathi.domain.finance.PaymentMethod.UPI -> payment.radioPayUpi.isChecked = true
+                com.kex.vikrsaathi.domain.finance.PaymentMethod.CREDIT -> payment.radioPayCredit.isChecked = true
+                else -> payment.radioPayCash.isChecked = true
+            }
+        }
+        refreshPaymentSummary()
+    }
+
+    private fun portionText(
+        portions: List<com.kex.vikrsaathi.domain.finance.PaymentPortion>,
+        method: String
+    ): String {
+        val amount = portions.firstOrNull { it.method == method }?.amountPaise ?: return ""
+        return String.format("%.2f", amount / 100.0)
+    }
+
+    private fun refreshPaymentSummary() {
+        if (_binding == null || !viewModel.customerBalanceEnabled) return
+        val payment = binding.billPayment
+        val portions = viewModel.loadedPortions.value.orEmpty()
+        val label = com.kex.vikrsaathi.ui.finance.FinanceUi.paymentLabel(
+            requireContext(),
+            com.kex.vikrsaathi.domain.finance.PaymentSplitValidator.labelFor(portions)
+        )
+        val credit = portions.filter {
+            it.method == com.kex.vikrsaathi.domain.finance.PaymentMethod.CREDIT
+        }.sumOf { it.amountPaise }
+        payment.textPaymentSummary.isVisible = isReadOnly || portions.isNotEmpty()
+        payment.textPaymentSummary.text = if (credit > 0L) {
+            getString(R.string.payment_summary_method, label) + "\n" + getString(
+                R.string.payment_outstanding,
+                com.kex.vikrsaathi.ui.finance.FinanceUi.formatPaise(credit, viewModel.currencySymbol)
+            )
+        } else {
+            getString(R.string.payment_summary_method, label)
+        }
+    }
+
+    private fun paymentRequest(buyerName: String): com.kex.vikrsaathi.domain.finance.BillPaymentRequest? {
+        if (!viewModel.customerBalanceEnabled || isReadOnly) {
+            return com.kex.vikrsaathi.domain.finance.BillPaymentRequest.LeaveUnchanged
+        }
+        val payment = binding.billPayment
+        if (payment.radioPayLegacy.isChecked) {
+            return com.kex.vikrsaathi.domain.finance.BillPaymentRequest.KeepLegacy
+        }
+        val total = com.kex.vikrsaathi.domain.money.Money.rupeesToPaise(viewModel.grandTotal.value ?: 0.0)
+        val portions = when (payment.radioPaymentMode.checkedRadioButtonId) {
+            R.id.radioPayUpi -> listOf(
+                com.kex.vikrsaathi.domain.finance.PaymentPortion(
+                    com.kex.vikrsaathi.domain.finance.PaymentMethod.UPI,
+                    total
+                )
+            )
+            R.id.radioPayCredit -> listOf(
+                com.kex.vikrsaathi.domain.finance.PaymentPortion(
+                    com.kex.vikrsaathi.domain.finance.PaymentMethod.CREDIT,
+                    total
+                )
+            )
+            R.id.radioPaySplit -> buildList {
+                val cash = com.kex.vikrsaathi.ui.finance.FinanceUi.parseAmountPaise(payment.editSplitCash.text?.toString())
+                val upi = com.kex.vikrsaathi.ui.finance.FinanceUi.parseAmountPaise(payment.editSplitUpi.text?.toString())
+                val credit = com.kex.vikrsaathi.ui.finance.FinanceUi.parseAmountPaise(payment.editSplitCredit.text?.toString())
+                if (cash > 0L) add(com.kex.vikrsaathi.domain.finance.PaymentPortion(com.kex.vikrsaathi.domain.finance.PaymentMethod.CASH, cash))
+                if (upi > 0L) add(com.kex.vikrsaathi.domain.finance.PaymentPortion(com.kex.vikrsaathi.domain.finance.PaymentMethod.UPI, upi))
+                if (credit > 0L) add(com.kex.vikrsaathi.domain.finance.PaymentPortion(com.kex.vikrsaathi.domain.finance.PaymentMethod.CREDIT, credit))
+            }
+            else -> listOf(
+                com.kex.vikrsaathi.domain.finance.PaymentPortion(
+                    com.kex.vikrsaathi.domain.finance.PaymentMethod.CASH,
+                    total
+                )
+            )
+        }
+        return try {
+            com.kex.vikrsaathi.domain.finance.PaymentSplitValidator.validate(
+                total,
+                portions,
+                buyerName.isNotBlank()
+            )
+            com.kex.vikrsaathi.domain.finance.BillPaymentRequest.Record(portions)
+        } catch (error: com.kex.vikrsaathi.domain.finance.FinanceException) {
+            Toast.makeText(
+                requireContext(),
+                com.kex.vikrsaathi.ui.finance.FinanceUi.message(requireContext(), error),
+                Toast.LENGTH_LONG
+            ).show()
+            null
+        }
     }
 
     override fun onDestroyView() {

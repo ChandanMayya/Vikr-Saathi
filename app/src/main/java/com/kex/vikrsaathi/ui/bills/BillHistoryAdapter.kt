@@ -62,7 +62,7 @@ class BillHistoryAdapter(
             val counter = bill.bill.invoiceCounter
             binding.textBillBadge.text = if (counter > 0) counter.toString() else "#"
             binding.textBillNumber.text = bill.bill.billNumber
-            binding.textBillCustomer.text = bill.customer?.name ?: "-"
+            binding.textBillCustomer.text = customerLine(binding.root.context, bill)
             binding.textBillDate.text = dateFormat.format(Date(bill.bill.date))
             binding.textBillTotal.text = PriceCalculator.formatAmount(bill.bill.total, currencySymbol)
             binding.root.setOnClickListener { onOpen(bill) }
@@ -75,7 +75,7 @@ class BillHistoryAdapter(
         RecyclerView.ViewHolder(binding.root) {
         fun bind(bill: BillWithDetails) {
             binding.textBillNumber.text = bill.bill.billNumber
-            binding.textBillCustomer.text = bill.customer?.name ?: "-"
+            binding.textBillCustomer.text = customerLine(binding.root.context, bill)
             binding.textBillTotal.text = PriceCalculator.formatAmount(bill.bill.total, currencySymbol)
             binding.textBillDate.text = dateFormat.format(Date(bill.bill.date))
             binding.root.setOnClickListener { onOpen(bill) }
@@ -88,12 +88,27 @@ class BillHistoryAdapter(
         RecyclerView.ViewHolder(binding.root) {
         fun bind(bill: BillWithDetails) {
             binding.textBillNumber.text = bill.bill.billNumber
-            binding.textBillCustomer.text = bill.customer?.name ?: "-"
+            binding.textBillCustomer.text = customerLine(binding.root.context, bill)
             binding.textBillDate.text = dateFormat.format(Date(bill.bill.date))
             binding.textBillTotal.text = PriceCalculator.formatAmount(bill.bill.total, currencySymbol)
             binding.root.setOnClickListener { onOpen(bill) }
             binding.buttonDuplicateBill.setOnClickListener { onDuplicate(bill) }
             binding.buttonDeleteBill.setOnClickListener { onDelete(bill) }
+        }
+    }
+
+    private fun customerLine(context: android.content.Context, bill: com.kex.vikrsaathi.data.model.BillWithDetails): String {
+        val name = bill.customer?.name ?: "-"
+        if (bill.bill.paymentLabel == "LEGACY" && bill.payments.isEmpty()) return name
+        val label = com.kex.vikrsaathi.ui.finance.FinanceUi.paymentLabel(context, bill.bill.paymentLabel)
+        val credit = bill.payments.filter { it.method == "CREDIT" }.sumOf { it.amountPaise }
+        return if (credit > 0L) {
+            "$name · $label · " + context.getString(
+                com.kex.vikrsaathi.R.string.payment_outstanding,
+                com.kex.vikrsaathi.ui.finance.FinanceUi.formatPaise(credit, currencySymbol)
+            )
+        } else {
+            "$name · $label"
         }
     }
 

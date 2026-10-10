@@ -75,6 +75,21 @@ class DashboardFragment : Fragment() {
             }
         }
 
+        viewModel.customerDuesPaise.observe(viewLifecycleOwner) { paise ->
+            val symbol = viewModel.currencySymbol.value.orEmpty().ifBlank { "₹" }
+            binding.textCustomerDues.text = getString(
+                R.string.dashboard_outstanding,
+                com.kex.vikrsaathi.ui.finance.FinanceUi.formatPaise(paise, symbol)
+            )
+        }
+        viewModel.vendorPayablesPaise.observe(viewLifecycleOwner) { paise ->
+            val symbol = viewModel.currencySymbol.value.orEmpty().ifBlank { "₹" }
+            binding.textVendorPayables.text = getString(
+                R.string.dashboard_payables,
+                com.kex.vikrsaathi.ui.finance.FinanceUi.formatPaise(paise, symbol)
+            )
+        }
+
         viewModel.lowStock.observe(viewLifecycleOwner) { summary ->
             if (summary.count == 0) {
                 binding.textLowStockSummary.text = getString(R.string.low_stock_empty)
@@ -102,6 +117,9 @@ class DashboardFragment : Fragment() {
         binding.cardBillsHistory.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_bills_history)
         }
+        binding.cardVendors.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_vendors)
+        }
         binding.cardStock.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_stock)
         }
@@ -117,11 +135,43 @@ class DashboardFragment : Fragment() {
         binding.cardSettings.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_settings)
         }
+        binding.textCustomerDues.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_outstanding)
+        }
+        binding.textVendorPayables.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_vendors)
+        }
+        applyDashboardLayout()
     }
 
     override fun onResume() {
         super.onResume()
+        applyDashboardLayout()
         viewModel.refresh()
+    }
+
+    private fun applyDashboardLayout() {
+        val settings = (requireActivity().application as VikrSaathiApp).settingsRepository
+        val vendorsEnabled = settings.vendorManagementEnabled
+        binding.cardVendors.isVisible = vendorsEnabled
+        binding.rowMasters.columnCount = if (vendorsEnabled) 3 else 2
+        val cardHeight = if (vendorsEnabled) dp(96) else dp(92)
+        val iconSize = if (vendorsEnabled) dp(28) else dp(36)
+        listOf(binding.cardItems, binding.cardCustomers, binding.cardVendors).forEach { card ->
+            card.layoutParams = card.layoutParams.apply { height = cardHeight }
+        }
+        listOf(binding.iconItems, binding.iconCustomers, binding.iconVendors).forEach { icon ->
+            icon.layoutParams = icon.layoutParams.apply {
+                width = iconSize
+                height = iconSize
+            }
+        }
+        binding.textCustomerDues.isVisible = settings.customerBalanceEnabled
+        binding.textVendorPayables.isVisible = vendorsEnabled
+    }
+
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
     }
 
     override fun onDestroyView() {

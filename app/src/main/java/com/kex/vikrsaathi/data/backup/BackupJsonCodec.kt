@@ -20,8 +20,8 @@ import java.io.ByteArrayOutputStream
 
 object BackupJsonCodec {
 
-    const val SCHEMA_VERSION = 2
-    val SUPPORTED_SCHEMA_VERSIONS = setOf(1, 2)
+    const val SCHEMA_VERSION = BackupSchema.CURRENT
+    val SUPPORTED_SCHEMA_VERSIONS = BackupSchema.SUPPORTED
 
     fun encodeBitmap(bitmap: Bitmap?): String? {
         if (bitmap == null) return null
@@ -205,6 +205,8 @@ object BackupJsonCodec {
             put("themeMode", settings.themeMode.name)
             put("inventoryMode", settings.inventoryMode.name)
             put("lowStockThreshold", settings.lowStockThreshold)
+            put("customerBalanceEnabled", settings.customerBalanceEnabled)
+            put("vendorManagementEnabled", settings.vendorManagementEnabled)
             put("invoicePrefix", settings.invoicePrefix)
             put("invoiceSuffix", settings.invoiceSuffix)
             put("invoiceSeparator", settings.invoiceSeparator)
@@ -229,6 +231,16 @@ object BackupJsonCodec {
                 obj.optString("inventoryMode", InventoryMode.WARN.name)
             ),
             lowStockThreshold = obj.optInt("lowStockThreshold", 5),
+            customerBalanceEnabled = if (obj.has("customerBalanceEnabled")) {
+                obj.getBoolean("customerBalanceEnabled")
+            } else {
+                null
+            },
+            vendorManagementEnabled = if (obj.has("vendorManagementEnabled")) {
+                obj.getBoolean("vendorManagementEnabled")
+            } else {
+                null
+            },
             invoicePrefix = obj.optString("invoicePrefix", ""),
             invoiceSuffix = obj.optString("invoiceSuffix", ""),
             invoiceSeparator = obj.optString("invoiceSeparator", "/"),
@@ -276,6 +288,7 @@ object BackupJsonCodec {
             item.sellingPrice?.let { put("sellingPrice", it) }
             put("remarks", item.remarks)
             put("stockQty", item.stockQty)
+            item.preferredVendorId?.let { put("preferredVendorLegacyId", it) }
         }
     }
 
@@ -287,7 +300,12 @@ object BackupJsonCodec {
         discount = obj.getDouble("discount"),
         sellingPrice = obj.optDouble("sellingPrice").takeIf { !obj.isNull("sellingPrice") },
         remarks = obj.optString("remarks", ""),
-        stockQty = obj.optInt("stockQty", 0)
+        stockQty = obj.optInt("stockQty", 0),
+        preferredVendorLegacyId = if (obj.has("preferredVendorLegacyId") && !obj.isNull("preferredVendorLegacyId")) {
+            obj.getLong("preferredVendorLegacyId")
+        } else {
+            null
+        }
     )
 
     private fun encodeStockMovement(
@@ -329,6 +347,16 @@ object BackupJsonCodec {
             put("total", details.bill.total)
             put("roundOff", details.bill.roundOff)
             put("date", details.bill.date)
+            put("paymentStatus", details.bill.paymentStatus)
+            put("paymentLabel", details.bill.paymentLabel)
+            put("payments", JSONArray().apply {
+                details.payments.forEach { payment ->
+                    put(JSONObject().apply {
+                        put("method", payment.method)
+                        put("amountPaise", payment.amountPaise)
+                    })
+                }
+            })
             put("items", JSONArray().apply {
                 details.items.forEach { item -> put(encodeBillItem(item)) }
             })
@@ -372,8 +400,26 @@ object BackupJsonCodec {
             total = obj.getDouble("total"),
             roundOff = obj.optDouble("roundOff", 0.0),
             date = obj.getLong("date"),
-            items = items
+            items = items,
+            paymentStatus = obj.optString("paymentStatus", com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LEGACY),
+            paymentLabel = obj.optString("paymentLabel", com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LABEL_LEGACY),
+            payments = decodePortions(obj.optJSONArray("payments"))
         )
+    }
+
+    private fun decodePortions(array: org.json.JSONArray?): List<com.kex.vikrsaathi.domain.finance.PaymentPortion> {
+        if (array == null) return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                add(
+                    com.kex.vikrsaathi.domain.finance.PaymentPortion(
+                        method = obj.getString("method"),
+                        amountPaise = obj.getLong("amountPaise")
+                    )
+                )
+            }
+        }
     }
 
     private fun encodeTemplate(entity: InvoiceTemplateEntity): JSONObject {
@@ -430,6 +476,8 @@ data class SettingsBackup(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val inventoryMode: InventoryMode = InventoryMode.WARN,
     val lowStockThreshold: Int = 5,
+    val customerBalanceEnabled: Boolean? = null,
+    val vendorManagementEnabled: Boolean? = null,
     val invoicePrefix: String,
     val invoiceSuffix: String,
     val invoiceSeparator: String,
@@ -460,7 +508,8 @@ data class ItemBackup(
     val discount: Double,
     val sellingPrice: Double?,
     val remarks: String,
-    val stockQty: Int = 0
+    val stockQty: Int = 0,
+    val preferredVendorLegacyId: Long? = null
 )
 
 data class StockMovementBackup(
@@ -482,7 +531,10 @@ data class BillBackup(
     val total: Double,
     val roundOff: Double = 0.0,
     val date: Long,
-    val items: List<BillLineItemBackup>
+    val items: List<BillLineItemBackup>,
+    val paymentStatus: String = com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LEGACY,
+    val paymentLabel: String = com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LABEL_LEGACY,
+    val payments: List<com.kex.vikrsaathi.domain.finance.PaymentPortion> = emptyList()
 )
 
 data class BillLineItemBackup(

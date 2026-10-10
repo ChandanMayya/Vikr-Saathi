@@ -13,7 +13,8 @@ import com.kex.vikrsaathi.util.ListViewMode
 
 class CustomerAdapter(
     private val onEdit: (Customer) -> Unit,
-    private val onDelete: (Customer) -> Unit
+    private val onDelete: (Customer) -> Unit,
+    private val onOpen: ((Customer) -> Unit)? = null
 ) : ListAdapter<Customer, RecyclerView.ViewHolder>(DiffCallback()) {
 
     var viewMode: ListViewMode = ListViewMode.COMFORTABLE
@@ -65,6 +66,7 @@ class CustomerAdapter(
             binding.textCustomerAddress.text = customer.formattedAddress().ifBlank { "-" }
             binding.buttonEditCustomer.setOnClickListener { onEdit(customer) }
             binding.buttonDeleteCustomer.setOnClickListener { onDelete(customer) }
+            onOpen?.let { open -> binding.root.setOnClickListener { open(customer) } }
         }
     }
 
@@ -79,6 +81,7 @@ class CustomerAdapter(
             binding.textCustomerAddress.text = customer.formattedAddress().ifBlank { "-" }
             binding.buttonEditCustomer.setOnClickListener { onEdit(customer) }
             binding.buttonDeleteCustomer.setOnClickListener { onDelete(customer) }
+            onOpen?.let { open -> binding.root.setOnClickListener { open(customer) } }
         }
     }
 
@@ -91,6 +94,7 @@ class CustomerAdapter(
             binding.textCustomerAddress.text = customer.formattedAddress().ifBlank { "-" }
             binding.buttonEditCustomer.setOnClickListener { onEdit(customer) }
             binding.buttonDeleteCustomer.setOnClickListener { onDelete(customer) }
+            onOpen?.let { open -> binding.root.setOnClickListener { open(customer) } }
         }
     }
 

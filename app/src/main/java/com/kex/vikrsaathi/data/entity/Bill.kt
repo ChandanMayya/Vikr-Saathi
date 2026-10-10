@@ -25,5 +25,9 @@ data class Bill(
     val customerId: Long? = null,
     val total: Double,
     val roundOff: Double = 0.0,
-    val date: Long = System.currentTimeMillis()
+    val date: Long = System.currentTimeMillis(),
+    /** LEGACY bills have no payment rows and are not treated as customer debt. */
+    val paymentStatus: String = com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LEGACY,
+    /** Machine code: LEGACY, CASH, UPI, CREDIT, or SPLIT. */
+    val paymentLabel: String = com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LABEL_LEGACY
 )

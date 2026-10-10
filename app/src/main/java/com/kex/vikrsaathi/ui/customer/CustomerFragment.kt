@@ -8,6 +8,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
@@ -20,6 +22,7 @@ import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.ListViewMode
 import com.kex.vikrsaathi.util.ListViewScreen
+import kotlinx.coroutines.launch
 import com.kex.vikrsaathi.util.ViewModelFactory
 
 class CustomerFragment : Fragment() {
@@ -62,13 +65,30 @@ class CustomerFragment : Fragment() {
 
         adapter = CustomerAdapter(
             onEdit = { showCustomerDialog(it) },
-            onDelete = { confirmDelete(it) }
+            onDelete = { confirmDelete(it) },
+            onOpen = if ((requireActivity().application as VikrSaathiApp).settingsRepository.customerBalanceEnabled) {
+                { customer ->
+                    findNavController().navigate(
+                        R.id.customerLedgerFragment,
+                        com.kex.vikrsaathi.ui.finance.CustomerLedgerFragment.args(customer.id)
+                    )
+                }
+            } else {
+                null
+            }
         )
         binding.recyclerCustomers.adapter = adapter
         applyViewMode(viewMode, persist = false)
 
         viewModel.customers.observe(viewLifecycleOwner) { adapter.submitList(it) }
         binding.fabAddCustomer.setOnClickListener { showCustomerDialog(null) }
+        val balancesOn = (requireActivity().application as VikrSaathiApp).settingsRepository.customerBalanceEnabled
+        if (balancesOn) {
+            binding.textCustomersTitle.setText(R.string.outstanding_customers)
+            binding.textCustomersTitle.setOnClickListener {
+                findNavController().navigate(R.id.outstandingCustomersFragment)
+            }
+        }
     }
 
     private fun applyViewMode(mode: ListViewMode, persist: Boolean = true) {
@@ -106,12 +126,23 @@ class CustomerFragment : Fragment() {
     }
 
     private fun confirmDelete(customer: Customer) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.delete_customer)
-            .setMessage(R.string.delete_customer_confirm)
-            .setPositiveButton(R.string.delete) { _, _ -> viewModel.deleteCustomer(customer) }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        val app = requireActivity().application as VikrSaathiApp
+        viewLifecycleOwner.lifecycleScope.launch {
+            if (app.customerFinanceRepository.hasLedger(customer.id)) {
+                android.widget.Toast.makeText(
+                    requireContext(),
+                    R.string.payment_error_customer_ledger,
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                return@launch
+            }
+            AlertDialog.Builder(requireContext())
+                .setTitle(R.string.delete_customer)
+                .setMessage(R.string.delete_customer_confirm)
+                .setPositiveButton(R.string.delete) { _, _ -> viewModel.deleteCustomer(customer) }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
     }
 
     override fun onDestroyView() {

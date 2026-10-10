@@ -35,5 +35,8 @@ enum class HelpScreen {
     INVOICE_BUILDER,
     BACKUP,
     RESET,
-    ANALYSIS
+    ANALYSIS,
+    ACCOUNTS,
+    CUSTOMER_LEDGER,
+    VENDORS
 }

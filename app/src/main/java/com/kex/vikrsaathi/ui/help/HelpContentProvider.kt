@@ -160,6 +160,24 @@ object HelpContentProvider {
                 R.string.help_reset_overview,
                 section(R.string.help_reset_s1_title, R.array.help_reset_s1)
             )
+            HelpScreen.ACCOUNTS -> guide(
+                context,
+                R.string.help_accounts_title,
+                R.string.help_accounts_overview,
+                section(R.string.help_accounts_s1_title, R.array.help_accounts_s1)
+            )
+            HelpScreen.CUSTOMER_LEDGER -> guide(
+                context,
+                R.string.help_customer_ledger_title,
+                R.string.help_customer_ledger_overview,
+                section(R.string.help_customer_ledger_s1_title, R.array.help_customer_ledger_s1)
+            )
+            HelpScreen.VENDORS -> guide(
+                context,
+                R.string.help_vendors_title,
+                R.string.help_vendors_overview,
+                section(R.string.help_vendors_s1_title, R.array.help_vendors_s1)
+            )
         }
     }
 

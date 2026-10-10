@@ -7,8 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.data.model.DashboardTodayStats
 import com.kex.vikrsaathi.data.repository.BillRepository
+import com.kex.vikrsaathi.data.repository.CustomerFinanceRepository
 import com.kex.vikrsaathi.data.repository.InventoryRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.data.repository.VendorRepository
 import kotlinx.coroutines.launch
 
 data class LowStockRow(
@@ -24,7 +26,9 @@ data class LowStockSummary(
 class DashboardViewModel(
     private val settingsRepository: SettingsRepository,
     private val billRepository: BillRepository,
-    private val inventoryRepository: InventoryRepository
+    private val inventoryRepository: InventoryRepository,
+    private val customerFinanceRepository: CustomerFinanceRepository,
+    private val vendorRepository: VendorRepository
 ) : ViewModel() {
 
     private val _shopName = MutableLiveData<String>()
@@ -39,7 +43,13 @@ class DashboardViewModel(
     private val _lowStock = MutableLiveData(LowStockSummary(0, emptyList()))
     val lowStock: LiveData<LowStockSummary> = _lowStock
 
-    private val _loading = MutableLiveData(true)
+    private val _customerDuesPaise = MutableLiveData(0L)
+    val customerDuesPaise: LiveData<Long> = _customerDuesPaise
+
+    private val _vendorPayablesPaise = MutableLiveData(0L)
+    val vendorPayablesPaise: LiveData<Long> = _vendorPayablesPaise
+
+    private val _loading = MutableLiveData(false)
     val loading: LiveData<Boolean> = _loading
 
     fun refresh() {
@@ -54,6 +64,12 @@ class DashboardViewModel(
                 count = lowItems.size,
                 items = lowItems.take(5).map { LowStockRow(it.name, it.stockQty) }
             )
+            _customerDuesPaise.value = if (settingsRepository.customerBalanceEnabled) {
+                customerFinanceRepository.totalReceivablePaise()
+            } else 0L
+            _vendorPayablesPaise.value = if (settingsRepository.vendorManagementEnabled) {
+                vendorRepository.totalPayablePaise()
+            } else 0L
             _loading.value = false
         }
     }

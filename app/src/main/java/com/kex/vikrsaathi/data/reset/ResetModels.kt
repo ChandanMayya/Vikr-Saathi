@@ -6,11 +6,13 @@ data class ResetOptions(
     val resetSales: Boolean = false,
     val resetTemplates: Boolean = false,
     val resetSettings: Boolean = false,
-    val resetInvoiceConfig: Boolean = false
+    val resetInvoiceConfig: Boolean = false,
+    val resetCustomerBalances: Boolean = false,
+    val resetVendors: Boolean = false
 ) {
     fun hasAnySelected(): Boolean =
         resetCustomers || resetItems || resetSales || resetTemplates ||
-            resetSettings || resetInvoiceConfig
+            resetSettings || resetInvoiceConfig || resetCustomerBalances || resetVendors
 
     fun selectedCategoryKeys(): List<String> = buildList {
         if (resetCustomers) add(CATEGORY_CUSTOMERS)
@@ -19,6 +21,8 @@ data class ResetOptions(
         if (resetTemplates) add(CATEGORY_TEMPLATES)
         if (resetSettings) add(CATEGORY_SETTINGS)
         if (resetInvoiceConfig) add(CATEGORY_INVOICE_CONFIG)
+        if (resetCustomerBalances) add(CATEGORY_CUSTOMER_BALANCES)
+        if (resetVendors) add(CATEGORY_VENDORS)
     }
 
     companion object {
@@ -28,6 +32,8 @@ data class ResetOptions(
         const val CATEGORY_TEMPLATES = "templates"
         const val CATEGORY_SETTINGS = "settings"
         const val CATEGORY_INVOICE_CONFIG = "invoice_config"
+        const val CATEGORY_CUSTOMER_BALANCES = "customer_balances"
+        const val CATEGORY_VENDORS = "vendors"
     }
 }
 

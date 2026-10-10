@@ -4,6 +4,7 @@ import androidx.room.Embedded
 import androidx.room.Relation
 import com.kex.vikrsaathi.data.entity.Bill
 import com.kex.vikrsaathi.data.entity.BillItem
+import com.kex.vikrsaathi.data.entity.BillPayment
 import com.kex.vikrsaathi.data.entity.Customer
 
 data class BillWithDetails(
@@ -17,5 +18,10 @@ data class BillWithDetails(
         parentColumn = "id",
         entityColumn = "billId"
     )
-    val items: List<BillItem>
+    val items: List<BillItem>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "billId"
+    )
+    val payments: List<BillPayment> = emptyList()
 )
