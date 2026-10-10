@@ -33,6 +33,9 @@ interface CustomerDao {
     @Query("SELECT * FROM customers WHERE name LIKE '%' || :query || '%' ORDER BY name ASC LIMIT 20")
     suspend fun searchCustomers(query: String): List<Customer>
 
+    @Query("SELECT * FROM customers WHERE TRIM(name) = :name COLLATE NOCASE LIMIT 1")
+    suspend fun findByNameIgnoreCase(name: String): Customer?
+
     @Query("SELECT * FROM customers WHERE phone LIKE '%' || :query || '%' ORDER BY name ASC LIMIT 20")
     suspend fun searchByPhone(query: String): List<Customer>
 

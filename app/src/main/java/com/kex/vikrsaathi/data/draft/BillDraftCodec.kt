@@ -17,6 +17,9 @@ object BillDraftCodec {
                     put("discount", line.discount)
                     put("quantity", line.quantity)
                     put("roundOff", line.roundOff)
+                    put("isNew", line.isNew)
+                    line.openingStock?.let { put("openingStock", it) }
+                    line.barcode?.let { put("barcode", it) }
                 }
             )
         }
@@ -37,7 +40,14 @@ object BillDraftCodec {
                             mrp = obj.getDouble("mrp"),
                             discount = obj.getDouble("discount"),
                             quantity = obj.optInt("quantity", 1).coerceAtLeast(1),
-                            roundOff = obj.optDouble("roundOff", 0.0)
+                            roundOff = obj.optDouble("roundOff", 0.0),
+                            isNew = obj.optBoolean("isNew", false),
+                            openingStock = if (obj.has("openingStock")) {
+                                obj.optInt("openingStock").coerceAtLeast(0)
+                            } else {
+                                null
+                            },
+                            barcode = obj.optString("barcode").trim().ifEmpty { null }
                         )
                     )
                 }

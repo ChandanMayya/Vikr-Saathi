@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.databinding.ItemBillLineBinding
 import com.kex.vikrsaathi.util.PriceCalculator
@@ -17,6 +18,7 @@ class BillLineItemAdapter(
     private val onQuantityChange: (Int, Int) -> Unit,
     private val onDiscountChange: (Int, Double) -> Unit,
     private val onRoundOffChange: (Int, Double) -> Unit,
+    private val onRateChange: (Int, Double) -> Unit,
     private val onRemove: (Int) -> Unit
 ) : ListAdapter<BillLineItem, BillLineItemAdapter.ViewHolder>(DiffCallback()) {
 
@@ -139,6 +141,31 @@ class BillLineItemAdapter(
                 suppressUpdates = false
             }
 
+            binding.editRate.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    if (suppressUpdates || readOnly) return
+                    val pos = bindingAdapterPosition
+                    if (pos == RecyclerView.NO_POSITION) return
+                    val rate = s?.toString()?.trim()?.toDoubleOrNull() ?: return
+                    if (rate <= 0.0) return
+                    updateLineTotalForRate(getItem(pos), rate)
+                    if (rate != getItem(pos).mrp) {
+                        onRateChange(pos, rate)
+                    }
+                }
+            })
+
+            binding.editRate.setOnFocusChangeListener { _, hasFocus ->
+                if (suppressUpdates || readOnly || hasFocus) return@setOnFocusChangeListener
+                val pos = bindingAdapterPosition
+                if (pos == RecyclerView.NO_POSITION) return@setOnFocusChangeListener
+                suppressUpdates = true
+                binding.editRate.setText(String.format("%.2f", getItem(pos).mrp))
+                suppressUpdates = false
+            }
+
             binding.buttonRemoveLine.setOnClickListener {
                 if (!readOnly) {
                     val pos = bindingAdapterPosition
@@ -152,6 +179,7 @@ class BillLineItemAdapter(
             binding.textSlNo.text = bindingAdapterPosition.plus(1).toString()
             binding.textParticulars.text = line.name
             binding.textMrp.text = PriceCalculator.formatAmount(line.mrp, currencySymbol)
+            bindNewItemState(line)
             setQuantityTextIfNeeded(line.quantity)
             setDiscountTextIfNeeded(line.discount)
             setRoundOffTextIfNeeded(line.roundOff)
@@ -162,10 +190,41 @@ class BillLineItemAdapter(
             binding.editDiscount.isEnabled = !readOnly
             binding.editQuantity.isEnabled = !readOnly
             binding.editRoundOff.isEnabled = !readOnly
+            binding.editRate.isEnabled = !readOnly
         }
 
         fun updateLineTotal(line: BillLineItem) {
             binding.textPrice.text = PriceCalculator.formatAmount(line.lineTotal, currencySymbol)
+        }
+
+        private fun bindNewItemState(line: BillLineItem) {
+            val context = binding.root.context
+            binding.textNewBadge.visibility = if (line.isNew) View.VISIBLE else View.GONE
+            binding.textNewBadge.text = line.openingStock?.takeIf { it > 0 }?.let {
+                context.getString(R.string.bill_line_new_badge_stock, it)
+            } ?: context.getString(R.string.bill_line_new_badge)
+            binding.textMrpLabel.setText(if (line.isNew) R.string.rate else R.string.mrp)
+            binding.textMrp.visibility = if (line.isNew) View.GONE else View.VISIBLE
+            binding.editRate.visibility = if (line.isNew) View.VISIBLE else View.GONE
+            if (line.isNew) setRateTextIfNeeded(line.mrp)
+        }
+
+        private fun updateLineTotalForRate(line: BillLineItem, rate: Double) {
+            val total = PriceCalculator.priceAfterDiscount(rate, line.discount) * line.quantity + line.roundOff
+            binding.textPrice.text = PriceCalculator.formatAmount(total, currencySymbol)
+        }
+
+        private fun setRateTextIfNeeded(rate: Double) {
+            val edit = binding.editRate
+            if (edit.hasFocus()) return
+
+            val current = edit.text?.toString()?.trim().orEmpty()
+            if (current.toDoubleOrNull()?.let { kotlin.math.abs(it - rate) < 0.005 } == true) {
+                return
+            }
+
+            edit.setText(String.format("%.2f", rate))
+            edit.setSelection(edit.text?.length ?: 0)
         }
 
         private fun updateLineTotalForQuantity(line: BillLineItem, quantity: Int) {
@@ -233,11 +292,14 @@ class BillLineItemAdapter(
         override fun getChangePayload(oldItem: BillLineItem, newItem: BillLineItem): Any? {
             if (oldItem.itemId != newItem.itemId ||
                 oldItem.name != newItem.name ||
-                oldItem.mrp != newItem.mrp
+                oldItem.isNew != newItem.isNew ||
+                oldItem.openingStock != newItem.openingStock ||
+                (!newItem.isNew && oldItem.mrp != newItem.mrp)
             ) {
                 return null
             }
-            if (oldItem.quantity != newItem.quantity ||
+            if (oldItem.mrp != newItem.mrp ||
+                oldItem.quantity != newItem.quantity ||
                 oldItem.discount != newItem.discount ||
                 oldItem.roundOff != newItem.roundOff
             ) {

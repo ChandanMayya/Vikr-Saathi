@@ -4,6 +4,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
+import com.kex.vikrsaathi.data.database.AppDatabase
 import com.kex.vikrsaathi.data.entity.Customer
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.data.model.BillLineItem
@@ -29,6 +31,7 @@ import java.io.File
 import kotlinx.coroutines.launch
 
 class BillViewModel(
+    private val database: AppDatabase,
     private val customerRepository: CustomerRepository,
     private val itemRepository: ItemRepository,
     private val billRepository: BillRepository,
@@ -89,7 +92,7 @@ class BillViewModel(
 
     /**
      * Checks stock without saving or creating masters.
-     * New (unsaved) line items are treated as available = 0.
+     * Unsaved line items are checked against their entered opening stock (blank = 0).
      */
     fun prepareSaveBill(
         buyerName: String,
@@ -121,15 +124,17 @@ class BillViewModel(
                 .groupBy { it.name.trim().lowercase() }
                 .forEach { (_, group) ->
                     val required = group.sumOf { it.quantity }
-                    val name = group.first().name
-                    shortfalls.add(
-                        StockShortfall(
-                            itemId = 0L,
-                            itemName = name,
-                            available = 0,
-                            required = required
+                    val available = group.firstNotNullOfOrNull { it.openingStock } ?: 0
+                    if (required > available) {
+                        shortfalls.add(
+                            StockShortfall(
+                                itemId = 0L,
+                                itemName = group.first().name,
+                                available = available,
+                                required = required
+                            )
                         )
-                    )
+                    }
                 }
             onPrepared(shortfalls)
         }
@@ -232,29 +237,12 @@ class BillViewModel(
         viewModelScope.launch { callback(customerRepository.search(query)) }
     }
 
-    fun saveCustomer(customer: Customer, onSaved: (Customer) -> Unit) {
-        viewModelScope.launch {
-            val id = customerRepository.insert(customer)
-            val saved = customer.copy(id = id)
-            _selectedCustomer.value = saved
-            onSaved(saved)
-        }
+    fun findCustomerByExactName(name: String, callback: (Customer?) -> Unit) {
+        viewModelScope.launch { callback(customerRepository.findByNameExact(name)) }
     }
 
-    fun saveItem(item: Item, onResult: (Result<Item>) -> Unit) {
-        viewModelScope.launch {
-            try {
-                val barcode = item.barcode?.trim().orEmpty()
-                if (barcode.isNotEmpty() && !itemRepository.isBarcodeUnique(barcode, item.id)) {
-                    onResult(Result.failure(IllegalStateException("Barcode already exists")))
-                    return@launch
-                }
-                val id = itemRepository.insert(item.copy(barcode = barcode.ifEmpty { null }))
-                onResult(Result.success(item.copy(id = id, barcode = barcode.ifEmpty { null })))
-            } catch (e: Exception) {
-                onResult(Result.failure(e))
-            }
-        }
+    fun findItemByExactName(name: String, callback: (Item?) -> Unit) {
+        viewModelScope.launch { callback(itemRepository.findByNameExact(name)) }
     }
 
     fun searchItems(query: String, callback: (List<Item>) -> Unit) {
@@ -280,6 +268,32 @@ class BillViewModel(
             qty
         )
     }
+
+    /** Adds an item that is not in the master yet; [rate] is the per-unit price billed. */
+    fun addNewItem(name: String, rate: Double, openingStock: Int?, barcode: String?) {
+        if (name.isBlank() || rate <= 0.0) return
+        addOrIncrementLine(
+            BillLineItem(
+                name = name.trim(),
+                mrp = rate,
+                discount = 0.0,
+                isNew = true,
+                openingStock = openingStock?.coerceAtLeast(0),
+                barcode = barcode?.trim()?.ifEmpty { null }
+            )
+        )
+    }
+
+    fun updateLineRate(index: Int, rate: Double) {
+        val items = _lineItems.value?.toMutableList() ?: return
+        if (index !in items.indices || !items[index].isNew || rate <= 0.0) return
+        items[index] = items[index].copy(mrp = rate)
+        _lineItems.value = items
+        recalculate()
+    }
+
+    fun firstNewLineWithoutRate(): Int =
+        _lineItems.value.orEmpty().indexOfFirst { it.isNew && it.mrp <= 0.0 }
 
     fun findItemByBarcode(barcode: String, callback: (Item?) -> Unit) {
         viewModelScope.launch {
@@ -328,37 +342,60 @@ class BillViewModel(
         buyerName: String,
         buyerAddress: String,
         buyerPhone: String,
+        onError: (Throwable) -> Unit = {},
         onSaved: (Long, AutoRegisterResult) -> Unit
     ) {
         val lines = _lineItems.value.orEmpty()
         if (lines.isEmpty()) return
+        val selectedCustomer = _selectedCustomer.value
+        val billRoundOff = _billRoundOff.value ?: 0.0
+        val existingBillId = editingBillId
         viewModelScope.launch {
-            val (resolvedCustomer, customerCreated) = resolveOrCreateCustomer(
-                buyerName = buyerName,
-                buyerAddress = buyerAddress,
-                buyerPhone = buyerPhone
-            )
-            val (resolvedLines, createdItemsCount) = resolveOrCreateItems(lines)
-            if (resolvedLines != lines) {
-                _lineItems.value = resolvedLines
+            // Room runs this block off the main thread: no LiveData writes inside.
+            val outcome = try {
+                database.withTransaction {
+                    val (customer, customerCreated) = resolveOrCreateCustomer(
+                        existingSelected = selectedCustomer,
+                        buyerName = buyerName,
+                        buyerAddress = buyerAddress,
+                        buyerPhone = buyerPhone
+                    )
+                    val (resolvedLines, createdItemsCount) = resolveOrCreateItems(lines)
+                    val id = billRepository.saveBill(
+                        customerId = customer?.id,
+                        lineItems = resolvedLines,
+                        billRoundOff = billRoundOff,
+                        existingBillId = existingBillId
+                    )
+                    SaveOutcome(id, customer, customerCreated, resolvedLines, createdItemsCount)
+                }
+            } catch (e: Exception) {
+                onError(e)
+                return@launch
+            }
+            _selectedCustomer.value = outcome.customer
+            if (outcome.lines != lines) {
+                _lineItems.value = outcome.lines
                 recalculate()
             }
-            val id = billRepository.saveBill(
-                customerId = resolvedCustomer?.id,
-                lineItems = resolvedLines,
-                billRoundOff = _billRoundOff.value ?: 0.0,
-                existingBillId = editingBillId
-            )
-            editingBillId = id
+            editingBillId = outcome.billId
             onSaved(
-                id,
+                outcome.billId,
                 AutoRegisterResult(
-                    customerCreated = customerCreated,
-                    itemCreatedCount = createdItemsCount
+                    customerCreated = outcome.customerCreated,
+                    itemCreatedCount = outcome.itemCreatedCount
                 )
             )
         }
     }
+
+    private data class SaveOutcome(
+        val billId: Long,
+        val customer: Customer?,
+        val customerCreated: Boolean,
+        val lines: List<BillLineItem>,
+        val itemCreatedCount: Int
+    )
 
     fun getBillDetails(billId: Long, callback: (BillWithDetails?) -> Unit) {
         viewModelScope.launch {
@@ -390,11 +427,21 @@ class BillViewModel(
     private fun addOrIncrementLine(line: BillLineItem, quantityToAdd: Int = 1) {
         val items = _lineItems.value?.toMutableList() ?: mutableListOf()
         val existingIndex = items.indexOfFirst {
-            it.itemId != null && it.itemId == line.itemId
+            (it.itemId != null && it.itemId == line.itemId) ||
+                (line.isNew && it.isNew && it.name.trim().equals(line.name.trim(), ignoreCase = true))
         }
         if (existingIndex >= 0) {
             val existing = items[existingIndex]
-            items[existingIndex] = existing.copy(quantity = existing.quantity + quantityToAdd)
+            items[existingIndex] = if (line.isNew) {
+                existing.copy(
+                    quantity = existing.quantity + quantityToAdd,
+                    mrp = line.mrp,
+                    openingStock = line.openingStock ?: existing.openingStock,
+                    barcode = existing.barcode ?: line.barcode
+                )
+            } else {
+                existing.copy(quantity = existing.quantity + quantityToAdd)
+            }
         } else {
             items.add(line.copy(quantity = quantityToAdd))
         }
@@ -419,11 +466,11 @@ class BillViewModel(
     }
 
     private suspend fun resolveOrCreateCustomer(
+        existingSelected: Customer?,
         buyerName: String,
         buyerAddress: String,
         buyerPhone: String
     ): Pair<Customer?, Boolean> {
-        val existingSelected = _selectedCustomer.value
         val normalizedName = buyerName.trim()
         val normalizedPhone = buyerPhone.trim()
         val normalizedAddress = buyerAddress.trim()
@@ -443,14 +490,12 @@ class BillViewModel(
                     phone = normalizedPhone
                 )
                 customerRepository.update(updated)
-                _selectedCustomer.value = updated
                 updated to false
             }
         }
 
         val existingByName = customerRepository.findByNameExact(normalizedName)
         if (existingByName != null) {
-            _selectedCustomer.value = existingByName
             return existingByName to false
         }
 
@@ -460,9 +505,7 @@ class BillViewModel(
             phone = normalizedPhone
         )
         val id = customerRepository.insert(created)
-        val saved = created.copy(id = id)
-        _selectedCustomer.value = saved
-        return saved to true
+        return created.copy(id = id) to true
     }
 
     private suspend fun resolveOrCreateItems(lines: List<BillLineItem>): Pair<List<BillLineItem>, Int> {
@@ -472,19 +515,37 @@ class BillViewModel(
 
             val exact = itemRepository.findByNameExact(line.name)
             if (exact != null) {
-                return@map line.copy(itemId = exact.id)
+                return@map line.asSavedLine(exact.id)
             }
 
-            val created = Item(
-                name = line.name.trim(),
-                mrp = line.mrp,
-                discount = line.discount,
-                sellingPrice = PriceCalculator.priceAfterDiscount(line.mrp, line.discount)
-            )
+            val created = if (line.isNew) {
+                val barcode = line.barcode?.takeIf { itemRepository.isBarcodeUnique(it) }
+                Item(
+                    name = line.name.trim(),
+                    barcode = barcode,
+                    mrp = line.mrp,
+                    discount = 0.0,
+                    sellingPrice = line.mrp
+                )
+            } else {
+                Item(
+                    name = line.name.trim(),
+                    mrp = line.mrp,
+                    discount = line.discount,
+                    sellingPrice = PriceCalculator.priceAfterDiscount(line.mrp, line.discount)
+                )
+            }
             val id = itemRepository.insert(created)
+            val openingStock = line.openingStock ?: 0
+            if (openingStock > 0) {
+                inventoryRepository.setOpeningStock(id, openingStock).getOrThrow()
+            }
             createdCount += 1
-            line.copy(itemId = id)
+            line.asSavedLine(id)
         }
         return resolved to createdCount
     }
+
+    private fun BillLineItem.asSavedLine(id: Long) =
+        copy(itemId = id, isNew = false, openingStock = null, barcode = null)
 }

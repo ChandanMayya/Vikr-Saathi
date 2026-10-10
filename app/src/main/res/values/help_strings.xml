@@ -29,12 +29,13 @@
     <string-array name="help_new_bill_s1">
         <item>Buyer name — pick an existing customer or type a new name.</item>
         <item>Address &amp; phone — optional; auto-filled when you select a customer.</item>
-        <item>Add new customer — save buyer details to your customer list.</item>
+        <item>New customer — a name not in your records is marked NEW and saved to Customers with the bill.</item>
     </string-array>
     <string name="help_new_bill_s2_title">Adding items</string>
     <string-array name="help_new_bill_s2">
-        <item>Add item — search and select from your item master, or choose Add New Item.</item>
-        <item>Scan barcode — use the camera to find an item quickly.</item>
+        <item>Add item — search and select from your item master.</item>
+        <item>New item — if the name is not in your items, enter its rate per unit (and opening stock when inventory is on), then tap Add to bill. It is saved to Items with the bill.</item>
+        <item>Scan barcode — use the camera to find an item quickly. An unknown barcode opens the New item section.</item>
         <item>Each line shows MRP, discount %, quantity, and line total.</item>
         <item>Stock is reduced when you save (see Inventory settings for Warn/Block).</item>
         <item>Total discount and grand total update automatically.</item>

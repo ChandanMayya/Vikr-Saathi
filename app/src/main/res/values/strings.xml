@@ -114,7 +114,6 @@
     <string name="customer_saved">Customer saved</string>
 
     <string name="add_item">Add Item</string>
-    <string name="add_new_item">Add New Item</string>
     <string name="edit_item">Edit Item</string>
     <string name="item_name">Item Name</string>
     <string name="barcode_optional">Barcode (optional)</string>
@@ -131,7 +130,6 @@
 
     <string name="buyer_name">Buyer Name</string>
     <string name="buyer_address">Buyer Address</string>
-    <string name="add_new_customer">Add New Customer</string>
     <string name="scan_barcode">Scan Barcode</string>
     <string name="grand_total">Grand Total: %1$s</string>
     <string name="total_discount">Total Discount: %1$s</string>
@@ -180,10 +178,29 @@
     <string name="movement_type_opening">Opening</string>
     <string name="movement_type_import">Import</string>
     <string name="movement_delta_format">%1$+d → %2$d</string>
-    <string name="item_not_found_add_new">Item not found. Add new item?</string>
     <string name="add_items_first">Please add at least one item</string>
     <string name="bill_saved">Bill saved successfully</string>
-    <string name="bill_auto_register_hint">If buyer or item data entered here is not found in master records, it will be saved automatically when you save the bill. You can edit it later from Customers or Items.</string>
+    <string name="bill_auto_register_hint">Buyers and items that are not in your records are marked NEW and saved automatically when you save the bill. You can edit them later from Customers or Items.</string>
+    <string name="new_customer_flag">New customer</string>
+    <string name="new_customer_flag_hint">Will be added to Customers when you save the bill.</string>
+    <string name="new_item_flag">New item</string>
+    <string name="new_item_message">“%1$s” is not in your items. Enter its rate to add it to this bill. It will be added to Items when you save the bill.</string>
+    <string name="new_item_barcode_message">Barcode %1$s is not in your items. Type the item name above and enter its rate.</string>
+    <string name="new_item_barcode_named_message">“%1$s” (barcode %2$s) is not in your items. Enter its rate to add it to this bill.</string>
+    <string name="new_item_rate">Rate per unit *</string>
+    <string name="new_item_opening_stock">Opening stock</string>
+    <string name="new_item_opening_stock_required">Opening stock *</string>
+    <string name="new_item_stock_block_helper">Required: inventory is set to Block</string>
+    <string name="add_to_bill">Add to bill</string>
+    <string name="new_item_clear">Clear</string>
+    <string name="new_item_name_required">Type the item name above</string>
+    <string name="new_item_rate_invalid">Enter a rate greater than 0</string>
+    <string name="new_item_stock_required">Enter opening stock of at least 1</string>
+    <string name="new_item_pending_on_save">Add the new item to the bill, or clear the item field, before saving.</string>
+    <string name="new_item_rate_missing_on_save">Enter a rate for %1$s before saving.</string>
+    <string name="bill_line_new_badge">New</string>
+    <string name="bill_line_new_badge_stock">New · Stock %1$d</string>
+    <string name="rate">Rate</string>
     <string name="auto_saved_customer">New customer saved</string>
     <plurals name="auto_saved_items">
         <item quantity="one">%d new item saved</item>

@@ -38,6 +38,9 @@ interface ItemDao {
     @Query("SELECT * FROM items WHERE name LIKE '%' || :query || '%' ORDER BY name ASC LIMIT 20")
     suspend fun searchByName(query: String): List<Item>
 
+    @Query("SELECT * FROM items WHERE TRIM(name) = :name COLLATE NOCASE LIMIT 1")
+    suspend fun findByNameIgnoreCase(name: String): Item?
+
     @Query("SELECT COUNT(*) FROM items WHERE barcode = :barcode AND id != :excludeId")
     suspend fun countByBarcode(barcode: String, excludeId: Long = 0): Int
 

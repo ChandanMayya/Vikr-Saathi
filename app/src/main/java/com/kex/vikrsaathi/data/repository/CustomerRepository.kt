@@ -24,8 +24,9 @@ class CustomerRepository(private val customerDao: CustomerDao) {
     suspend fun findByNameExact(name: String): Customer? {
         val normalized = name.trim()
         if (normalized.isBlank()) return null
-        return customerDao.searchCustomers(normalized).firstOrNull {
-            it.name.trim().equals(normalized, ignoreCase = true)
-        }
+        return customerDao.findByNameIgnoreCase(normalized)
+            ?: customerDao.searchCustomers(normalized).firstOrNull {
+                it.name.trim().equals(normalized, ignoreCase = true)
+            }
     }
 }

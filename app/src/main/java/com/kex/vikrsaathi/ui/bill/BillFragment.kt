@@ -10,6 +10,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -18,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
 import androidx.core.view.GravityCompat
 import androidx.core.view.MenuProvider
+import androidx.core.view.isVisible
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -29,12 +31,11 @@ import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Customer
 import com.kex.vikrsaathi.data.entity.Item
-import com.kex.vikrsaathi.databinding.DialogCustomerFormBinding
-import com.kex.vikrsaathi.databinding.DialogItemFormBinding
 import com.kex.vikrsaathi.databinding.FragmentBillBinding
 import com.kex.vikrsaathi.ui.scanner.BarcodeScannerActivity
 import com.kex.vikrsaathi.ui.scanner.BarcodeScanBus
 import com.kex.vikrsaathi.util.FileShareHelper
+import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.util.ViewModelFactory
 import com.kex.vikrsaathi.ui.help.HelpScreen
@@ -52,7 +53,9 @@ class BillFragment : Fragment() {
     private lateinit var lineAdapter: BillLineItemAdapter
     private var customerSuggestions: List<Customer> = emptyList()
     private var itemSuggestions: List<Item> = emptyList()
-    private var lastItemSearchQuery: String = ""
+    private var pendingNewItemBarcode: String? = null
+    private val customerFlagCheck = Runnable { updateCustomerFlag() }
+    private val newItemCheck = Runnable { updateNewItemSection() }
     private var suppressCustomerSearch = false
     private var suppressItemSearch = false
     private var suppressBillRoundOffUpdates = false
@@ -91,6 +94,7 @@ class BillFragment : Fragment() {
             onQuantityChange = { index, qty -> viewModel.updateLineQuantity(index, qty) },
             onDiscountChange = { index, discount -> viewModel.updateLineDiscount(index, discount) },
             onRoundOffChange = { index, roundOff -> viewModel.updateLineRoundOff(index, roundOff) },
+            onRateChange = { index, rate -> viewModel.updateLineRate(index, rate) },
             onRemove = { index -> viewModel.removeLine(index) }
         )
         binding.recyclerBillItems.layoutManager = LinearLayoutManager(requireContext())
@@ -108,6 +112,7 @@ class BillFragment : Fragment() {
 
         setupCustomerAutocomplete()
         setupItemAutocomplete()
+        setupNewItemSection()
         setupDrawer()
         setupToolbarMenu()
         installHelpMenu {
@@ -117,16 +122,19 @@ class BillFragment : Fragment() {
         applyReadOnlyState()
 
         viewModel.selectedCustomer.observe(viewLifecycleOwner) { customer ->
-            suppressCustomerSearch = true
-            if (customer != null) {
-                binding.autoCompleteCustomer.setText(customer.name, false)
-                if (binding.editBuyerAddress.text.isNullOrBlank()) {
-                    binding.editBuyerAddress.setText(customer.formattedAddress())
-                }
-                if (binding.editBuyerPhone.text.isNullOrBlank()) {
-                    binding.editBuyerPhone.setText(customer.phone)
-                }
+            if (customer == null) {
+                scheduleCustomerFlagCheck()
+                return@observe
             }
+            suppressCustomerSearch = true
+            binding.autoCompleteCustomer.setText(customer.name, false)
+            if (binding.editBuyerAddress.text.isNullOrBlank()) {
+                binding.editBuyerAddress.setText(customer.formattedAddress())
+            }
+            if (binding.editBuyerPhone.text.isNullOrBlank()) {
+                binding.editBuyerPhone.setText(customer.phone)
+            }
+            binding.layoutNewCustomerFlag.isVisible = false
             binding.autoCompleteCustomer.dismissDropDown()
             binding.autoCompleteCustomer.post { suppressCustomerSearch = false }
         }
@@ -364,6 +372,7 @@ class BillFragment : Fragment() {
                 binding.editBuyerAddress.setText(restored.buyerAddress)
                 binding.editBuyerPhone.setText(restored.buyerPhone)
                 binding.autoCompleteCustomer.post { suppressCustomerSearch = false }
+                scheduleCustomerFlagCheck()
                 requireActivity().invalidateOptionsMenu()
                 updateTitle()
             },
@@ -410,6 +419,12 @@ class BillFragment : Fragment() {
         binding.buttonSaveBill.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.layoutBillRoundOff.visibility = if (isReadOnly) View.GONE else View.VISIBLE
         binding.layoutViewBillActions.visibility = if (isReadOnly) View.VISIBLE else View.GONE
+        if (isReadOnly) {
+            binding.layoutNewCustomerFlag.isVisible = false
+            hideNewItemSection(clearInputs = true)
+        } else {
+            scheduleCustomerFlagCheck()
+        }
         updateDrawerVisibility()
         updateTitle()
     }
@@ -441,6 +456,11 @@ class BillFragment : Fragment() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 if (suppressCustomerSearch || isReadOnly) return
                 val query = s?.toString().orEmpty().trim()
+                val selected = viewModel.selectedCustomer.value
+                if (selected != null && !selected.name.trim().equals(query, ignoreCase = true)) {
+                    viewModel.setCustomer(null)
+                }
+                scheduleCustomerFlagCheck()
                 if (query.isEmpty()) {
                     binding.autoCompleteCustomer.dismissDropDown()
                     return
@@ -448,10 +468,16 @@ class BillFragment : Fragment() {
                 viewModel.searchCustomers(query) { results ->
                     if (suppressCustomerSearch || !binding.autoCompleteCustomer.isAttachedToWindow) return@searchCustomers
                     customerSuggestions = results
-                    val names = results.map { it.name }.toMutableList()
-                    names.add(getString(R.string.add_new_customer))
+                    if (results.isEmpty()) {
+                        binding.autoCompleteCustomer.dismissDropDown()
+                        return@searchCustomers
+                    }
                     binding.autoCompleteCustomer.setAdapter(
-                        ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, names)
+                        ArrayAdapter(
+                            requireContext(),
+                            android.R.layout.simple_dropdown_item_1line,
+                            results.map { it.name }
+                        )
                     )
                     if (binding.autoCompleteCustomer.hasFocus() && !suppressCustomerSearch) {
                         binding.autoCompleteCustomer.showDropDown()
@@ -461,23 +487,13 @@ class BillFragment : Fragment() {
             override fun afterTextChanged(s: Editable?) = Unit
         })
 
-        binding.autoCompleteCustomer.setOnItemClickListener { _, _, position, _ ->
+        binding.autoCompleteCustomer.setOnItemClickListener { parent, _, position, _ ->
             if (isReadOnly) return@setOnItemClickListener
             suppressCustomerSearch = true
             binding.autoCompleteCustomer.dismissDropDown()
-
-            val names = customerSuggestions.map { it.name }.toMutableList()
-            names.add(getString(R.string.add_new_customer))
-            val selected = names.getOrNull(position) ?: run {
-                suppressCustomerSearch = false
-                return@setOnItemClickListener
-            }
-
-            if (selected == getString(R.string.add_new_customer)) {
-                binding.autoCompleteCustomer.setText("", false)
-                showAddCustomerDialog()
-            } else {
-                val customer = customerSuggestions.find { it.name == selected }
+            val selectedName = parent.getItemAtPosition(position) as? String
+            val customer = customerSuggestions.find { it.name == selectedName }
+            if (customer != null) {
                 viewModel.setCustomer(customer)
                 binding.autoCompleteCustomer.clearFocus()
             }
@@ -497,11 +513,7 @@ class BillFragment : Fragment() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 if (suppressItemSearch || isReadOnly) return
                 val query = s?.toString().orEmpty().trim()
-                // Autocomplete may temporarily set the selected label into the field
-                // before the click listener runs; do not treat that label as typed text.
-                if (!query.equals(getString(R.string.add_new_item), ignoreCase = true)) {
-                    lastItemSearchQuery = query
-                }
+                scheduleNewItemCheck()
                 if (query.isEmpty()) {
                     binding.autoCompleteItem.dismissDropDown()
                     return
@@ -509,13 +521,15 @@ class BillFragment : Fragment() {
                 viewModel.searchItems(query) { results ->
                     if (suppressItemSearch || !binding.autoCompleteItem.isAttachedToWindow) return@searchItems
                     itemSuggestions = results
-                    val names = results.map { it.name }.toMutableList()
-                    names.add(getString(R.string.add_new_item))
+                    if (results.isEmpty()) {
+                        binding.autoCompleteItem.dismissDropDown()
+                        return@searchItems
+                    }
                     binding.autoCompleteItem.setAdapter(
                         ArrayAdapter(
                             requireContext(),
                             android.R.layout.simple_dropdown_item_1line,
-                            names
+                            results.map { it.name }
                         )
                     )
                     if (binding.autoCompleteItem.hasFocus() && !suppressItemSearch) {
@@ -526,38 +540,27 @@ class BillFragment : Fragment() {
             override fun afterTextChanged(s: Editable?) = Unit
         })
 
-        binding.autoCompleteItem.setOnItemClickListener { _, _, position, _ ->
+        binding.autoCompleteItem.setOnItemClickListener { parent, _, position, _ ->
             if (isReadOnly) return@setOnItemClickListener
             suppressItemSearch = true
             binding.autoCompleteItem.dismissDropDown()
-
-            val names = itemSuggestions.map { it.name }.toMutableList()
-            names.add(getString(R.string.add_new_item))
-            val selected = names.getOrNull(position) ?: run {
-                suppressItemSearch = false
-                return@setOnItemClickListener
-            }
-
-            if (selected == getString(R.string.add_new_item)) {
-                // Autocomplete replaces the field with the selected label; use the
-                // last typed query instead, and never prefill with the menu label.
-                val addNewLabel = getString(R.string.add_new_item)
-                val typedName = lastItemSearchQuery
-                    .takeUnless { it.equals(addNewLabel, ignoreCase = true) }
-                    .orEmpty()
-                binding.autoCompleteItem.setText("", false)
-                lastItemSearchQuery = ""
-                showAddItemDialog(prefillName = typedName)
-            } else {
-                val item = itemSuggestions.find { it.name == selected }
-                if (item != null) {
-                    viewModel.addItemFromMaster(item)
-                }
-                binding.autoCompleteItem.setText("", false)
-                lastItemSearchQuery = ""
-                binding.autoCompleteItem.clearFocus()
-            }
+            val selectedName = parent.getItemAtPosition(position) as? String
+            itemSuggestions.find { it.name == selectedName }?.let { viewModel.addItemFromMaster(it) }
+            pendingNewItemBarcode = null
+            binding.autoCompleteItem.setText("", false)
+            hideNewItemSection(clearInputs = true)
+            binding.autoCompleteItem.clearFocus()
             binding.autoCompleteItem.post { suppressItemSearch = false }
+        }
+
+        binding.autoCompleteItem.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE && binding.cardNewItem.isVisible) {
+                binding.autoCompleteItem.dismissDropDown()
+                binding.editNewItemRate.requestFocus()
+                true
+            } else {
+                false
+            }
         }
 
         binding.autoCompleteItem.setOnFocusChangeListener { _, hasFocus ->
@@ -565,91 +568,187 @@ class BillFragment : Fragment() {
         }
     }
 
-    private fun showAddCustomerDialog() {
-        if (isReadOnly) return
-        val formBinding = DialogCustomerFormBinding.inflate(layoutInflater)
-        formBinding.editCustomerName.setText(binding.autoCompleteCustomer.text)
-        formBinding.editCustomerAddress.setText(binding.editBuyerAddress.text)
-        formBinding.editCustomerPhone.setText(binding.editBuyerPhone.text)
-
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.add_new_customer)
-            .setView(formBinding.root)
-            .setPositiveButton(R.string.save) { _, _ ->
-                val name = formBinding.editCustomerName.text.toString().trim()
-                if (name.isEmpty()) return@setPositiveButton
-                val customer = Customer(
-                    name = name,
-                    address1 = formBinding.editCustomerAddress.text.toString().trim(),
-                    phone = formBinding.editCustomerPhone.text.toString().trim()
-                )
-                viewModel.saveCustomer(customer) {
-                    Toast.makeText(requireContext(), R.string.customer_saved, Toast.LENGTH_SHORT).show()
-                }
+    private fun setupNewItemSection() {
+        val refreshWatcher = object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                binding.inputNewItemRate.error = null
+                binding.inputNewItemStock.error = null
+                refreshAddNewItemButton()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        }
+        binding.editNewItemRate.addTextChangedListener(refreshWatcher)
+        binding.editNewItemStock.addTextChangedListener(refreshWatcher)
+        binding.inputNewItemRate.prefixText = viewModel.currencySymbol
+
+        binding.editNewItemRate.setOnEditorActionListener { _, _, _ ->
+            if (binding.inputNewItemStock.isVisible) {
+                binding.editNewItemStock.requestFocus()
+            } else {
+                addNewItemFromSection()
+            }
+            true
+        }
+        binding.editNewItemStock.setOnEditorActionListener { _, _, _ ->
+            addNewItemFromSection()
+            true
+        }
+        binding.buttonAddNewItem.setOnClickListener { addNewItemFromSection() }
+        binding.buttonClearNewItem.setOnClickListener { clearNewItemSection() }
     }
 
-    private fun showAddItemDialog(prefillName: String = "", prefillBarcode: String? = null) {
-        if (isReadOnly) return
-        val formBinding = DialogItemFormBinding.inflate(layoutInflater)
-        val addNewLabel = getString(R.string.add_new_item)
-        val namePrefill = prefillName.trim()
-            .takeUnless { it.isEmpty() || it.equals(addNewLabel, ignoreCase = true) }
-            .orEmpty()
-        if (namePrefill.isNotEmpty()) {
-            formBinding.editItemName.setText(namePrefill)
-        }
-        prefillBarcode?.let { formBinding.editItemBarcode.setText(it) }
-        formBinding.editItemDiscount.setText(viewModel.defaultDiscount.toString())
+    private fun clearNewItemSection() {
+        pendingNewItemBarcode = null
+        binding.root.removeCallbacks(newItemCheck)
+        suppressItemSearch = true
+        binding.autoCompleteItem.setText("", false)
+        binding.autoCompleteItem.post { suppressItemSearch = false }
+        binding.root.clearFocus()
+        hideNewItemSection(clearInputs = true)
+    }
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.add_new_item)
-            .setView(formBinding.root)
-            .setPositiveButton(R.string.save) { _, _ ->
-                val name = formBinding.editItemName.text.toString().trim()
-                val mrp = formBinding.editItemMrp.text.toString().toDoubleOrNull()
-                if (name.isEmpty() || mrp == null) {
-                    Toast.makeText(requireContext(), R.string.invalid_item, Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                val item = Item(
-                    name = name,
-                    barcode = formBinding.editItemBarcode.text.toString().trim().ifEmpty { null },
-                    mrp = mrp,
-                    discount = formBinding.editItemDiscount.text.toString().toDoubleOrNull() ?: 0.0,
-                    sellingPrice = formBinding.editItemSellingPrice.text.toString().toDoubleOrNull(),
-                    remarks = formBinding.editItemUnit.text.toString().trim()
-                )
-                viewModel.saveItem(item) { result ->
-                    result.onSuccess { saved ->
-                        viewModel.addItemFromMaster(saved)
-                        Toast.makeText(requireContext(), R.string.item_saved, Toast.LENGTH_SHORT).show()
-                    }.onFailure {
-                        Toast.makeText(
-                            requireContext(),
-                            it.message ?: getString(R.string.save_failed),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
+    private fun scheduleCustomerFlagCheck() {
+        binding.root.removeCallbacks(customerFlagCheck)
+        binding.root.postDelayed(customerFlagCheck, NAME_MATCH_DEBOUNCE_MS)
+    }
+
+    private fun updateCustomerFlag() {
+        val b = _binding ?: return
+        val name = b.autoCompleteCustomer.text.toString().trim()
+        val selected = viewModel.selectedCustomer.value
+        if (isReadOnly || name.isEmpty() ||
+            (selected != null && selected.name.trim().equals(name, ignoreCase = true))
+        ) {
+            b.layoutNewCustomerFlag.isVisible = false
+            return
+        }
+        viewModel.findCustomerByExactName(name) { match ->
+            val current = _binding ?: return@findCustomerByExactName
+            if (current.autoCompleteCustomer.text.toString().trim() != name) return@findCustomerByExactName
+            current.layoutNewCustomerFlag.isVisible = match == null
+        }
+    }
+
+    private fun scheduleNewItemCheck() {
+        binding.root.removeCallbacks(newItemCheck)
+        binding.root.postDelayed(newItemCheck, NAME_MATCH_DEBOUNCE_MS)
+    }
+
+    private fun updateNewItemSection() {
+        val b = _binding ?: return
+        if (isReadOnly) {
+            hideNewItemSection(clearInputs = false)
+            return
+        }
+        val name = b.autoCompleteItem.text.toString().trim()
+        if (name.isEmpty()) {
+            if (pendingNewItemBarcode != null) {
+                showNewItemSection(name)
+            } else {
+                hideNewItemSection(clearInputs = true)
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+            return
+        }
+        viewModel.findItemByExactName(name) { match ->
+            val current = _binding ?: return@findItemByExactName
+            if (current.autoCompleteItem.text.toString().trim() != name) return@findItemByExactName
+            if (match == null) showNewItemSection(name) else hideNewItemSection(clearInputs = false)
+        }
+    }
+
+    private fun showNewItemSection(name: String) {
+        val barcode = pendingNewItemBarcode
+        binding.textNewItemMessage.text = when {
+            barcode != null && name.isEmpty() -> getString(R.string.new_item_barcode_message, barcode)
+            barcode != null -> getString(R.string.new_item_barcode_named_message, name, barcode)
+            else -> getString(R.string.new_item_message, name)
+        }
+        val mode = viewModel.inventoryMode
+        binding.inputNewItemStock.isVisible = mode != InventoryMode.OFF
+        if (mode == InventoryMode.BLOCK) {
+            binding.inputNewItemStock.hint = getString(R.string.new_item_opening_stock_required)
+            binding.inputNewItemStock.helperText = getString(R.string.new_item_stock_block_helper)
+        } else {
+            binding.inputNewItemStock.hint = getString(R.string.new_item_opening_stock)
+            binding.inputNewItemStock.helperText = null
+        }
+        binding.cardNewItem.isVisible = true
+        refreshAddNewItemButton()
+    }
+
+    private fun hideNewItemSection(clearInputs: Boolean) {
+        val b = _binding ?: return
+        b.cardNewItem.isVisible = false
+        if (clearInputs) {
+            b.editNewItemRate.setText("")
+            b.editNewItemStock.setText("")
+            b.inputNewItemRate.error = null
+            b.inputNewItemStock.error = null
+        }
+    }
+
+    private fun refreshAddNewItemButton() {
+        binding.buttonAddNewItem.isEnabled = readNewItemInput(showErrors = false) != null
+    }
+
+    private data class NewItemInput(val name: String, val rate: Double, val openingStock: Int?)
+
+    private fun readNewItemInput(showErrors: Boolean): NewItemInput? {
+        val name = binding.autoCompleteItem.text.toString().trim()
+        val rate = binding.editNewItemRate.text?.toString()?.trim()?.toDoubleOrNull()
+        val stock = if (binding.inputNewItemStock.isVisible) {
+            binding.editNewItemStock.text?.toString()?.trim()?.toIntOrNull()
+        } else {
+            null
+        }
+        var valid = true
+        if (name.isEmpty()) {
+            valid = false
+            if (showErrors) {
+                Toast.makeText(requireContext(), R.string.new_item_name_required, Toast.LENGTH_SHORT).show()
+                binding.autoCompleteItem.requestFocus()
+            }
+        }
+        if (rate == null || rate <= 0.0) {
+            valid = false
+            if (showErrors) binding.inputNewItemRate.error = getString(R.string.new_item_rate_invalid)
+        }
+        if (viewModel.inventoryMode == InventoryMode.BLOCK && (stock == null || stock < 1)) {
+            valid = false
+            if (showErrors) binding.inputNewItemStock.error = getString(R.string.new_item_stock_required)
+        }
+        return if (valid && rate != null) NewItemInput(name, rate, stock) else null
+    }
+
+    private fun addNewItemFromSection() {
+        if (isReadOnly) return
+        val input = readNewItemInput(showErrors = true) ?: return
+        viewModel.addNewItem(
+            name = input.name,
+            rate = input.rate,
+            openingStock = input.openingStock,
+            barcode = pendingNewItemBarcode
+        )
+        clearNewItemSection()
+    }
+
+    private fun scrollToView(target: View) {
+        binding.scrollBill.post {
+            val offset = (16 * resources.displayMetrics.density).toInt()
+            binding.scrollBill.smoothScrollTo(0, (target.top - offset).coerceAtLeast(0))
+        }
     }
 
     private fun handleBarcodeResult(barcode: String) {
         if (isReadOnly) return
         viewModel.findItemByBarcode(barcode) { item ->
+            if (_binding == null) return@findItemByBarcode
             if (item == null) {
-                MaterialAlertDialogBuilder(requireContext())
-                    .setMessage(R.string.item_not_found_add_new)
-                    .setPositiveButton(R.string.add_item) { _, _ ->
-                        showAddItemDialog(prefillBarcode = barcode)
-                    }
-                    .setNegativeButton(R.string.cancel, null)
-                    .show()
+                pendingNewItemBarcode = barcode
+                updateNewItemSection()
+                binding.autoCompleteItem.requestFocus()
+                scrollToView(binding.layoutAddItem)
             } else {
                 viewModel.addItemFromMaster(item)
             }
@@ -659,6 +758,22 @@ class BillFragment : Fragment() {
     private fun saveBill() {
         if (isReadOnly) return
         binding.root.clearFocus()
+        if (binding.cardNewItem.isVisible) {
+            scrollToView(binding.layoutAddItem)
+            Toast.makeText(requireContext(), R.string.new_item_pending_on_save, Toast.LENGTH_LONG).show()
+            return
+        }
+        val missingRateIndex = viewModel.firstNewLineWithoutRate()
+        if (missingRateIndex >= 0) {
+            val name = viewModel.lineItems.value?.getOrNull(missingRateIndex)?.name.orEmpty()
+            scrollToView(binding.recyclerBillItems)
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.new_item_rate_missing_on_save, name),
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
         if (viewModel.lineItems.value.isNullOrEmpty()) {
             Toast.makeText(requireContext(), R.string.add_items_first, Toast.LENGTH_SHORT).show()
             return
@@ -725,7 +840,14 @@ class BillFragment : Fragment() {
         viewModel.saveBill(
             buyerName = buyerName,
             buyerAddress = binding.editBuyerAddress.text.toString().trim(),
-            buyerPhone = binding.editBuyerPhone.text.toString().trim()
+            buyerPhone = binding.editBuyerPhone.text.toString().trim(),
+            onError = { error ->
+                Toast.makeText(
+                    requireContext(),
+                    error.message ?: getString(R.string.save_failed),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         ) { id, autoRegister ->
             if (autoRegister.hasChanges) {
                 val message = buildList {
@@ -792,6 +914,8 @@ class BillFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        binding.root.removeCallbacks(customerFlagCheck)
+        binding.root.removeCallbacks(newItemCheck)
         BarcodeScanBus.onBarcodeScanned = null
         super.onDestroyView()
         _binding = null
@@ -801,5 +925,6 @@ class BillFragment : Fragment() {
         const val ARG_BILL_ID = "billId"
         const val ARG_READ_ONLY = "readOnly"
         const val ARG_HELD_DRAFT_ID = "heldDraftId"
+        private const val NAME_MATCH_DEBOUNCE_MS = 250L
     }
 }
