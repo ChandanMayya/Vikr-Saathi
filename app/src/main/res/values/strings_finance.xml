@@ -50,6 +50,11 @@
     <string name="ledger_from">From (dd/MM/yyyy)</string>
     <string name="ledger_to">To (dd/MM/yyyy)</string>
     <string name="ledger_apply">Apply dates</string>
+    <string name="ledger_dates">Ledger dates</string>
+    <string name="ledger_all_dates">All dates</string>
+    <string name="ledger_range">%1$s – %2$s</string>
+    <string name="ledger_clear_dates">Clear dates</string>
+    <string name="date_picked">Date: %1$s</string>
     <string name="ledger_opening">Opening: %1$s</string>
     <string name="ledger_closing">Closing: %1$s</string>
     <string name="ledger_empty">No ledger entries in this period.</string>
@@ -62,7 +67,7 @@
     <string name="ledger_bill_ref">Bill %1$d</string>
     <string name="ledger_invoice_ref">Invoice %1$d</string>
     <string name="amount_label">Amount</string>
-    <string name="date_label">Date (dd/MM/yyyy)</string>
+    <string name="date_label">Date</string>
     <string name="note_label">Note</string>
     <string name="reason_label">Reason</string>
     <string name="method_label">Method</string>

@@ -26,6 +26,7 @@ class CustomerLedgerFragment : Fragment() {
     private var _binding: FragmentPartyLedgerBinding? = null
     private val binding get() = _binding!!
     private var customerId: Long = 0L
+    private lateinit var ledgerRange: FinanceDates.LedgerRange
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentPartyLedgerBinding.inflate(inflater, container, false)
@@ -41,7 +42,7 @@ class CustomerLedgerFragment : Fragment() {
         binding.buttonReturn.setOnClickListener { showReturn() }
         binding.buttonCorrection.setOnClickListener { showCorrection() }
         binding.buttonShareStatement.setOnClickListener { shareStatement() }
-        binding.buttonApplyDates.setOnClickListener { reload() }
+        ledgerRange = FinanceDates.LedgerRange(this, binding.buttonLedgerDates, binding.buttonClearDates) { reload() }
         reload()
     }
 
@@ -50,11 +51,8 @@ class CustomerLedgerFragment : Fragment() {
         val symbol = app.settingsRepository.currencySymbol
         viewLifecycleOwner.lifecycleScope.launch {
             val customer = app.customerRepository.getById(customerId) ?: return@launch
-            val from = FinanceUi.parseDateOrToday(binding.editFrom.text?.toString()).let {
-                if (binding.editFrom.text.isNullOrBlank()) 0L else it
-            }
-            val to = if (binding.editTo.text.isNullOrBlank()) Long.MAX_VALUE
-            else FinanceUi.parseDateOrToday(binding.editTo.text?.toString()) + DAY - 1
+            val from = ledgerRange.from ?: 0L
+            val to = ledgerRange.to ?: Long.MAX_VALUE
             val statement = app.customerFinanceRepository.statement(customerId, from, to)
             val balance = app.customerFinanceRepository.balancePaise(customerId)
             if (_binding == null) return@launch
@@ -85,7 +83,7 @@ class CustomerLedgerFragment : Fragment() {
             viewLifecycleOwner.lifecycleScope.launch {
                 runCatching {
                     app.customerFinanceRepository.addOpeningBalance(
-                        customerId, signed, FinanceUi.parseDateOrToday(dateText(form)), noteText(form)
+                        customerId, signed, form.date.millis, noteText(form)
                     )
                 }.onSuccess {
                     toast(R.string.opening_saved)
@@ -105,7 +103,7 @@ class CustomerLedgerFragment : Fragment() {
                     app.customerFinanceRepository.addPayment(
                         customerId = customerId,
                         amountPaise = FinanceUi.parseAmountPaise(amountText(form)),
-                        occurredAt = FinanceUi.parseDateOrToday(dateText(form)),
+                        occurredAt = form.date.millis,
                         method = if (form.methodUpi) PaymentMethod.UPI else PaymentMethod.CASH,
                         referenceNote = noteText(form)
                     )
@@ -187,7 +185,7 @@ class CustomerLedgerFragment : Fragment() {
                     app.customerFinanceRepository.addCorrection(
                         customerId = customerId,
                         amountPaise = signedAmount(form),
-                        occurredAt = FinanceUi.parseDateOrToday(dateText(form)),
+                        occurredAt = form.date.millis,
                         reason = form.reason?.text?.toString().orEmpty()
                     )
                 }.onSuccess {
@@ -237,7 +235,8 @@ class CustomerLedgerFragment : Fragment() {
             setPadding(48, 16, 48, 0)
         }
         val amount = field(root, getString(R.string.amount_label))
-        val date = field(root, getString(R.string.date_label))
+        val date = FinanceDates.DateField(this)
+        root.addView(date.view)
         val note = field(root, getString(R.string.note_label))
         val reason = if (showReason) field(root, getString(R.string.reason_label)) else null
         val direction = if (showDirection) android.widget.CheckBox(requireContext()).apply {
@@ -257,7 +256,7 @@ class CustomerLedgerFragment : Fragment() {
     private class AmountForm(
         val root: View,
         val amount: TextInputEditText,
-        val date: TextInputEditText,
+        val date: FinanceDates.DateField,
         val note: TextInputEditText,
         val reason: TextInputEditText?,
         val shopOwes: android.widget.CheckBox?,
@@ -271,7 +270,6 @@ class CustomerLedgerFragment : Fragment() {
     }
 
     private fun amountText(form: AmountForm) = form.amount.text?.toString()
-    private fun dateText(form: AmountForm) = form.date.text?.toString()
     private fun noteText(form: AmountForm) = form.note.text?.toString()
 
     private fun field(parent: android.widget.LinearLayout, hint: String): TextInputEditText {
@@ -321,7 +319,6 @@ class CustomerLedgerFragment : Fragment() {
 
     companion object {
         const val ARG_CUSTOMER_ID = "customerId"
-        private const val DAY = 86_400_000L
         fun args(customerId: Long) = bundleOf(ARG_CUSTOMER_ID to customerId)
     }
 }

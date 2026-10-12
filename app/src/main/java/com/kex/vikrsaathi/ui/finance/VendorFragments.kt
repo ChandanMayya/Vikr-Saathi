@@ -31,6 +31,7 @@ class VendorDetailFragment : Fragment() {
     private var _binding: FragmentPartyLedgerBinding? = null
     private val binding get() = _binding!!
     private var vendorId: Long = 0L
+    private lateinit var ledgerRange: FinanceDates.LedgerRange
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentPartyLedgerBinding.inflate(inflater, container, false)
@@ -61,7 +62,7 @@ class VendorDetailFragment : Fragment() {
         binding.buttonShareStatement.setOnClickListener {
             findNavController().navigate(R.id.purchasingFragment, bundleOf(PurchasingFragment.ARG_VENDOR_ID to vendorId))
         }
-        binding.buttonApplyDates.setOnClickListener { reload() }
+        ledgerRange = FinanceDates.LedgerRange(this, binding.buttonLedgerDates, binding.buttonClearDates) { reload() }
         binding.textPartyName.setOnLongClickListener {
             archiveOrDelete()
             true
@@ -73,8 +74,8 @@ class VendorDetailFragment : Fragment() {
         val symbol = app().settingsRepository.currencySymbol
         viewLifecycleOwner.lifecycleScope.launch {
             val vendor = app().vendorRepository.getById(vendorId) ?: return@launch
-            val from = if (binding.editFrom.text.isNullOrBlank()) 0L else FinanceUi.parseDateOrToday(binding.editFrom.text?.toString())
-            val to = if (binding.editTo.text.isNullOrBlank()) Long.MAX_VALUE else FinanceUi.parseDateOrToday(binding.editTo.text?.toString())
+            val from = ledgerRange.from ?: 0L
+            val to = ledgerRange.to ?: Long.MAX_VALUE
             val statement = app().vendorRepository.statement(vendorId, from, to)
             val balance = app().vendorRepository.balancePaise(vendorId)
             if (_binding == null) return@launch
@@ -123,7 +124,7 @@ class VendorDetailFragment : Fragment() {
         block: suspend (Long, Long, String?, Boolean) -> Unit
     ) {
         val amount = TextInputEditText(requireContext()).apply { hint = getString(R.string.amount_label) }
-        val date = TextInputEditText(requireContext()).apply { hint = getString(R.string.date_label) }
+        val date = FinanceDates.DateField(this)
         val note = TextInputEditText(requireContext()).apply {
             hint = getString(if (reason) R.string.reason_label else R.string.note_label)
         }
@@ -131,7 +132,7 @@ class VendorDetailFragment : Fragment() {
         val box = android.widget.LinearLayout(requireContext()).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(48, 16, 48, 0)
-            addView(amount); addView(date); addView(note)
+            addView(amount); addView(date.view); addView(note)
             if (direction) addView(shopOwes)
         }
         MaterialAlertDialogBuilder(requireContext())
@@ -142,7 +143,7 @@ class VendorDetailFragment : Fragment() {
                     runCatching {
                         block(
                             FinanceUi.parseAmountPaise(amount.text?.toString()),
-                            FinanceUi.parseDateOrToday(date.text?.toString()),
+                            date.millis,
                             note.text?.toString(),
                             shopOwes.isChecked
                         )

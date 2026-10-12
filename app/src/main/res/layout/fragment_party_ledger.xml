@@ -84,35 +84,21 @@
             android:layout_height="wrap_content"
             android:text="@string/share_statement" />
 
-        <com.google.android.material.textfield.TextInputLayout
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonLedgerDates"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/ledger_from">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/editFrom"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="date" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/ledger_to">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/editTo"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="date" />
-        </com.google.android.material.textfield.TextInputLayout>
+            android:layout_marginTop="8dp"
+            android:text="@string/ledger_all_dates" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonApplyDates"
+            android:id="@+id/buttonClearDates"
+            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/ledger_apply" />
+            android:text="@string/ledger_clear_dates"
+            android:visibility="gone" />
 
         <TextView
             android:layout_width="match_parent"
