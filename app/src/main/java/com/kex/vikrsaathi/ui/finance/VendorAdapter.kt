@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.data.entity.Vendor
 import com.kex.vikrsaathi.databinding.ItemVendorBinding
 import com.kex.vikrsaathi.databinding.ItemVendorCompactBinding
@@ -13,7 +14,7 @@ import com.kex.vikrsaathi.util.ListViewMode
 
 data class VendorCard(
     val vendor: Vendor,
-    val balanceText: String
+    val balancePaise: Long
 )
 
 class VendorAdapter(
@@ -63,7 +64,7 @@ class VendorAdapter(
             binding.textVendorName.text = displayName(vendor)
             binding.textVendorPhone.text = vendor.phone.ifBlank { "-" }
             binding.textVendorAddress.text = vendor.address.ifBlank { "-" }
-            binding.textVendorBalance.text = card.balanceText
+            bindBalance(binding.textVendorBalance, card.balancePaise)
             binding.buttonEditVendor.setOnClickListener { onEdit(vendor) }
             binding.buttonArchiveVendor.setOnClickListener { onArchive(vendor) }
             binding.root.setOnClickListener { onOpen(vendor) }
@@ -79,7 +80,7 @@ class VendorAdapter(
             binding.textVendorName.text = displayName(vendor)
             binding.textVendorPhone.text = vendor.phone.ifBlank { "-" }
             binding.textVendorAddress.text = vendor.address.ifBlank { "-" }
-            binding.textVendorBalance.text = card.balanceText
+            bindBalance(binding.textVendorBalance, card.balancePaise)
             binding.buttonEditVendor.setOnClickListener { onEdit(vendor) }
             binding.buttonArchiveVendor.setOnClickListener { onArchive(vendor) }
             binding.root.setOnClickListener { onOpen(vendor) }
@@ -94,11 +95,17 @@ class VendorAdapter(
             binding.textVendorName.text = displayName(vendor)
             binding.textVendorPhone.text = vendor.phone.ifBlank { "-" }
             binding.textVendorAddress.text = vendor.address.ifBlank { "-" }
-            binding.textVendorBalance.text = card.balanceText
+            bindBalance(binding.textVendorBalance, card.balancePaise)
             binding.buttonEditVendor.setOnClickListener { onEdit(vendor) }
             binding.buttonArchiveVendor.setOnClickListener { onArchive(vendor) }
             binding.root.setOnClickListener { onOpen(vendor) }
         }
+    }
+
+    private fun bindBalance(view: android.widget.TextView, paise: Long) {
+        val symbol = (view.context.applicationContext as com.kex.vikrsaathi.VikrSaathiApp).settingsRepository.currencySymbol
+        view.text = view.context.getString(R.string.vendor_balance, FinanceUi.formatBalance(paise, symbol))
+        view.setTextColor(view.context.getColor(FinanceUi.balanceColorRes(paise, customer = false)))
     }
 
     private fun displayName(vendor: Vendor): String {

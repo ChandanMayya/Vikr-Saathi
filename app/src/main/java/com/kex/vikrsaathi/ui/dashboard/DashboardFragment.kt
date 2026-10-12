@@ -79,14 +79,24 @@ class DashboardFragment : Fragment() {
             val symbol = viewModel.currencySymbol.value.orEmpty().ifBlank { "₹" }
             binding.textCustomerDues.text = getString(
                 R.string.dashboard_outstanding,
-                com.kex.vikrsaathi.ui.finance.FinanceUi.formatPaise(paise, symbol)
+                com.kex.vikrsaathi.ui.finance.FinanceUi.formatBalance(paise, symbol)
+            )
+            binding.textCustomerDues.setTextColor(
+                requireContext().getColor(
+                    if (paise > 0L) R.color.balance_receivable else R.color.text_secondary_dark
+                )
             )
         }
         viewModel.vendorPayablesPaise.observe(viewLifecycleOwner) { paise ->
             val symbol = viewModel.currencySymbol.value.orEmpty().ifBlank { "₹" }
             binding.textVendorPayables.text = getString(
                 R.string.dashboard_payables,
-                com.kex.vikrsaathi.ui.finance.FinanceUi.formatPaise(paise, symbol)
+                com.kex.vikrsaathi.ui.finance.FinanceUi.formatBalance(paise, symbol)
+            )
+            binding.textVendorPayables.setTextColor(
+                requireContext().getColor(
+                    if (paise > 0L) R.color.balance_payable else R.color.text_secondary_dark
+                )
             )
         }
 

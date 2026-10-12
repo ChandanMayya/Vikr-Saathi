@@ -3,9 +3,15 @@ package com.kex.vikrsaathi.ui.finance
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.databinding.ItemFinanceRowBinding
 
-data class FinanceRow(val title: String, val subtitle: String, val id: Long = 0L)
+data class FinanceRow(
+    val title: String,
+    val subtitle: String,
+    val id: Long = 0L,
+    val subtitleColorRes: Int = 0
+)
 
 class FinanceRowAdapter(
     private val onClick: (FinanceRow) -> Unit = {}
@@ -28,6 +34,8 @@ class FinanceRowAdapter(
         val row = rows[position]
         holder.binding.textFinanceTitle.text = row.title
         holder.binding.textFinanceSubtitle.text = row.subtitle
+        val color = if (row.subtitleColorRes != 0) row.subtitleColorRes else R.color.text_secondary_dark
+        holder.binding.textFinanceSubtitle.setTextColor(holder.binding.root.context.getColor(color))
         holder.binding.root.setOnClickListener { onClick(row) }
     }
 

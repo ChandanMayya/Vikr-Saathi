@@ -7,8 +7,8 @@
     <string name="enable_customer_balances_hint">When this is on, new bills can be paid by cash, UPI, credit, or a split. Credit needs a saved customer. Older bills stay Legacy / unknown until you record a payment yourself. They are not turned into debt automatically.</string>
     <string name="enable_vendor_management">Enable Vendor Management</string>
     <string name="enable_vendor_management_hint">When this is on, you can keep vendors, quotes, purchase orders, goods receipts, invoices, and vendor balances. Ordering stock is not the same as receiving it, and receiving it is not the same as paying the invoice.</string>
-    <string name="customer_balance_sign">Positive balance: the customer owes the shop. Negative balance: the shop owes the customer or holds an advance.</string>
-    <string name="vendor_balance_sign">Positive balance: the shop owes the vendor. Negative balance: the vendor owes the shop or the shop holds a credit.</string>
+    <string name="customer_balance_sign">Green: the customer owes the shop. Red: the shop owes the customer or holds an advance.</string>
+    <string name="vendor_balance_sign">Green: the vendor owes the shop or the shop holds a credit. Red: the shop owes the vendor.</string>
     <string name="payment_section">Payment</string>
     <string name="payment_cash">Cash</string>
     <string name="payment_upi">UPI</string>
@@ -53,6 +53,14 @@
     <string name="ledger_opening">Opening: %1$s</string>
     <string name="ledger_closing">Closing: %1$s</string>
     <string name="ledger_empty">No ledger entries in this period.</string>
+    <string name="ledger_col_date">Date</string>
+    <string name="ledger_col_particulars">Particulars</string>
+    <string name="ledger_col_amount">Amount</string>
+    <string name="ledger_col_balance">Balance</string>
+    <string name="ledger_row_opening">Opening balance</string>
+    <string name="ledger_row_closing">Closing balance</string>
+    <string name="ledger_bill_ref">Bill %1$d</string>
+    <string name="ledger_invoice_ref">Invoice %1$d</string>
     <string name="amount_label">Amount</string>
     <string name="date_label">Date (dd/MM/yyyy)</string>
     <string name="note_label">Note</string>
@@ -146,7 +154,7 @@
         <item>Turning a switch off does not delete ledger entries, vendors, or purchases.</item>
     </string-array>
     <string name="help_customer_ledger_title">Customer balance</string>
-    <string name="help_customer_ledger_overview">The balance is the sum of ledger entries. A positive amount means the customer owes the shop.</string>
+    <string name="help_customer_ledger_overview">The balance is the sum of ledger entries. Green means the customer owes the shop. Red means the shop owes the customer.</string>
     <string name="help_customer_ledger_s1_title">Entries</string>
     <string-array name="help_customer_ledger_s1">
         <item>Opening balance is added only when you enter it. It is not guessed from old bills.</item>

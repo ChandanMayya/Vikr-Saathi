@@ -30,7 +30,6 @@ class VendorDetailFragment : Fragment() {
 
     private var _binding: FragmentPartyLedgerBinding? = null
     private val binding get() = _binding!!
-    private val adapter = FinanceRowAdapter()
     private var vendorId: Long = 0L
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -44,7 +43,6 @@ class VendorDetailFragment : Fragment() {
         vendorId = arguments?.getLong(ARG_VENDOR_ID) ?: 0L
         binding.textSignHint.setText(R.string.vendor_balance_sign)
         binding.buttonReturn.setText(R.string.entry_purchase_return)
-        binding.recyclerLedger.adapter = adapter
         binding.buttonOpening.setOnClickListener { promptAmount(R.string.opening_balance_action, true) { amount, date, note, shopOwes ->
             val signed = if (shopOwes) -amount else amount
             app().vendorRepository.addOpeningBalance(vendorId, signed, date, note)
@@ -81,16 +79,21 @@ class VendorDetailFragment : Fragment() {
             val balance = app().vendorRepository.balancePaise(vendorId)
             if (_binding == null) return@launch
             binding.textPartyName.text = vendor.name
-            binding.textPartyBalance.text = getString(R.string.vendor_balance, FinanceUi.formatPaise(balance, symbol))
-            binding.textOpening.text = getString(R.string.ledger_opening, FinanceUi.formatPaise(statement.openingPaise, symbol))
-            binding.textClosing.text = getString(R.string.ledger_closing, FinanceUi.formatPaise(statement.closingPaise, symbol))
-            adapter.submit(statement.lines.map { line ->
-                FinanceRow(
-                    FinanceUi.vendorEntryLabel(requireContext(), line.row.entryType),
-                    "${FinanceUi.formatDate(line.row.occurredAt)}  ${FinanceUi.formatPaise(line.row.amountPaise, symbol)}  → ${FinanceUi.formatPaise(line.runningBalancePaise, symbol)} ${line.row.note.orEmpty()} ${line.row.reason.orEmpty()}"
-                )
-            })
+            binding.textPartyBalance.text = getString(R.string.vendor_balance, FinanceUi.formatBalance(balance, symbol))
+            binding.textPartyBalance.setTextColor(requireContext().getColor(FinanceUi.balanceColorRes(balance, customer = false)))
+            LedgerLines.show(binding.ledgerLines, statement, symbol, customer = false) { row ->
+                vendorParticulars(row)
+            }
         }
+    }
+
+    private fun vendorParticulars(row: com.kex.vikrsaathi.domain.finance.LedgerRow): String {
+        val parts = mutableListOf(FinanceUi.vendorEntryLabel(requireContext(), row.entryType))
+        row.method?.let { parts += FinanceUi.paymentLabel(requireContext(), it) }
+        row.billId?.let { parts += getString(R.string.ledger_invoice_ref, it) }
+        row.note?.takeIf { it.isNotBlank() }?.let { parts += it }
+        row.reason?.takeIf { it.isNotBlank() }?.let { parts += it }
+        return parts.joinToString(" · ")
     }
 
     private fun archiveOrDelete() {

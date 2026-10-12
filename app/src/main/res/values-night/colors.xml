@@ -17,6 +17,8 @@
     <color name="stroke_button">#6D4C41</color>
     <color name="text_accent">#FFB74D</color>
     <color name="text_accent_soft">#FFA726</color>
+    <color name="balance_receivable">#81C784</color>
+    <color name="balance_payable">#EF9A9A</color>
     <color name="ripple_subtle">#3E2723</color>
     <color name="input_surface">#2C2C2C</color>
     <color name="input_stroke">#5D4037</color>

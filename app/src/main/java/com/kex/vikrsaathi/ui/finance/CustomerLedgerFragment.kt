@@ -13,7 +13,6 @@ import com.google.android.material.textfield.TextInputEditText
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentPartyLedgerBinding
-import com.kex.vikrsaathi.domain.finance.CustomerLedgerType
 import com.kex.vikrsaathi.domain.finance.LedgerStatement
 import com.kex.vikrsaathi.domain.finance.PaymentMethod
 import com.kex.vikrsaathi.ui.help.HelpScreen
@@ -26,7 +25,6 @@ class CustomerLedgerFragment : Fragment() {
 
     private var _binding: FragmentPartyLedgerBinding? = null
     private val binding get() = _binding!!
-    private val adapter = FinanceRowAdapter()
     private var customerId: Long = 0L
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -38,7 +36,6 @@ class CustomerLedgerFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         installHelpMenu(HelpScreen.CUSTOMER_LEDGER)
         customerId = arguments?.getLong(ARG_CUSTOMER_ID) ?: 0L
-        binding.recyclerLedger.adapter = adapter
         binding.buttonOpening.setOnClickListener { showOpening() }
         binding.buttonPayment.setOnClickListener { showPayment() }
         binding.buttonReturn.setOnClickListener { showReturn() }
@@ -62,22 +59,22 @@ class CustomerLedgerFragment : Fragment() {
             val balance = app.customerFinanceRepository.balancePaise(customerId)
             if (_binding == null) return@launch
             binding.textPartyName.text = customer.name
-            binding.textPartyBalance.text = getString(R.string.vendor_balance, FinanceUi.formatPaise(balance, symbol))
-            binding.textOpening.text = getString(R.string.ledger_opening, FinanceUi.formatPaise(statement.openingPaise, symbol))
-            binding.textClosing.text = getString(R.string.ledger_closing, FinanceUi.formatPaise(statement.closingPaise, symbol))
-            adapter.submit(statement.lines.map { line ->
-                val type = FinanceUi.customerEntryLabel(requireContext(), line.row.entryType)
-                val method = line.row.method?.let { " · $it" }.orEmpty()
-                val ref = line.row.billId?.let { " · bill $it" }.orEmpty()
-                FinanceRow(
-                    title = "$type$method$ref",
-                    subtitle = "${FinanceUi.formatDate(line.row.occurredAt)}  ${FinanceUi.formatPaise(line.row.amountPaise, symbol)}  → ${FinanceUi.formatPaise(line.runningBalancePaise, symbol)}" +
-                        (line.row.reason?.let { "  ($it)" } ?: "") +
-                        (line.row.note?.let { "  $it" } ?: "")
-                )
-            }.ifEmpty { listOf(FinanceRow(getString(R.string.ledger_empty), "")) })
+            binding.textPartyBalance.text = getString(R.string.vendor_balance, FinanceUi.formatBalance(balance, symbol))
+            binding.textPartyBalance.setTextColor(requireContext().getColor(FinanceUi.balanceColorRes(balance, customer = true)))
+            LedgerLines.show(binding.ledgerLines, statement, symbol, customer = true) { row ->
+                customerParticulars(row)
+            }
             binding.root.tag = statement
         }
+    }
+
+    private fun customerParticulars(row: com.kex.vikrsaathi.domain.finance.LedgerRow): String {
+        val parts = mutableListOf(FinanceUi.customerEntryLabel(requireContext(), row.entryType))
+        row.method?.let { parts += FinanceUi.paymentLabel(requireContext(), it) }
+        row.billId?.let { parts += getString(R.string.ledger_bill_ref, it) }
+        row.note?.takeIf { it.isNotBlank() }?.let { parts += it }
+        row.reason?.takeIf { it.isNotBlank() }?.let { parts += it }
+        return parts.joinToString(" · ")
     }
 
     private fun showOpening() {
@@ -216,15 +213,15 @@ class CustomerLedgerFragment : Fragment() {
     private fun renderStatement(name: String, statement: LedgerStatement, symbol: String): String {
         val body = statement.lines.joinToString("\n") { line ->
             val type = FinanceUi.customerEntryLabel(requireContext(), line.row.entryType)
-            "${FinanceUi.formatDate(line.row.occurredAt)} | $type | ${line.row.method.orEmpty()} | ${line.row.billId ?: ""} | ${FinanceUi.formatPaise(line.row.amountPaise, symbol)} | ${FinanceUi.formatPaise(line.runningBalancePaise, symbol)}"
+            "${FinanceUi.formatDate(line.row.occurredAt)} | $type | ${line.row.method.orEmpty()} | ${line.row.billId ?: ""} | ${FinanceUi.formatPaise(line.row.amountPaise, symbol)} | ${FinanceUi.formatBalance(line.runningBalancePaise, symbol)}"
         }
         return buildString {
             appendLine(name)
             appendLine(getString(R.string.customer_balance_sign))
-            appendLine(getString(R.string.ledger_opening, FinanceUi.formatPaise(statement.openingPaise, symbol)))
+            appendLine(getString(R.string.ledger_opening, FinanceUi.formatBalance(statement.openingPaise, symbol)))
             appendLine("Date | Type | Method | Bill | Amount | Running")
             appendLine(body)
-            appendLine(getString(R.string.ledger_closing, FinanceUi.formatPaise(statement.closingPaise, symbol)))
+            appendLine(getString(R.string.ledger_closing, FinanceUi.formatBalance(statement.closingPaise, symbol)))
         }
     }
 

@@ -20,6 +20,21 @@ object FinanceUi {
     fun formatPaise(paise: Long, symbol: String): String =
         PriceCalculator.formatAmount(Money.paiseToRupees(paise), symbol)
 
+    /** Balance shown without a sign. Color carries who owes whom. */
+    fun formatBalance(paise: Long, symbol: String): String = formatPaise(kotlin.math.abs(paise), symbol)
+
+    /**
+     * Green when the other party owes the shop. Red when the shop owes them.
+     * Customer balances are positive when the customer owes the shop.
+     * Vendor balances are positive when the shop owes the vendor.
+     */
+    fun balanceColorRes(paise: Long, customer: Boolean): Int = when {
+        paise == 0L -> R.color.text_primary_dark
+        customer && paise > 0L -> R.color.balance_receivable
+        !customer && paise < 0L -> R.color.balance_receivable
+        else -> R.color.balance_payable
+    }
+
     fun parseDateOrToday(text: String?): Long {
         val value = text?.trim().orEmpty()
         if (value.isEmpty()) return System.currentTimeMillis()

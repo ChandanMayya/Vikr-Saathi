@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="8dp">
+
+    <TextView
+        android:id="@+id/textLedgerDate"
+        android:layout_width="72dp"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_secondary_dark"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/textLedgerParticulars"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:layout_weight="1"
+        android:textColor="@color/text_primary_dark"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/textLedgerAmount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:gravity="end"
+        android:minWidth="72dp"
+        android:textColor="@color/text_primary_dark"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/textLedgerBalance"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:gravity="end"
+        android:minWidth="72dp"
+        android:textColor="@color/text_accent"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+</LinearLayout>

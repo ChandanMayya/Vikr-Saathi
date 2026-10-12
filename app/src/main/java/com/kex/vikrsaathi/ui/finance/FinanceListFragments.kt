@@ -61,15 +61,23 @@ class OutstandingCustomersFragment : Fragment() {
                     add(
                         FinanceRow(
                             name,
-                            "${FinanceUi.formatPaise(row.balancePaise, symbol)} · ${FinanceUi.ageLabel(requireContext(), row.ageBucket)}",
-                            row.customerId
+                            "${FinanceUi.formatBalance(row.balancePaise, symbol)} · ${FinanceUi.ageLabel(requireContext(), row.ageBucket)}",
+                            row.customerId,
+                            FinanceUi.balanceColorRes(row.balancePaise, customer = true)
                         )
                     )
                 }
                 if (advances.isNotEmpty()) add(FinanceRow(getString(R.string.advances_header), ""))
                 advances.forEach { row ->
                     val name = customers[row.customerId]?.name ?: "Customer ${row.customerId}"
-                    add(FinanceRow(name, FinanceUi.formatPaise(row.balancePaise, symbol), row.customerId))
+                    add(
+                        FinanceRow(
+                            name,
+                            FinanceUi.formatBalance(row.balancePaise, symbol),
+                            row.customerId,
+                            FinanceUi.balanceColorRes(row.balancePaise, customer = true)
+                        )
+                    )
                 }
             }
             if (_binding == null) return@launch
@@ -143,7 +151,7 @@ class VendorListFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val cards = app.vendorRepository.getAll().map { vendor ->
                 val balance = app.vendorRepository.balancePaise(vendor.id)
-                VendorCard(vendor, FinanceUi.formatPaise(balance, symbol))
+                VendorCard(vendor, balance)
             }
             if (_binding == null) return@launch
             adapter.submitList(cards)
