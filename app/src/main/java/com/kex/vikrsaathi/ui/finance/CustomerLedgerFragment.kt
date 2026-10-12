@@ -1,6 +1,7 @@
 package com.kex.vikrsaathi.ui.finance
 
 import android.os.Bundle
+import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,6 +13,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
+import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.databinding.FragmentPartyLedgerBinding
 import com.kex.vikrsaathi.domain.finance.LedgerStatement
 import com.kex.vikrsaathi.domain.finance.PaymentMethod
@@ -123,55 +125,58 @@ class CustomerLedgerFragment : Fragment() {
     }
 
     private fun showReturn() {
-        val container = android.widget.LinearLayout(requireContext()).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(48, 16, 48, 0)
-        }
-        val bill = field(container, "Bill id")
-        val qty = field(container, getString(R.string.return_qty))
-        val itemName = field(container, getString(R.string.item_name))
-        val refund = field(container, getString(R.string.money_refunded))
-        val credit = field(container, getString(R.string.credit_adjustment))
-        val reason = field(container, getString(R.string.reason_label))
-        confirm(R.string.sales_return_action, container) {
-            val app = requireActivity().application as VikrSaathiApp
-            val lines = mutableListOf<com.kex.vikrsaathi.data.repository.ReturnLineInput>()
-            val quantity = qty.text?.toString()?.toIntOrNull() ?: 0
-            if (quantity > 0) {
-                lines += com.kex.vikrsaathi.data.repository.ReturnLineInput(
-                    itemId = null,
-                    itemName = itemName.text?.toString().orEmpty().ifBlank { "Item" },
-                    quantity = quantity
-                )
+        val app = requireActivity().application as VikrSaathiApp
+        viewLifecycleOwner.lifecycleScope.launch {
+            val catalog = app.itemRepository.getAllSync()
+            if (catalog.isEmpty()) {
+                toast(getString(R.string.no_master_items))
+                return@launch
             }
-            viewLifecycleOwner.lifecycleScope.launch {
-                val billId = bill.text?.toString()?.toLongOrNull()
-                val resolved = if (billId != null) {
-                    val items = app.database.billItemDao().getItemsForBill(billId)
-                    val named = itemName.text?.toString()?.trim().orEmpty()
-                    val match = items.firstOrNull { named.isBlank() || it.itemName.equals(named, true) }
-                    if (match != null && quantity > 0) {
+            var selected: Item? = null
+            val form = FinanceForm.column(this@CustomerLedgerFragment)
+            val bill = FinanceForm.text(this@CustomerLedgerFragment, form, getString(R.string.bill_number_label), InputType.TYPE_CLASS_NUMBER)
+            val qty = FinanceForm.text(this@CustomerLedgerFragment, form, getString(R.string.return_qty), InputType.TYPE_CLASS_NUMBER)
+            FinanceForm.itemPicker(this@CustomerLedgerFragment, form, getString(R.string.item_name), catalog) { selected = it }
+            val refund = FinanceForm.text(this@CustomerLedgerFragment, form, getString(R.string.money_refunded), InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
+            val credit = FinanceForm.text(this@CustomerLedgerFragment, form, getString(R.string.credit_adjustment), InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
+            val reason = FinanceForm.text(this@CustomerLedgerFragment, form, getString(R.string.reason_label))
+            confirm(R.string.sales_return_action, form) {
+                val quantity = qty.text?.toString()?.toIntOrNull() ?: 0
+                val item = selected
+                if (quantity > 0 && item == null) {
+                    toast(getString(R.string.select_master_item))
+                    return@confirm
+                }
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val billId = bill.text?.toString()?.toLongOrNull()
+                    val resolved = if (quantity > 0 && item != null) {
+                        val billItems = if (billId != null) app.database.billItemDao().getItemsForBill(billId) else emptyList()
+                        val match = billItems.firstOrNull { it.itemId == item.id }
                         listOf(
                             com.kex.vikrsaathi.data.repository.ReturnLineInput(
-                                match.itemId, match.itemName, quantity
+                                itemId = match?.itemId ?: item.id,
+                                itemName = match?.itemName ?: item.name,
+                                quantity = quantity
                             )
                         )
-                    } else lines
-                } else lines
-                runCatching {
-                    app.customerFinanceRepository.addSalesReturn(
-                        customerId = customerId,
-                        billId = billId,
-                        reason = reason.text?.toString().orEmpty(),
-                        moneyRefundedPaise = FinanceUi.parseAmountPaise(refund.text?.toString()),
-                        creditAdjustmentPaise = FinanceUi.parseAmountPaise(credit.text?.toString()),
-                        lines = resolved,
-                        occurredAt = System.currentTimeMillis()
-                    )
-                }.onSuccess {
-                    toast(R.string.saved)
-                    reload()
-                }.onFailure { toast(FinanceUi.message(requireContext(), it)) }
+                    } else {
+                        emptyList()
+                    }
+                    runCatching {
+                        app.customerFinanceRepository.addSalesReturn(
+                            customerId = customerId,
+                            billId = billId,
+                            reason = reason.text?.toString().orEmpty(),
+                            moneyRefundedPaise = FinanceUi.parseAmountPaise(refund.text?.toString()),
+                            creditAdjustmentPaise = FinanceUi.parseAmountPaise(credit.text?.toString()),
+                            lines = resolved,
+                            occurredAt = System.currentTimeMillis()
+                        )
+                    }.onSuccess {
+                        toast(R.string.saved)
+                        reload()
+                    }.onFailure { toast(FinanceUi.message(requireContext(), it)) }
+                }
             }
         }
     }
@@ -230,15 +235,15 @@ class CustomerLedgerFragment : Fragment() {
         owesShopLabel: Int = R.string.owes_shop,
         shopOwesLabel: Int = R.string.shop_owes_customer
     ): AmountForm {
-        val root = android.widget.LinearLayout(requireContext()).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(48, 16, 48, 0)
-        }
-        val amount = field(root, getString(R.string.amount_label))
+        val root = FinanceForm.column(this)
+        val amount = FinanceForm.text(
+            this, root, getString(R.string.amount_label),
+            InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+        )
         val date = FinanceDates.DateField(this)
         root.addView(date.view)
-        val note = field(root, getString(R.string.note_label))
-        val reason = if (showReason) field(root, getString(R.string.reason_label)) else null
+        val note = FinanceForm.text(this, root, getString(R.string.note_label))
+        val reason = if (showReason) FinanceForm.text(this, root, getString(R.string.reason_label)) else null
         val direction = if (showDirection) android.widget.CheckBox(requireContext()).apply {
             text = getString(shopOwesLabel)
             root.addView(this)
@@ -271,13 +276,6 @@ class CustomerLedgerFragment : Fragment() {
 
     private fun amountText(form: AmountForm) = form.amount.text?.toString()
     private fun noteText(form: AmountForm) = form.note.text?.toString()
-
-    private fun field(parent: android.widget.LinearLayout, hint: String): TextInputEditText {
-        val edit = TextInputEditText(requireContext())
-        edit.hint = hint
-        parent.addView(edit)
-        return edit
-    }
 
     private fun confirm(title: Int, view: View, onOk: () -> Unit) {
         MaterialAlertDialogBuilder(requireContext())

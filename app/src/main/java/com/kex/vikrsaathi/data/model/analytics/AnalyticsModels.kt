@@ -93,6 +93,58 @@ data class CustomerMixSummary(
     }
 }
 
+data class DayAmount(
+    val dayStartMillis: Long,
+    val paise: Long
+)
+
+data class DayPurchasePayment(
+    val dayStartMillis: Long,
+    val purchasesPaise: Long,
+    val paidPaise: Long
+)
+
+data class VendorSpendRow(
+    val vendorId: Long?,
+    val name: String,
+    val paise: Long
+)
+
+data class DeliveryQualityRow(
+    val vendorId: Long,
+    val name: String,
+    val acceptedQty: Int,
+    val damagedQty: Int,
+    val rejectedQty: Int,
+    val receivedQty: Int
+)
+
+data class VendorAnalytics(
+    val enabled: Boolean,
+    val purchasesPaise: Long,
+    val paidPaise: Long,
+    val outstandingPaise: Long,
+    val purchaseTrend: List<DayAmount>,
+    val spendByVendor: List<VendorSpendRow>,
+    val paymentsCompared: List<DayPurchasePayment>,
+    val showPaymentsChart: Boolean,
+    val delivery: List<DeliveryQualityRow>
+) {
+    companion object {
+        val DISABLED = VendorAnalytics(
+            enabled = false,
+            purchasesPaise = 0L,
+            paidPaise = 0L,
+            outstandingPaise = 0L,
+            purchaseTrend = emptyList(),
+            spendByVendor = emptyList(),
+            paymentsCompared = emptyList(),
+            showPaymentsChart = false,
+            delivery = emptyList()
+        )
+    }
+}
+
 data class HeldBillSummary(
     val heldInPeriod: Int,
     val finalizedInPeriod: Int,
@@ -120,7 +172,8 @@ data class AnalyticsDashboard(
     val peakHours: List<PeakHourPoint>,
     val salesByDayOfWeek: List<DayOfWeekPoint>,
     val customerMix: CustomerMixSummary,
-    val heldBills: HeldBillSummary
+    val heldBills: HeldBillSummary,
+    val vendor: VendorAnalytics = VendorAnalytics.DISABLED
 ) {
     companion object {
         val EMPTY = AnalyticsDashboard(
@@ -134,7 +187,8 @@ data class AnalyticsDashboard(
             peakHours = emptyList(),
             salesByDayOfWeek = emptyList(),
             customerMix = CustomerMixSummary.EMPTY,
-            heldBills = HeldBillSummary.EMPTY
+            heldBills = HeldBillSummary.EMPTY,
+            vendor = VendorAnalytics.DISABLED
         )
     }
 }

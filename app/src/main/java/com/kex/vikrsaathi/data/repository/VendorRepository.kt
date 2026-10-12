@@ -9,8 +9,11 @@ import com.kex.vikrsaathi.data.entity.GoodsReceipt
 import com.kex.vikrsaathi.data.entity.GoodsReceiptLine
 import com.kex.vikrsaathi.data.entity.PurchaseInvoice
 import com.kex.vikrsaathi.data.entity.PurchaseInvoiceLine
+import android.database.sqlite.SQLiteConstraintException
 import com.kex.vikrsaathi.data.entity.PurchaseOrder
 import com.kex.vikrsaathi.data.entity.PurchaseOrderLine
+import com.kex.vikrsaathi.data.entity.PurchaseRequest
+import com.kex.vikrsaathi.data.entity.PurchaseRequestLine
 import com.kex.vikrsaathi.data.entity.StockMovementType
 import com.kex.vikrsaathi.data.entity.StockReferenceType
 import com.kex.vikrsaathi.data.entity.Vendor
@@ -21,8 +24,25 @@ import com.kex.vikrsaathi.data.entity.VendorQuote
 import com.kex.vikrsaathi.data.entity.VendorQuoteLine
 import com.kex.vikrsaathi.domain.finance.AllocationPlan
 import com.kex.vikrsaathi.domain.finance.BillLedgerPlanner
+import com.kex.vikrsaathi.domain.finance.AwardLineState
+import com.kex.vikrsaathi.domain.finance.AwardPlan
+import com.kex.vikrsaathi.domain.finance.AwardSelection
+import com.kex.vikrsaathi.domain.finance.ComparedRequestLine
+import com.kex.vikrsaathi.domain.finance.HubOrderInput
+import com.kex.vikrsaathi.domain.finance.HubOrderLineInput
+import com.kex.vikrsaathi.domain.finance.HubReceiptInput
+import com.kex.vikrsaathi.domain.finance.HubRequestInput
+import com.kex.vikrsaathi.domain.finance.OrderHubMath
+import com.kex.vikrsaathi.domain.finance.OrderHubRow
 import com.kex.vikrsaathi.domain.finance.FinanceError
 import com.kex.vikrsaathi.domain.finance.FinanceException
+import com.kex.vikrsaathi.domain.finance.LineOffer
+import com.kex.vikrsaathi.domain.finance.PurchaseRequestMath
+import com.kex.vikrsaathi.domain.finance.QuoteAvailability
+import com.kex.vikrsaathi.domain.finance.QuoteHeader
+import com.kex.vikrsaathi.domain.finance.RequestLineDraft
+import com.kex.vikrsaathi.domain.finance.RequestQuoteDraft
+import com.kex.vikrsaathi.domain.finance.RequestStatus
 import com.kex.vikrsaathi.domain.finance.FinanceReference
 import com.kex.vikrsaathi.domain.finance.LedgerMath
 import com.kex.vikrsaathi.domain.finance.LedgerRow
@@ -69,6 +89,36 @@ data class QuoteLineInput(
     val ratePaise: Long,
     val availableQty: Int,
     val notes: String = ""
+)
+
+data class RequestLineInput(
+    val itemId: Long?,
+    val itemName: String,
+    val quantity: Int,
+    val notes: String = ""
+)
+
+data class RequestQuoteLineInput(
+    val requestLineId: Long,
+    val availability: String,
+    val ratePaise: Long,
+    val availableQty: Int,
+    val notes: String = ""
+)
+
+data class PurchaseRequestSummary(
+    val request: PurchaseRequest,
+    val lineCount: Int,
+    val quoteCount: Int
+)
+
+data class PurchaseRequestDetail(
+    val request: PurchaseRequest,
+    val lines: List<PurchaseRequestLine>,
+    val quotes: List<VendorQuote>,
+    val quoteLines: List<VendorQuoteLine>,
+    val orders: List<PurchaseOrder>,
+    val orderLines: List<PurchaseOrderLine>
 )
 
 class VendorRepository(
@@ -514,11 +564,301 @@ class VendorRepository(
     suspend fun orderLines(orderId: Long) = purchaseDao.getOrderLines(orderId)
     suspend fun receipts() = purchaseDao.getReceipts()
     suspend fun receiptLines(receiptId: Long) = purchaseDao.getReceiptLines(receiptId)
+    suspend fun allReceiptLines() = purchaseDao.getAllReceiptLines()
+    suspend fun allLedger() = vendorDao.getAllLedger()
     suspend fun invoices() = purchaseDao.getInvoices()
     suspend fun invoiceLines(invoiceId: Long) = purchaseDao.getInvoiceLines(invoiceId)
     suspend fun quotes() = purchaseDao.getQuotes()
     suspend fun quoteLines(quoteId: Long) = purchaseDao.getQuoteLines(quoteId)
     suspend fun paymentAllocations(paymentId: Long) = vendorDao.getAllocationsForPayment(paymentId)
+
+    suspend fun orderHubRows(): List<OrderHubRow> {
+        val requests = purchaseDao.getRequests()
+        val requestLines = purchaseDao.getAllRequestLines().groupBy { it.requestId }
+        val quotesByRequest = purchaseDao.getQuotes().groupBy { it.requestId }
+        val orders = purchaseDao.getOrders()
+        val linesByOrder = purchaseDao.getAllOrderLines().groupBy { it.orderId }
+        val receiptOrderId = purchaseDao.getReceipts().associate { it.id to it.orderId }
+        val vendors = vendorDao.getAll().associateBy { it.id }
+        val receipts = purchaseDao.getAllReceiptLines().map { line ->
+            HubReceiptInput(
+                orderId = receiptOrderId[line.receiptId],
+                orderLineId = line.orderLineId,
+                itemId = line.itemId,
+                receivedQty = line.receivedQty
+            )
+        }
+        return OrderHubMath.rows(
+            requests = requests.map { request ->
+                HubRequestInput(
+                    id = request.id,
+                    number = request.requestNumber,
+                    createdAt = request.createdAt,
+                    status = request.status,
+                    lineCount = requestLines[request.id].orEmpty().size,
+                    quoteCount = quotesByRequest[request.id].orEmpty().size
+                )
+            },
+            orders = orders.map { order ->
+                HubOrderInput(
+                    id = order.id,
+                    vendorId = order.vendorId,
+                    vendorName = vendors[order.vendorId]?.name,
+                    number = order.orderNumber,
+                    createdAt = order.createdAt,
+                    lines = linesByOrder[order.id].orEmpty().map { line ->
+                        HubOrderLineInput(line.id, line.itemId, line.quantity, line.ratePaise)
+                    }
+                )
+            },
+            receipts = receipts
+        )
+    }
+
+    suspend fun purchasingAttentionCount(): Int =
+        orderHubRows().count { OrderHubMath.isOpen(it.status) }
+
+    suspend fun requestSummaries(): List<PurchaseRequestSummary> {
+        val quotes = purchaseDao.getQuotes()
+        return purchaseDao.getRequests().map { request ->
+            PurchaseRequestSummary(
+                request = request,
+                lineCount = purchaseDao.getRequestLines(request.id).size,
+                quoteCount = quotes.count { it.requestId == request.id }
+            )
+        }
+    }
+
+    suspend fun requestDetail(requestId: Long): PurchaseRequestDetail? {
+        val request = purchaseDao.getRequest(requestId) ?: return null
+        val quotes = purchaseDao.quotesForRequest(requestId)
+        return PurchaseRequestDetail(
+            request = request,
+            lines = purchaseDao.getRequestLines(requestId),
+            quotes = quotes,
+            quoteLines = quotes.flatMap { purchaseDao.getQuoteLines(it.id) },
+            orders = purchaseDao.ordersForRequest(requestId),
+            orderLines = purchaseDao.orderLinesForRequest(requestId)
+        )
+    }
+
+    suspend fun saveRequest(
+        requestId: Long?,
+        requiredBy: Long?,
+        notes: String,
+        lines: List<RequestLineInput>
+    ): Long {
+        val error = PurchaseRequestMath.validateRequestLines(
+            lines.map { RequestLineDraft(it.itemName, it.quantity) }
+        )
+        if (error != null) throw FinanceException(error)
+        return database.withTransaction {
+            val id = if (requestId == null) {
+                val created = purchaseDao.insertRequest(
+                    PurchaseRequest(
+                        requestNumber = "PENDING",
+                        requiredBy = requiredBy,
+                        notes = notes.trim()
+                    )
+                )
+                purchaseDao.updateRequest(
+                    purchaseDao.getRequest(created)!!.copy(
+                        requestNumber = "PR-" + created.toString().padStart(3, '0')
+                    )
+                )
+                created
+            } else {
+                val existing = purchaseDao.getRequest(requestId)
+                    ?: throw FinanceException(FinanceError.NOTHING_TO_RECORD)
+                val quoted = purchaseDao.quotesForRequest(requestId)
+                val awarded = purchaseDao.orderLinesForRequest(requestId)
+                if (existing.status != RequestStatus.DRAFT || quoted.isNotEmpty() || awarded.isNotEmpty()) {
+                    throw FinanceException(FinanceError.REQUEST_NOT_EDITABLE)
+                }
+                purchaseDao.deleteRequestLines(requestId)
+                purchaseDao.updateRequest(existing.copy(requiredBy = requiredBy, notes = notes.trim()))
+                requestId
+            }
+            lines.forEach { line ->
+                purchaseDao.insertRequestLine(
+                    PurchaseRequestLine(
+                        requestId = id,
+                        itemId = line.itemId,
+                        itemName = line.itemName.trim(),
+                        quantity = line.quantity,
+                        notes = line.notes.trim()
+                    )
+                )
+            }
+            id
+        }
+    }
+
+    suspend fun cancelRequest(requestId: Long) {
+        database.withTransaction {
+            val existing = purchaseDao.getRequest(requestId)
+                ?: throw FinanceException(FinanceError.NOTHING_TO_RECORD)
+            if (purchaseDao.orderLinesForRequest(requestId).isNotEmpty()) {
+                throw FinanceException(FinanceError.REQUEST_NOT_EDITABLE)
+            }
+            if (existing.status == RequestStatus.CANCELLED || existing.status == RequestStatus.AWARDED) {
+                throw FinanceException(FinanceError.REQUEST_NOT_EDITABLE)
+            }
+            purchaseDao.updateRequest(existing.copy(status = RequestStatus.CANCELLED))
+        }
+    }
+
+    suspend fun saveRequestQuote(
+        requestId: Long,
+        vendorId: Long,
+        quoteDate: Long,
+        validUntil: Long?,
+        deliveryChargesPaise: Long,
+        discountPaise: Long,
+        expectedDelivery: Long?,
+        notes: String,
+        lines: List<RequestQuoteLineInput>
+    ): Long {
+        return try {
+            database.withTransaction {
+                val requestLines = purchaseDao.getRequestLines(requestId)
+                val invalid = PurchaseRequestMath.validateQuote(
+                    deliveryChargesPaise,
+                    discountPaise,
+                    lines.map {
+                        RequestQuoteDraft(it.requestLineId, it.availability, it.ratePaise, it.availableQty)
+                    },
+                    requestLines.map { it.id }.toSet()
+                )
+                if (invalid != null) throw FinanceException(invalid)
+                val request = purchaseDao.getRequest(requestId) ?: throw FinanceException(FinanceError.NOTHING_TO_RECORD)
+                if (request.status == RequestStatus.CANCELLED || request.status == RequestStatus.AWARDED) {
+                    throw FinanceException(FinanceError.REQUEST_NOT_EDITABLE)
+                }
+                if (purchaseDao.quoteForVendorRequest(vendorId, requestId) != null) {
+                    throw FinanceException(FinanceError.DUPLICATE_QUOTE)
+                }
+                val id = purchaseDao.insertQuote(
+                    VendorQuote(
+                        vendorId = vendorId,
+                        quoteDate = quoteDate,
+                        validUntil = validUntil,
+                        deliveryChargesPaise = deliveryChargesPaise,
+                        discountPaise = discountPaise,
+                        expectedDelivery = expectedDelivery,
+                        notes = notes.trim(),
+                        requestId = requestId
+                    )
+                )
+                val byId = requestLines.associateBy { it.id }
+                lines.forEach { line ->
+                    val source = byId.getValue(line.requestLineId)
+                    val quoted = line.availability == QuoteAvailability.QUOTED
+                    purchaseDao.insertQuoteLine(
+                        VendorQuoteLine(
+                            quoteId = id,
+                            itemId = source.itemId,
+                            itemName = source.itemName,
+                            ratePaise = if (quoted) line.ratePaise else 0L,
+                            availableQty = if (quoted) line.availableQty else 0,
+                            notes = line.notes.trim(),
+                            requestLineId = source.id,
+                            availability = line.availability
+                        )
+                    )
+                }
+                if (request.status == RequestStatus.DRAFT) {
+                    purchaseDao.updateRequest(request.copy(status = RequestStatus.QUOTING))
+                }
+                id
+            }
+        } catch (error: SQLiteConstraintException) {
+            throw FinanceException(FinanceError.DUPLICATE_QUOTE)
+        }
+    }
+
+    suspend fun awardRequest(requestId: Long, selections: List<AwardSelection>): List<Long> {
+        return database.withTransaction {
+            val request = purchaseDao.getRequest(requestId)
+                ?: throw FinanceException(FinanceError.NOTHING_TO_RECORD)
+            val lines = purchaseDao.getRequestLines(requestId)
+            val awardedByLine = purchaseDao.orderLinesForRequest(requestId)
+                .groupBy { it.requestLineId }
+                .mapValues { (_, rows) -> rows.sumOf { it.quantity } }
+            val quotes = purchaseDao.quotesForRequest(requestId)
+            val offers = quotes.flatMap { quote ->
+                purchaseDao.getQuoteLines(quote.id).mapNotNull { line ->
+                    val requestLineId = line.requestLineId ?: return@mapNotNull null
+                    LineOffer(
+                        quoteId = quote.id,
+                        requestLineId = requestLineId,
+                        availability = line.availability,
+                        ratePaise = line.ratePaise,
+                        availableQty = line.availableQty,
+                        itemId = line.itemId,
+                        itemName = line.itemName
+                    )
+                }
+            }
+            val headers = quotes.map { quote ->
+                QuoteHeader(
+                    quoteId = quote.id,
+                    vendorId = quote.vendorId,
+                    vendorName = "",
+                    deliveryChargesPaise = quote.deliveryChargesPaise,
+                    discountPaise = quote.discountPaise,
+                    expectedDelivery = quote.expectedDelivery,
+                    notes = quote.notes
+                )
+            }
+            val plan = PurchaseRequestMath.planAward(
+                requestStatus = request.status,
+                lines = lines.map { line ->
+                    AwardLineState(
+                        requestLineId = line.id,
+                        requestedQty = line.quantity,
+                        awardedQty = awardedByLine[line.id] ?: 0
+                    )
+                },
+                quotes = headers,
+                offers = offers,
+                selections = selections
+            )
+            if (plan is AwardPlan.Rejected) throw FinanceException(plan.error)
+            val accepted = plan as AwardPlan.Accepted
+            val ids = accepted.orders.map { planned ->
+                val id = purchaseDao.insertOrder(
+                    PurchaseOrder(
+                        vendorId = planned.vendorId,
+                        orderNumber = "PENDING",
+                        quoteId = planned.quoteId,
+                        expectedDelivery = planned.expectedDelivery,
+                        notes = planned.notes,
+                        status = "ORDERED",
+                        requestId = requestId
+                    )
+                )
+                purchaseDao.updateOrder(
+                    purchaseDao.getOrder(id)!!.copy(orderNumber = "PO-" + id.toString().padStart(3, '0'))
+                )
+                planned.lines.forEach { line ->
+                    purchaseDao.insertOrderLine(
+                        PurchaseOrderLine(
+                            orderId = id,
+                            itemId = line.itemId,
+                            itemName = line.itemName,
+                            quantity = line.quantity,
+                            ratePaise = line.ratePaise,
+                            requestLineId = line.requestLineId
+                        )
+                    )
+                }
+                id
+            }
+            purchaseDao.updateRequest(request.copy(status = accepted.status))
+            ids
+        }
+    }
 
     suspend fun clearVendors() {
         database.withTransaction {
@@ -545,6 +885,8 @@ class VendorRepository(
             purchaseDao.deleteAllOrders()
             purchaseDao.deleteAllQuoteLines()
             purchaseDao.deleteAllQuotes()
+            purchaseDao.deleteAllRequestLines()
+            purchaseDao.deleteAllRequests()
             itemDao.clearPreferredVendors()
             vendorDao.deleteAll()
         }

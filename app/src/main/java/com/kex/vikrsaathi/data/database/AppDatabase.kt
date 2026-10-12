@@ -33,6 +33,8 @@ import com.kex.vikrsaathi.data.entity.PurchaseInvoice
 import com.kex.vikrsaathi.data.entity.PurchaseInvoiceLine
 import com.kex.vikrsaathi.data.entity.PurchaseOrder
 import com.kex.vikrsaathi.data.entity.PurchaseOrderLine
+import com.kex.vikrsaathi.data.entity.PurchaseRequest
+import com.kex.vikrsaathi.data.entity.PurchaseRequestLine
 import com.kex.vikrsaathi.data.entity.SalesReturn
 import com.kex.vikrsaathi.data.entity.SalesReturnLine
 import com.kex.vikrsaathi.data.entity.StockMovement
@@ -70,9 +72,11 @@ import com.kex.vikrsaathi.data.entity.VendorQuoteLine
         PurchaseInvoice::class,
         PurchaseInvoiceLine::class,
         VendorQuote::class,
-        VendorQuoteLine::class
+        VendorQuoteLine::class,
+        PurchaseRequest::class,
+        PurchaseRequestLine::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -110,7 +114,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_6_7,
                         MIGRATION_7_8,
                         MIGRATION_8_9,
-                        MIGRATION_9_10
+                        MIGRATION_9_10,
+                        MIGRATION_10_11
                     )
                     .build()
                     .also { INSTANCE = it }

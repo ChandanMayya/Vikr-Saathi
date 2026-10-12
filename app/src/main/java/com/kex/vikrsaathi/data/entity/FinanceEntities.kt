@@ -4,6 +4,8 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.kex.vikrsaathi.domain.finance.QuoteAvailability
+import com.kex.vikrsaathi.domain.finance.RequestStatus
 
 @Entity(
     tableName = "bill_payments",
@@ -225,6 +227,43 @@ data class VendorPaymentAllocation(
     val amountPaise: Long
 )
 
+@Entity(tableName = "purchase_requests")
+data class PurchaseRequest(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val requestNumber: String,
+    val createdAt: Long = System.currentTimeMillis(),
+    val requiredBy: Long? = null,
+    val status: String = RequestStatus.DRAFT,
+    val notes: String = ""
+)
+
+@Entity(
+    tableName = "purchase_request_lines",
+    foreignKeys = [
+        ForeignKey(
+            entity = PurchaseRequest::class,
+            parentColumns = ["id"],
+            childColumns = ["requestId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = Item::class,
+            parentColumns = ["id"],
+            childColumns = ["itemId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index("requestId"), Index("itemId")]
+)
+data class PurchaseRequestLine(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val requestId: Long,
+    val itemId: Long? = null,
+    val itemName: String,
+    val quantity: Int,
+    val notes: String = ""
+)
+
 @Entity(
     tableName = "purchase_orders",
     foreignKeys = [
@@ -233,9 +272,15 @@ data class VendorPaymentAllocation(
             parentColumns = ["id"],
             childColumns = ["vendorId"],
             onDelete = ForeignKey.RESTRICT
+        ),
+        ForeignKey(
+            entity = PurchaseRequest::class,
+            parentColumns = ["id"],
+            childColumns = ["requestId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("vendorId"), Index("quoteId")]
+    indices = [Index("vendorId"), Index("quoteId"), Index("requestId")]
 )
 data class PurchaseOrder(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -245,7 +290,8 @@ data class PurchaseOrder(
     val expectedDelivery: Long? = null,
     val notes: String = "",
     val status: String = "ORDERED",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val requestId: Long? = null
 )
 
 @Entity(
@@ -262,9 +308,15 @@ data class PurchaseOrder(
             parentColumns = ["id"],
             childColumns = ["itemId"],
             onDelete = ForeignKey.SET_NULL
+        ),
+        ForeignKey(
+            entity = PurchaseRequestLine::class,
+            parentColumns = ["id"],
+            childColumns = ["requestLineId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("orderId"), Index("itemId")]
+    indices = [Index("orderId"), Index("itemId"), Index("requestLineId")]
 )
 data class PurchaseOrderLine(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -272,7 +324,8 @@ data class PurchaseOrderLine(
     val itemId: Long? = null,
     val itemName: String,
     val quantity: Int,
-    val ratePaise: Long
+    val ratePaise: Long,
+    val requestLineId: Long? = null
 )
 
 @Entity(
@@ -397,9 +450,19 @@ data class PurchaseInvoiceLine(
             parentColumns = ["id"],
             childColumns = ["vendorId"],
             onDelete = ForeignKey.RESTRICT
+        ),
+        ForeignKey(
+            entity = PurchaseRequest::class,
+            parentColumns = ["id"],
+            childColumns = ["requestId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("vendorId")]
+    indices = [
+        Index("vendorId"),
+        Index("requestId"),
+        Index(value = ["vendorId", "requestId"], unique = true)
+    ]
 )
 data class VendorQuote(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -409,7 +472,8 @@ data class VendorQuote(
     val deliveryChargesPaise: Long = 0,
     val discountPaise: Long = 0,
     val expectedDelivery: Long? = null,
-    val notes: String = ""
+    val notes: String = "",
+    val requestId: Long? = null
 )
 
 @Entity(
@@ -426,9 +490,15 @@ data class VendorQuote(
             parentColumns = ["id"],
             childColumns = ["itemId"],
             onDelete = ForeignKey.SET_NULL
+        ),
+        ForeignKey(
+            entity = PurchaseRequestLine::class,
+            parentColumns = ["id"],
+            childColumns = ["requestLineId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("quoteId"), Index("itemId")]
+    indices = [Index("quoteId"), Index("itemId"), Index("requestLineId")]
 )
 data class VendorQuoteLine(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -437,5 +507,7 @@ data class VendorQuoteLine(
     val itemName: String,
     val ratePaise: Long,
     val availableQty: Int = 0,
-    val notes: String = ""
+    val notes: String = "",
+    val requestLineId: Long? = null,
+    val availability: String = QuoteAvailability.QUOTED
 )

@@ -47,6 +47,11 @@
     <color name="text_accent_soft">@color/orange_700</color>
     <color name="balance_receivable">#2E7D32</color>
     <color name="balance_payable">#C62828</color>
+    <color name="chart_paid">#5C6BC0</color>
+    <color name="chart_accepted">#2E7D32</color>
+    <color name="chart_damaged">#F9A825</color>
+    <color name="chart_rejected">#C62828</color>
+    <color name="chart_line_fill">#66FFCC80</color>
     <color name="ripple_subtle">@color/orange_100</color>
     <color name="input_surface">#FFFFFF</color>
     <color name="input_stroke">@color/orange_200</color>

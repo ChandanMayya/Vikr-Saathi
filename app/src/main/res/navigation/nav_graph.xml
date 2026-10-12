@@ -73,6 +73,13 @@
             app:exitAnim="@anim/nav_fade_out"
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
+            android:id="@+id/action_dashboard_to_orders"
+            app:destination="@id/ordersFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
@@ -421,6 +428,37 @@
         tools:layout="@layout/fragment_purchasing">
         <argument
             android:name="vendorId"
+            android:defaultValue="0L"
+            app:argType="long" />
+        <argument
+            android:name="orderId"
+            android:defaultValue="0L"
+            app:argType="long" />
+        <argument
+            android:name="startAction"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/ordersFragment"
+        android:name="com.kex.vikrsaathi.ui.orders.OrdersFragment"
+        android:label="@string/orders"
+        tools:layout="@layout/fragment_orders" />
+
+    <fragment
+        android:id="@+id/purchaseRequestListFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.PurchaseRequestListFragment"
+        android:label="@string/purchase_requests"
+        tools:layout="@layout/fragment_purchase_requests" />
+
+    <fragment
+        android:id="@+id/purchaseRequestFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.PurchaseRequestFragment"
+        android:label="@string/purchase_requests"
+        tools:layout="@layout/fragment_purchase_request">
+        <argument
+            android:name="requestId"
             android:defaultValue="0L"
             app:argType="long" />
     </fragment>

@@ -18,7 +18,9 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
+import com.kex.vikrsaathi.data.model.analytics.VendorAnalytics
 import com.kex.vikrsaathi.databinding.FragmentAnalysisBinding
+import com.kex.vikrsaathi.domain.money.Money
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.AnalyticsDateRange
@@ -179,6 +181,7 @@ class AnalysisFragment : Fragment() {
                 String.format(Locale.getDefault(), "%.0f%%", dashboard.heldBills.completionRatePercent),
                 dashboard.heldBills.activeHeldNow
             )
+            bindVendor(dashboard.vendor, symbol)
         }
 
         viewModel.dateRange.observe(viewLifecycleOwner, ::syncDateRangeChips)
@@ -187,6 +190,66 @@ class AnalysisFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         viewModel.refresh()
+    }
+
+    private fun bindVendor(vendor: VendorAnalytics, symbol: String) {
+        val section = binding.vendorSection
+        section.root.isVisible = vendor.enabled
+        if (!vendor.enabled) return
+        section.textVendorPurchases.text = formatPaise(vendor.purchasesPaise, symbol)
+        section.textVendorPaid.text = formatPaise(vendor.paidPaise, symbol)
+        section.textVendorOutstanding.text = formatPaise(vendor.outstandingPaise, symbol)
+        section.textVendorOutstanding.setTextColor(
+            requireContext().getColor(
+                if (vendor.outstandingPaise > 0L) R.color.balance_payable else R.color.text_primary_dark
+            )
+        )
+        val showTrend = vendor.purchaseTrend.any { it.paise != 0L }
+        section.cardPurchaseTrend.isVisible = showTrend
+        if (showTrend) {
+            section.purchaseTrendChart.setSeries(
+                vendor.purchaseTrend.map { it.dayStartMillis },
+                vendor.purchaseTrend.map { Money.paiseToRupees(it.paise) }
+            )
+        }
+        val showSpend = vendor.spendByVendor.isNotEmpty()
+        section.cardSpendByVendor.isVisible = showSpend
+        if (showSpend) {
+            val values = vendor.spendByVendor.map { Money.paiseToRupees(it.paise) }
+            val maxValue = values.maxOrNull()?.let { kotlin.math.abs(it) }?.coerceAtLeast(1.0) ?: 1.0
+            section.spendByVendorChart.setItems(
+                vendor.spendByVendor.mapIndexed { index, row ->
+                    RankedBarItem(
+                        label = if (row.vendorId == null) getString(R.string.analysis_others) else row.name,
+                        barFraction = (kotlin.math.abs(values[index]) / maxValue).toFloat(),
+                        valueLabel = PriceCalculator.formatAmount(values[index], symbol)
+                    )
+                }
+            )
+        }
+        section.cardPayments.isVisible = vendor.showPaymentsChart
+        if (vendor.showPaymentsChart) {
+            section.paymentsChart.setSeries(
+                vendor.paymentsCompared.map { it.dayStartMillis },
+                vendor.paymentsCompared.map { Money.paiseToRupees(it.purchasesPaise) },
+                vendor.paymentsCompared.map { Money.paiseToRupees(it.paidPaise) }
+            )
+        }
+        val showDelivery = vendor.delivery.isNotEmpty()
+        section.cardDelivery.isVisible = showDelivery
+        if (showDelivery) {
+            section.deliveryChart.setItems(
+                vendor.delivery.map { row ->
+                    StackedQuantityBar(row.name, row.acceptedQty, row.damagedQty, row.rejectedQty)
+                }
+            )
+        }
+        section.textVendorPeriodEmpty.isVisible =
+            !showTrend && !showSpend && !vendor.showPaymentsChart && !showDelivery
+    }
+
+    private fun formatPaise(paise: Long, symbol: String): String {
+        return PriceCalculator.formatAmount(Money.paiseToRupees(paise), symbol)
     }
 
     private fun bindRankedChart(

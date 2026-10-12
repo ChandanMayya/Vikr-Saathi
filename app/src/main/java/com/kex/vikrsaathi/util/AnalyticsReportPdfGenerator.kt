@@ -6,7 +6,9 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import android.os.Environment
+import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.data.model.analytics.AnalyticsDashboard
+import com.kex.vikrsaathi.domain.money.Money
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -172,6 +174,42 @@ object AnalyticsReportPdfGenerator {
         drawLine("Held in period: ${dashboard.heldBills.heldInPeriod}")
         drawLine("Currently held: ${dashboard.heldBills.activeHeldNow}")
         drawLine("Completion rate: ${String.format(Locale.getDefault(), "%.0f%%", dashboard.heldBills.completionRatePercent)}")
+
+        if (dashboard.vendor.enabled) {
+            val vendor = dashboard.vendor
+            fun money(paise: Long) = PriceCalculator.formatAmount(Money.paiseToRupees(paise), currencySymbol)
+            drawSection("Vendor purchases")
+            drawLine("Purchases: ${money(vendor.purchasesPaise)}")
+            drawLine("Paid: ${money(vendor.paidPaise)}")
+            drawLine("Outstanding: ${money(vendor.outstandingPaise)}")
+            if (vendor.purchaseTrend.any { it.paise != 0L }) {
+                drawSection("Purchase trend")
+                vendor.purchaseTrend.filter { it.paise != 0L }.forEach { point ->
+                    drawLine("${dateFormat.format(Date(point.dayStartMillis))}: ${money(point.paise)}")
+                }
+            }
+            if (vendor.spendByVendor.isNotEmpty()) {
+                drawSection("Spend by vendor")
+                vendor.spendByVendor.forEach { row ->
+                    val name = if (row.vendorId == null) context.getString(R.string.analysis_others) else row.name
+                    drawLine("$name: ${money(row.paise)}")
+                }
+            }
+            if (vendor.showPaymentsChart) {
+                drawSection("Payments")
+                vendor.paymentsCompared.filter { it.purchasesPaise != 0L || it.paidPaise != 0L }.forEach { point ->
+                    drawLine(
+                        "${dateFormat.format(Date(point.dayStartMillis))}: purchases ${money(point.purchasesPaise)}, paid ${money(point.paidPaise)}"
+                    )
+                }
+            }
+            if (vendor.delivery.isNotEmpty()) {
+                drawSection("Delivery quality")
+                vendor.delivery.forEach { row ->
+                    drawLine("${row.name}: accepted ${row.acceptedQty}, damaged ${row.damagedQty}, rejected ${row.rejectedQty}")
+                }
+            }
+        }
 
         document.finishPage(page)
         val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: context.filesDir

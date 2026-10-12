@@ -227,6 +227,8 @@ class BackupManager(
             invoiceLines = database.purchaseDao().getAllInvoiceLines(),
             quotes = database.purchaseDao().getQuotes(),
             quoteLines = database.purchaseDao().getAllQuoteLines(),
+            requests = database.purchaseDao().getRequests(),
+            requestLines = database.purchaseDao().getAllRequestLines(),
             preferredVendorLinks = items.mapNotNull { item ->
                 item.preferredVendorId?.let { PreferredVendorLink(item.id, it) }
             }

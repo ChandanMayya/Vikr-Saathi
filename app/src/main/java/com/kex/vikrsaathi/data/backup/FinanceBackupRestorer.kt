@@ -249,26 +249,63 @@ class FinanceBackupRestorer(
     ) {
         fun vendor(legacy: Long?) = IdRemapper.resolve(legacy, vendorIds, presentVendorIds)
         fun item(legacy: Long?) = IdRemapper.resolve(legacy, itemIds, presentItemIds)
+        val requestIds = mutableMapOf<Long, Long>()
+        val requestLineIds = mutableMapOf<Long, Long>()
+        FinanceBackupCodec.purchaseRequests(root).forEach { legacy ->
+            val id = database.purchaseDao().insertRequest(legacy.copy(id = 0))
+            requestIds[legacy.id] = id
+        }
+        FinanceBackupCodec.purchaseRequestLines(root).forEach { legacy ->
+            val requestId = requestIds[legacy.requestId] ?: return@forEach
+            val id = database.purchaseDao().insertRequestLine(
+                legacy.copy(id = 0, requestId = requestId, itemId = item(legacy.itemId))
+            )
+            requestLineIds[legacy.id] = id
+        }
         FinanceBackupCodec.vendorQuotes(root).forEach { legacy ->
             val vendorId = vendor(legacy.vendorId) ?: return@forEach
-            val id = database.purchaseDao().insertQuote(legacy.copy(id = 0, vendorId = vendorId))
+            val requestId = legacy.requestId?.let { requestIds[it] }
+            if (legacy.requestId != null && requestId == null) {
+                errors.add("Purchase request ${legacy.requestId} was missing for a quote")
+                return@forEach
+            }
+            val id = database.purchaseDao().insertQuote(
+                legacy.copy(id = 0, vendorId = vendorId, requestId = requestId)
+            )
             quoteIds[legacy.id] = id
         }
         FinanceBackupCodec.vendorQuoteLines(root).forEach { legacy ->
             val quoteId = quoteIds[legacy.quoteId] ?: return@forEach
-            database.purchaseDao().insertQuoteLine(legacy.copy(id = 0, quoteId = quoteId, itemId = item(legacy.itemId)))
+            database.purchaseDao().insertQuoteLine(
+                legacy.copy(
+                    id = 0,
+                    quoteId = quoteId,
+                    itemId = item(legacy.itemId),
+                    requestLineId = legacy.requestLineId?.let { requestLineIds[it] }
+                )
+            )
         }
         FinanceBackupCodec.purchaseOrders(root).forEach { legacy ->
             val vendorId = vendor(legacy.vendorId) ?: return@forEach
             val id = database.purchaseDao().insertOrder(
-                legacy.copy(id = 0, vendorId = vendorId, quoteId = legacy.quoteId?.let { quoteIds[it] })
+                legacy.copy(
+                    id = 0,
+                    vendorId = vendorId,
+                    quoteId = legacy.quoteId?.let { quoteIds[it] },
+                    requestId = legacy.requestId?.let { requestIds[it] }
+                )
             )
             orderIds[legacy.id] = id
         }
         FinanceBackupCodec.purchaseOrderLines(root).forEach { legacy ->
             val orderId = orderIds[legacy.orderId] ?: return@forEach
             val id = database.purchaseDao().insertOrderLine(
-                legacy.copy(id = 0, orderId = orderId, itemId = item(legacy.itemId))
+                legacy.copy(
+                    id = 0,
+                    orderId = orderId,
+                    itemId = item(legacy.itemId),
+                    requestLineId = legacy.requestLineId?.let { requestLineIds[it] }
+                )
             )
             orderLineIds[legacy.id] = id
         }

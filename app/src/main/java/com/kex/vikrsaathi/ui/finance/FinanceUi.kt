@@ -67,6 +67,11 @@ object FinanceUi {
             FinanceError.QUOTE_LINE_REQUIRED -> R.string.payment_error_lines
             FinanceError.RECEIPT_QTY_INVALID -> R.string.payment_error_receipt
             FinanceError.INVOICE_TOTAL_MISMATCH -> R.string.payment_error_total
+            FinanceError.REQUEST_LINE_REQUIRED -> R.string.payment_error_request_lines
+            FinanceError.DUPLICATE_QUOTE -> R.string.payment_error_duplicate_quote
+            FinanceError.AWARD_EXCEEDS -> R.string.payment_error_award
+            FinanceError.REQUEST_NOT_EDITABLE -> R.string.payment_error_request_locked
+            FinanceError.INVALID_QUOTE -> R.string.payment_error_quote
             null -> R.string.payment_error_generic
         }
         return context.getString(res)

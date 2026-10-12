@@ -84,7 +84,12 @@ enum class FinanceError {
     CUSTOMER_HAS_LEDGER,
     QUOTE_LINE_REQUIRED,
     RECEIPT_QTY_INVALID,
-    INVOICE_TOTAL_MISMATCH
+    INVOICE_TOTAL_MISMATCH,
+    REQUEST_LINE_REQUIRED,
+    DUPLICATE_QUOTE,
+    AWARD_EXCEEDS,
+    REQUEST_NOT_EDITABLE,
+    INVALID_QUOTE
 }
 
 class FinanceException(val code: FinanceError) : IllegalArgumentException(code.name)

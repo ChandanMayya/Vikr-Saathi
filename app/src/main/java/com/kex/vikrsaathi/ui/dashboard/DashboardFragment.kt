@@ -100,6 +100,13 @@ class DashboardFragment : Fragment() {
             )
         }
 
+        viewModel.orderAttentionCount.observe(viewLifecycleOwner) { count ->
+            binding.textOrdersAttention.isVisible = count > 0
+            if (count > 0) {
+                binding.textOrdersAttention.text = getString(R.string.orders_need_attention, count)
+            }
+        }
+
         viewModel.lowStock.observe(viewLifecycleOwner) { summary ->
             if (summary.count == 0) {
                 binding.textLowStockSummary.text = getString(R.string.low_stock_empty)
@@ -135,6 +142,9 @@ class DashboardFragment : Fragment() {
         }
         binding.cardAnalysis.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_analysis)
+        }
+        binding.cardOrders.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_orders)
         }
         binding.cardLowStock.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_stock)
@@ -178,6 +188,19 @@ class DashboardFragment : Fragment() {
         }
         binding.textCustomerDues.isVisible = settings.customerBalanceEnabled
         binding.textVendorPayables.isVisible = vendorsEnabled
+        binding.cardOrders.isVisible = vendorsEnabled
+        binding.rowTools.columnCount = if (vendorsEnabled) 3 else 2
+        val toolHeight = if (vendorsEnabled) dp(108) else dp(92)
+        val toolIcon = if (vendorsEnabled) dp(28) else dp(36)
+        listOf(binding.cardStock, binding.cardAnalysis, binding.cardOrders).forEach { card ->
+            card.layoutParams = card.layoutParams.apply { height = toolHeight }
+        }
+        listOf(binding.iconStock, binding.iconAnalysis, binding.iconOrders).forEach { icon ->
+            icon.layoutParams = icon.layoutParams.apply {
+                width = toolIcon
+                height = toolIcon
+            }
+        }
     }
 
     private fun dp(value: Int): Int {

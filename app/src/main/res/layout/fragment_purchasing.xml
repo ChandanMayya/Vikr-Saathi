@@ -16,7 +16,15 @@
             android:textAppearance="?attr/textAppearanceBodySmall" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonPurchaseRequests"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/purchase_requests" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonNewOrder"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/new_purchase_order" />

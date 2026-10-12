@@ -500,3 +500,179 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         db.execSQL("CREATE INDEX IF NOT EXISTS index_vendor_quote_lines_itemId ON vendor_quote_lines(itemId)")
     }
 }
+
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS purchase_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                requestNumber TEXT NOT NULL,
+                createdAt INTEGER NOT NULL,
+                requiredBy INTEGER,
+                status TEXT NOT NULL,
+                notes TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS purchase_request_lines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                requestId INTEGER NOT NULL,
+                itemId INTEGER,
+                itemName TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                notes TEXT NOT NULL,
+                FOREIGN KEY(requestId) REFERENCES purchase_requests(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY(itemId) REFERENCES items(id) ON UPDATE NO ACTION ON DELETE SET NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_request_lines_requestId ON purchase_request_lines(requestId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_request_lines_itemId ON purchase_request_lines(itemId)")
+
+        // Recreate quote and order tables. minSdk 24 cannot ADD COLUMN with a foreign key.
+        db.execSQL(
+            """
+            CREATE TABLE vendor_quotes_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                vendorId INTEGER NOT NULL,
+                quoteDate INTEGER NOT NULL,
+                validUntil INTEGER,
+                deliveryChargesPaise INTEGER NOT NULL,
+                discountPaise INTEGER NOT NULL,
+                expectedDelivery INTEGER,
+                notes TEXT NOT NULL,
+                requestId INTEGER,
+                FOREIGN KEY(vendorId) REFERENCES vendors(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(requestId) REFERENCES purchase_requests(id) ON UPDATE NO ACTION ON DELETE SET NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO vendor_quotes_new (
+                id, vendorId, quoteDate, validUntil, deliveryChargesPaise, discountPaise, expectedDelivery, notes, requestId
+            )
+            SELECT id, vendorId, quoteDate, validUntil, deliveryChargesPaise, discountPaise, expectedDelivery, notes, NULL
+            FROM vendor_quotes
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE vendor_quotes")
+        db.execSQL("ALTER TABLE vendor_quotes_new RENAME TO vendor_quotes")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_vendor_quotes_vendorId ON vendor_quotes(vendorId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_vendor_quotes_requestId ON vendor_quotes(requestId)")
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_vendor_quotes_vendorId_requestId ON vendor_quotes(vendorId, requestId)"
+        )
+        db.execSQL(
+            "INSERT OR REPLACE INTO sqlite_sequence(name, seq) SELECT 'vendor_quotes', IFNULL(MAX(id), 0) FROM vendor_quotes"
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE vendor_quote_lines_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                quoteId INTEGER NOT NULL,
+                itemId INTEGER,
+                itemName TEXT NOT NULL,
+                ratePaise INTEGER NOT NULL,
+                availableQty INTEGER NOT NULL,
+                notes TEXT NOT NULL,
+                requestLineId INTEGER,
+                availability TEXT NOT NULL,
+                FOREIGN KEY(quoteId) REFERENCES vendor_quotes(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY(itemId) REFERENCES items(id) ON UPDATE NO ACTION ON DELETE SET NULL,
+                FOREIGN KEY(requestLineId) REFERENCES purchase_request_lines(id) ON UPDATE NO ACTION ON DELETE SET NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO vendor_quote_lines_new (
+                id, quoteId, itemId, itemName, ratePaise, availableQty, notes, requestLineId, availability
+            )
+            SELECT id, quoteId, itemId, itemName, ratePaise, availableQty, notes, NULL, 'QUOTED'
+            FROM vendor_quote_lines
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE vendor_quote_lines")
+        db.execSQL("ALTER TABLE vendor_quote_lines_new RENAME TO vendor_quote_lines")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_vendor_quote_lines_quoteId ON vendor_quote_lines(quoteId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_vendor_quote_lines_itemId ON vendor_quote_lines(itemId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_vendor_quote_lines_requestLineId ON vendor_quote_lines(requestLineId)")
+        db.execSQL(
+            "INSERT OR REPLACE INTO sqlite_sequence(name, seq) SELECT 'vendor_quote_lines', IFNULL(MAX(id), 0) FROM vendor_quote_lines"
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE purchase_orders_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                vendorId INTEGER NOT NULL,
+                orderNumber TEXT NOT NULL,
+                quoteId INTEGER,
+                expectedDelivery INTEGER,
+                notes TEXT NOT NULL,
+                status TEXT NOT NULL,
+                createdAt INTEGER NOT NULL,
+                requestId INTEGER,
+                FOREIGN KEY(vendorId) REFERENCES vendors(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(requestId) REFERENCES purchase_requests(id) ON UPDATE NO ACTION ON DELETE SET NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO purchase_orders_new (
+                id, vendorId, orderNumber, quoteId, expectedDelivery, notes, status, createdAt, requestId
+            )
+            SELECT id, vendorId, orderNumber, quoteId, expectedDelivery, notes, status, createdAt, NULL
+            FROM purchase_orders
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE purchase_orders")
+        db.execSQL("ALTER TABLE purchase_orders_new RENAME TO purchase_orders")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_orders_vendorId ON purchase_orders(vendorId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_orders_quoteId ON purchase_orders(quoteId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_orders_requestId ON purchase_orders(requestId)")
+        db.execSQL(
+            "INSERT OR REPLACE INTO sqlite_sequence(name, seq) SELECT 'purchase_orders', IFNULL(MAX(id), 0) FROM purchase_orders"
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE purchase_order_lines_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                orderId INTEGER NOT NULL,
+                itemId INTEGER,
+                itemName TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                ratePaise INTEGER NOT NULL,
+                requestLineId INTEGER,
+                FOREIGN KEY(orderId) REFERENCES purchase_orders(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY(itemId) REFERENCES items(id) ON UPDATE NO ACTION ON DELETE SET NULL,
+                FOREIGN KEY(requestLineId) REFERENCES purchase_request_lines(id) ON UPDATE NO ACTION ON DELETE SET NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO purchase_order_lines_new (
+                id, orderId, itemId, itemName, quantity, ratePaise, requestLineId
+            )
+            SELECT id, orderId, itemId, itemName, quantity, ratePaise, NULL
+            FROM purchase_order_lines
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE purchase_order_lines")
+        db.execSQL("ALTER TABLE purchase_order_lines_new RENAME TO purchase_order_lines")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_order_lines_orderId ON purchase_order_lines(orderId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_order_lines_itemId ON purchase_order_lines(itemId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_purchase_order_lines_requestLineId ON purchase_order_lines(requestLineId)")
+        db.execSQL(
+            "INSERT OR REPLACE INTO sqlite_sequence(name, seq) SELECT 'purchase_order_lines', IFNULL(MAX(id), 0) FROM purchase_order_lines"
+        )
+    }
+}

@@ -13,6 +13,8 @@ import com.kex.vikrsaathi.data.entity.PurchaseInvoice
 import com.kex.vikrsaathi.data.entity.PurchaseInvoiceLine
 import com.kex.vikrsaathi.data.entity.PurchaseOrder
 import com.kex.vikrsaathi.data.entity.PurchaseOrderLine
+import com.kex.vikrsaathi.data.entity.PurchaseRequest
+import com.kex.vikrsaathi.data.entity.PurchaseRequestLine
 import com.kex.vikrsaathi.data.entity.SalesReturn
 import com.kex.vikrsaathi.data.entity.SalesReturnLine
 import com.kex.vikrsaathi.data.entity.Vendor
@@ -332,4 +334,48 @@ interface PurchaseDao {
 
     @Query("DELETE FROM vendor_quotes")
     suspend fun deleteAllQuotes()
+
+    @Insert
+    suspend fun insertRequest(request: PurchaseRequest): Long
+
+    @androidx.room.Update
+    suspend fun updateRequest(request: PurchaseRequest)
+
+    @Query("SELECT * FROM purchase_requests ORDER BY createdAt DESC")
+    suspend fun getRequests(): List<PurchaseRequest>
+
+    @Query("SELECT * FROM purchase_requests WHERE id = :id")
+    suspend fun getRequest(id: Long): PurchaseRequest?
+
+    @Insert
+    suspend fun insertRequestLine(line: PurchaseRequestLine): Long
+
+    @Query("SELECT * FROM purchase_request_lines WHERE requestId = :requestId ORDER BY id ASC")
+    suspend fun getRequestLines(requestId: Long): List<PurchaseRequestLine>
+
+    @Query("SELECT * FROM purchase_request_lines")
+    suspend fun getAllRequestLines(): List<PurchaseRequestLine>
+
+    @Query("DELETE FROM purchase_request_lines WHERE requestId = :requestId")
+    suspend fun deleteRequestLines(requestId: Long)
+
+    @Query("DELETE FROM purchase_request_lines")
+    suspend fun deleteAllRequestLines()
+
+    @Query("DELETE FROM purchase_requests")
+    suspend fun deleteAllRequests()
+
+    @Query("SELECT * FROM vendor_quotes WHERE requestId = :requestId ORDER BY quoteDate ASC")
+    suspend fun quotesForRequest(requestId: Long): List<VendorQuote>
+
+    @Query("SELECT * FROM vendor_quotes WHERE vendorId = :vendorId AND requestId = :requestId LIMIT 1")
+    suspend fun quoteForVendorRequest(vendorId: Long, requestId: Long): VendorQuote?
+
+    @Query("SELECT * FROM purchase_orders WHERE requestId = :requestId ORDER BY createdAt ASC")
+    suspend fun ordersForRequest(requestId: Long): List<PurchaseOrder>
+
+    @Query(
+        "SELECT * FROM purchase_order_lines WHERE orderId IN (SELECT id FROM purchase_orders WHERE requestId = :requestId)"
+    )
+    suspend fun orderLinesForRequest(requestId: Long): List<PurchaseOrderLine>
 }

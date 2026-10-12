@@ -678,6 +678,12 @@
                             android:textColor="@color/text_secondary_dark" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
+
+                <include
+                    android:id="@+id/vendorSection"
+                    layout="@layout/layout_analysis_vendors"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
             </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

@@ -43,19 +43,33 @@ class AnalysisViewModel(
         refresh()
     }
 
+    private fun hasExportableData(dashboard: AnalyticsDashboard): Boolean {
+        if (dashboard.summary.billCount > 0 || dashboard.inventoryValue.itemCount > 0) return true
+        val vendor = dashboard.vendor
+        return vendor.enabled && (
+            vendor.purchasesPaise != 0L ||
+                vendor.paidPaise != 0L ||
+                vendor.outstandingPaise != 0L ||
+                vendor.delivery.isNotEmpty()
+            )
+    }
+
     fun refresh() {
         val range = _dateRange.value ?: AnalyticsDateRange.LAST_7_DAYS
         viewModelScope.launch {
             _loading.value = true
             _currencySymbol.value = settingsRepository.currencySymbol
-            _dashboard.value = analyticsRepository.loadDashboard(range)
+            _dashboard.value = analyticsRepository.loadDashboard(
+                range,
+                settingsRepository.vendorManagementEnabled
+            )
             _loading.value = false
         }
     }
 
     fun exportPdf(context: Context, rangeLabel: String, onResult: (File?) -> Unit) {
         val dashboard = _dashboard.value ?: AnalyticsDashboard.EMPTY
-        if (dashboard.summary.billCount == 0 && dashboard.inventoryValue.itemCount == 0) {
+        if (!hasExportableData(dashboard)) {
             onResult(null)
             return
         }
@@ -75,7 +89,7 @@ class AnalysisViewModel(
 
     fun exportExcel(context: Context, rangeLabel: String, onResult: (File?) -> Unit) {
         val dashboard = _dashboard.value ?: AnalyticsDashboard.EMPTY
-        if (dashboard.summary.billCount == 0 && dashboard.inventoryValue.itemCount == 0) {
+        if (!hasExportableData(dashboard)) {
             onResult(null)
             return
         }

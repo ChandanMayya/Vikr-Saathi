@@ -11,6 +11,7 @@ import com.kex.vikrsaathi.ui.bills.BillsHistoryViewModel
 import com.kex.vikrsaathi.ui.bills.ExcelUploadViewModel
 import com.kex.vikrsaathi.ui.customer.CustomerViewModel
 import com.kex.vikrsaathi.ui.dashboard.DashboardViewModel
+import com.kex.vikrsaathi.ui.orders.OrdersViewModel
 import com.kex.vikrsaathi.ui.item.InventoryImportViewModel
 import com.kex.vikrsaathi.ui.item.ItemViewModel
 import com.kex.vikrsaathi.ui.settings.SettingsViewModel
@@ -33,6 +34,8 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.customerFinanceRepository,
                     app.vendorRepository
                 ) as T
+            modelClass.isAssignableFrom(OrdersViewModel::class.java) ->
+                OrdersViewModel(app.vendorRepository) as T
             modelClass.isAssignableFrom(AnalysisViewModel::class.java) ->
                 AnalysisViewModel(
                     app.analyticsRepository,

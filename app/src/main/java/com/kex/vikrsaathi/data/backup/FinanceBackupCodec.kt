@@ -9,6 +9,8 @@ import com.kex.vikrsaathi.data.entity.PurchaseInvoice
 import com.kex.vikrsaathi.data.entity.PurchaseInvoiceLine
 import com.kex.vikrsaathi.data.entity.PurchaseOrder
 import com.kex.vikrsaathi.data.entity.PurchaseOrderLine
+import com.kex.vikrsaathi.data.entity.PurchaseRequest
+import com.kex.vikrsaathi.data.entity.PurchaseRequestLine
 import com.kex.vikrsaathi.data.entity.SalesReturn
 import com.kex.vikrsaathi.data.entity.SalesReturnLine
 import com.kex.vikrsaathi.data.entity.Vendor
@@ -42,7 +44,9 @@ data class FinanceSnapshot(
     val invoiceLines: List<PurchaseInvoiceLine> = emptyList(),
     val quotes: List<VendorQuote> = emptyList(),
     val quoteLines: List<VendorQuoteLine> = emptyList(),
-    val preferredVendorLinks: List<PreferredVendorLink> = emptyList()
+    val preferredVendorLinks: List<PreferredVendorLink> = emptyList(),
+    val requests: List<PurchaseRequest> = emptyList(),
+    val requestLines: List<PurchaseRequestLine> = emptyList()
 )
 
 data class BillPaymentBackup(
@@ -97,6 +101,7 @@ object FinanceBackupCodec {
             snapshot.goodsReceipts.isNotEmpty() ||
             snapshot.invoices.isNotEmpty() ||
             snapshot.quotes.isNotEmpty() ||
+            snapshot.requests.isNotEmpty() ||
             snapshot.vendorLedger.isNotEmpty()
         if (options.includeVendors && hasVendorData) {
             root.put("vendors", vendors(snapshot.vendors))
@@ -109,6 +114,8 @@ object FinanceBackupCodec {
             root.put("goodsReceiptLines", receiptLines(snapshot.goodsReceiptLines))
             root.put("purchaseInvoices", invoices(snapshot.invoices))
             root.put("purchaseInvoiceLines", invoiceLines(snapshot.invoiceLines))
+            root.put("purchaseRequests", requests(snapshot.requests))
+            root.put("purchaseRequestLines", requestLines(snapshot.requestLines))
             root.put("vendorQuotes", quotes(snapshot.quotes))
             root.put("vendorQuoteLines", quoteLines(snapshot.quoteLines))
             root.put("preferredVendorLinks", links(snapshot.preferredVendorLinks))
@@ -217,7 +224,8 @@ object FinanceBackupCodec {
             expectedDelivery = optionalLong(obj, "expectedDelivery"),
             notes = obj.optString("notes"),
             status = obj.optString("status", "ORDERED"),
-            createdAt = obj.optLong("createdAt")
+            createdAt = obj.optLong("createdAt"),
+            requestId = optionalLong(obj, "requestLegacyId")
         )
     }
 
@@ -228,7 +236,8 @@ object FinanceBackupCodec {
             itemId = optionalLong(obj, "itemLegacyId"),
             itemName = obj.optString("itemName"),
             quantity = obj.optInt("quantity"),
-            ratePaise = obj.optLong("ratePaise")
+            ratePaise = obj.optLong("ratePaise"),
+            requestLineId = optionalLong(obj, "requestLineLegacyId")
         )
     }
 
@@ -297,7 +306,8 @@ object FinanceBackupCodec {
             deliveryChargesPaise = obj.optLong("deliveryChargesPaise"),
             discountPaise = obj.optLong("discountPaise"),
             expectedDelivery = optionalLong(obj, "expectedDelivery"),
-            notes = obj.optString("notes")
+            notes = obj.optString("notes"),
+            requestId = optionalLong(obj, "requestLegacyId")
         )
     }
 
@@ -309,6 +319,30 @@ object FinanceBackupCodec {
             itemName = obj.optString("itemName"),
             ratePaise = obj.optLong("ratePaise"),
             availableQty = obj.optInt("availableQty"),
+            notes = obj.optString("notes"),
+            requestLineId = optionalLong(obj, "requestLineLegacyId"),
+            availability = obj.optString("availability", "QUOTED")
+        )
+    }
+
+    fun purchaseRequests(root: JSONObject) = array(root, "purchaseRequests").map { obj ->
+        PurchaseRequest(
+            id = obj.getLong("legacyId"),
+            requestNumber = obj.optString("requestNumber"),
+            createdAt = obj.optLong("createdAt"),
+            requiredBy = optionalLong(obj, "requiredBy"),
+            status = obj.optString("status", "DRAFT"),
+            notes = obj.optString("notes")
+        )
+    }
+
+    fun purchaseRequestLines(root: JSONObject) = array(root, "purchaseRequestLines").map { obj ->
+        PurchaseRequestLine(
+            id = obj.getLong("legacyId"),
+            requestId = obj.getLong("requestLegacyId"),
+            itemId = optionalLong(obj, "itemLegacyId"),
+            itemName = obj.optString("itemName"),
+            quantity = obj.optInt("quantity"),
             notes = obj.optString("notes")
         )
     }
@@ -502,6 +536,7 @@ object FinanceBackupCodec {
                 put("notes", it.notes)
                 put("status", it.status)
                 put("createdAt", it.createdAt)
+                it.requestId?.let { id -> put("requestLegacyId", id) }
             })
         }
     }
@@ -515,6 +550,7 @@ object FinanceBackupCodec {
                 put("itemName", it.itemName)
                 put("quantity", it.quantity)
                 put("ratePaise", it.ratePaise)
+                it.requestLineId?.let { id -> put("requestLineLegacyId", id) }
             })
         }
     }
@@ -594,6 +630,7 @@ object FinanceBackupCodec {
                 put("discountPaise", it.discountPaise)
                 it.expectedDelivery?.let { date -> put("expectedDelivery", date) }
                 put("notes", it.notes)
+                it.requestId?.let { id -> put("requestLegacyId", id) }
             })
         }
     }
@@ -607,6 +644,34 @@ object FinanceBackupCodec {
                 put("itemName", it.itemName)
                 put("ratePaise", it.ratePaise)
                 put("availableQty", it.availableQty)
+                put("notes", it.notes)
+                it.requestLineId?.let { id -> put("requestLineLegacyId", id) }
+                put("availability", it.availability)
+            })
+        }
+    }
+
+    private fun requests(list: List<PurchaseRequest>) = JSONArray().apply {
+        list.forEach {
+            put(JSONObject().apply {
+                put("legacyId", it.id)
+                put("requestNumber", it.requestNumber)
+                put("createdAt", it.createdAt)
+                it.requiredBy?.let { date -> put("requiredBy", date) }
+                put("status", it.status)
+                put("notes", it.notes)
+            })
+        }
+    }
+
+    private fun requestLines(list: List<PurchaseRequestLine>) = JSONArray().apply {
+        list.forEach {
+            put(JSONObject().apply {
+                put("legacyId", it.id)
+                put("requestLegacyId", it.requestId)
+                it.itemId?.let { id -> put("itemLegacyId", id) }
+                put("itemName", it.itemName)
+                put("quantity", it.quantity)
                 put("notes", it.notes)
             })
         }

@@ -2,7 +2,9 @@ package com.kex.vikrsaathi.util
 
 import android.content.Context
 import android.os.Environment
+import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.data.model.analytics.AnalyticsDashboard
+import com.kex.vikrsaathi.domain.money.Money
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -122,6 +124,50 @@ object AnalyticsReportExcelExporter {
             "Completion rate",
             String.format(Locale.getDefault(), "%.0f%%", dashboard.heldBills.completionRatePercent)
         )
+        rows.add(emptyList())
+
+        if (dashboard.vendor.enabled) {
+            val vendor = dashboard.vendor
+            fun money(paise: Long) = PriceCalculator.formatAmount(Money.paiseToRupees(paise), currencySymbol)
+            textRow("Vendor purchases")
+            textRow("Purchases", money(vendor.purchasesPaise))
+            textRow("Paid", money(vendor.paidPaise))
+            textRow("Outstanding", money(vendor.outstandingPaise))
+            rows.add(emptyList())
+            textRow("Purchase trend", "Date", "Purchases")
+            vendor.purchaseTrend.filter { it.paise != 0L }.forEach { point ->
+                textRow(dateFormat.format(Date(point.dayStartMillis)), money(point.paise))
+            }
+            rows.add(emptyList())
+            textRow("Spend by vendor", "Vendor", "Purchases")
+            vendor.spendByVendor.forEach { row ->
+                val name = if (row.vendorId == null) context.getString(R.string.analysis_others) else row.name
+                textRow(name, money(row.paise))
+            }
+            rows.add(emptyList())
+            if (vendor.showPaymentsChart) {
+                textRow("Payments", "Date", "Purchases", "Paid")
+                vendor.paymentsCompared.filter { it.purchasesPaise != 0L || it.paidPaise != 0L }.forEach { point ->
+                    textRow(
+                        dateFormat.format(Date(point.dayStartMillis)),
+                        money(point.purchasesPaise),
+                        money(point.paidPaise)
+                    )
+                }
+                rows.add(emptyList())
+            }
+            if (vendor.delivery.isNotEmpty()) {
+                textRow("Delivery quality", "Vendor", "Accepted", "Damaged", "Rejected")
+                vendor.delivery.forEach { row ->
+                    textRow(
+                        row.name,
+                        row.acceptedQty.toString(),
+                        row.damagedQty.toString(),
+                        row.rejectedQty.toString()
+                    )
+                }
+            }
+        }
 
         val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: context.filesDir
         val file = File(dir, "Analysis_Report_${System.currentTimeMillis()}.xlsx")

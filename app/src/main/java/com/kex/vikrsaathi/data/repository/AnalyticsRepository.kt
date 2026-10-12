@@ -3,6 +3,7 @@ package com.kex.vikrsaathi.data.repository
 import com.kex.vikrsaathi.data.dao.BillDao
 import com.kex.vikrsaathi.data.dao.BillDraftDao
 import com.kex.vikrsaathi.data.dao.ItemDao
+import com.kex.vikrsaathi.data.entity.VendorLedgerEntry
 import com.kex.vikrsaathi.data.model.analytics.AnalyticsDashboard
 import com.kex.vikrsaathi.data.model.analytics.AnalyticsSummary
 import com.kex.vikrsaathi.data.model.analytics.BillTotalRow
@@ -13,6 +14,8 @@ import com.kex.vikrsaathi.data.model.analytics.HeldBillSummary
 import com.kex.vikrsaathi.data.model.analytics.InventoryValueSummary
 import com.kex.vikrsaathi.data.model.analytics.PeakHourPoint
 import com.kex.vikrsaathi.data.model.analytics.SalesTrendPoint
+import com.kex.vikrsaathi.data.model.analytics.VendorAnalytics
+import com.kex.vikrsaathi.domain.finance.LedgerRow
 import com.kex.vikrsaathi.util.AnalyticsDateRange
 import com.kex.vikrsaathi.util.DayRange
 import java.util.Calendar
@@ -20,10 +23,14 @@ import java.util.Calendar
 class AnalyticsRepository(
     private val billDao: BillDao,
     private val itemDao: ItemDao,
-    private val billDraftDao: BillDraftDao
+    private val billDraftDao: BillDraftDao,
+    private val vendorRepository: VendorRepository
 ) {
 
-    suspend fun loadDashboard(range: AnalyticsDateRange): AnalyticsDashboard {
+    suspend fun loadDashboard(
+        range: AnalyticsDateRange,
+        vendorManagementEnabled: Boolean = false
+    ): AnalyticsDashboard {
         val (start, end) = DayRange.analyticsRange(range)
         val totalSales = billDao.getTotalSalesBetween(start, end)
         val billCount = billDao.getBillCountBetween(start, end)
@@ -70,7 +77,35 @@ class AnalyticsRepository(
                 heldInPeriod = heldInPeriod,
                 finalizedInPeriod = billCount,
                 activeHeldNow = billDraftDao.countAllHeld()
+            ),
+            vendor = if (vendorManagementEnabled) loadVendor(start, end) else VendorAnalytics.DISABLED
+        )
+    }
+
+    private suspend fun loadVendor(startInclusive: Long, endExclusive: Long): VendorAnalytics {
+        val names = vendorRepository.getAll().associate { it.id to it.name }
+        val receiptsById = vendorRepository.receipts().associateBy { it.id }
+        val receiptLines = vendorRepository.allReceiptLines().mapNotNull { line ->
+            val receipt = receiptsById[line.receiptId] ?: return@mapNotNull null
+            VendorAnalyticsMath.ReceiptQty(
+                vendorId = receipt.vendorId,
+                receivedAt = receipt.receivedAt,
+                receivedQty = line.receivedQty,
+                acceptedQty = line.acceptedQty,
+                damagedQty = line.damagedQty,
+                rejectedQty = line.rejectedQty
             )
+        }
+        return VendorAnalyticsMath.compute(
+            startInclusive = startInclusive,
+            endExclusive = endExclusive,
+            invoices = vendorRepository.invoices().map {
+                VendorAnalyticsMath.InvoiceAmount(it.vendorId, it.invoiceDate, it.totalPaise)
+            },
+            ledger = vendorRepository.allLedger().map { it.toLedgerRow() },
+            receipts = receiptLines,
+            vendorNames = names,
+            outstandingPaise = vendorRepository.totalPayablePaise()
         )
     }
 
@@ -142,6 +177,21 @@ class AnalyticsRepository(
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
     }
+
+    private fun VendorLedgerEntry.toLedgerRow(): LedgerRow = LedgerRow(
+        id = id,
+        partyId = vendorId,
+        entryType = entryType,
+        amountPaise = amountPaise,
+        occurredAt = occurredAt,
+        reversesEntryId = reversesEntryId,
+        billId = invoiceId,
+        referenceType = referenceType,
+        referenceId = referenceId,
+        method = method,
+        note = note,
+        reason = reason
+    )
 
     companion object {
         private val DAY_OF_WEEK_ORDER = listOf(

@@ -73,7 +73,8 @@ class VikrSaathiApp : Application() {
         AnalyticsRepository(
             database.billDao(),
             database.itemDao(),
-            database.billDraftDao()
+            database.billDraftDao(),
+            vendorRepository
         )
     }
     val billDraftRepository by lazy { BillDraftRepository(database.billDraftDao()) }

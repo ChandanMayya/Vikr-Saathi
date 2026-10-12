@@ -49,6 +49,9 @@ class DashboardViewModel(
     private val _vendorPayablesPaise = MutableLiveData(0L)
     val vendorPayablesPaise: LiveData<Long> = _vendorPayablesPaise
 
+    private val _orderAttentionCount = MutableLiveData(0)
+    val orderAttentionCount: LiveData<Int> = _orderAttentionCount
+
     private val _loading = MutableLiveData(false)
     val loading: LiveData<Boolean> = _loading
 
@@ -70,6 +73,9 @@ class DashboardViewModel(
             _vendorPayablesPaise.value = if (settingsRepository.vendorManagementEnabled) {
                 vendorRepository.totalPayablePaise()
             } else 0L
+            _orderAttentionCount.value = if (settingsRepository.vendorManagementEnabled) {
+                vendorRepository.purchasingAttentionCount()
+            } else 0
             _loading.value = false
         }
     }

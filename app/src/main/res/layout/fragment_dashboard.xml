@@ -369,6 +369,7 @@
         </GridLayout>
 
         <GridLayout
+            android:id="@+id/rowTools"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:columnCount="2"
@@ -390,6 +391,7 @@
                     android:padding="8dp">
 
                     <ImageView
+                        android:id="@+id/iconStock"
                         style="@style/VikrSaathiDashboardCardIcon"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_dashboard_stock" />
@@ -416,6 +418,7 @@
                     android:padding="8dp">
 
                     <ImageView
+                        android:id="@+id/iconAnalysis"
                         style="@style/VikrSaathiDashboardCardIcon"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_dashboard_analysis" />
@@ -423,6 +426,45 @@
                     <TextView
                         style="@style/VikrSaathiDashboardCardLabel"
                         android:text="@string/analysis" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardOrders"
+                style="@style/VikrSaathiDashboardCard"
+                android:layout_width="0dp"
+                android:layout_height="92dp"
+                android:layout_columnWeight="1"
+                android:visibility="gone"
+                app:cardBackgroundColor="@color/orange_600">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="8dp">
+
+                    <ImageView
+                        android:id="@+id/iconOrders"
+                        style="@style/VikrSaathiDashboardCardIcon"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_dashboard_orders" />
+
+                    <TextView
+                        style="@style/VikrSaathiDashboardCardLabel"
+                        android:gravity="center"
+                        android:text="@string/orders" />
+
+                    <TextView
+                        android:id="@+id/textOrdersAttention"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:textAppearance="?attr/textAppearanceLabelSmall"
+                        android:textColor="@color/orange_on_primary"
+                        android:visibility="gone" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
