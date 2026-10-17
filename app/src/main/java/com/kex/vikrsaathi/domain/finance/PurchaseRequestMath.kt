@@ -22,7 +22,9 @@ data class RequestQuoteDraft(
     val requestLineId: Long,
     val availability: String,
     val ratePaise: Long,
-    val availableQty: Int
+    val availableQty: Int,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class AwardLineState(
@@ -48,7 +50,9 @@ data class LineOffer(
     val ratePaise: Long,
     val availableQty: Int,
     val itemId: Long?,
-    val itemName: String
+    val itemName: String,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class AwardSelection(
@@ -62,7 +66,9 @@ data class PlannedOrderLine(
     val itemId: Long?,
     val itemName: String,
     val quantity: Int,
-    val ratePaise: Long
+    val ratePaise: Long,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class PlannedVendorOrder(
@@ -93,7 +99,12 @@ data class ComparisonCell(
     val state: OfferState,
     val ratePaise: Long?,
     val availableQty: Int?,
-    val lowest: Boolean
+    val lowest: Boolean,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1,
+    val perBasePaise: Long? = null,
+    val packagesNeeded: Int? = null,
+    val excessBase: Int? = null
 )
 
 data class MaterialComparisonRow(
@@ -101,7 +112,11 @@ data class MaterialComparisonRow(
     val itemName: String,
     val requestedQty: Int,
     val notes: String,
-    val cells: List<ComparisonCell>
+    val cells: List<ComparisonCell>,
+    val baseUnit: String = "",
+    val enteredQty: Int = 0,
+    val orderUnit: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class VendorQuoteSummary(
@@ -122,7 +137,11 @@ data class ComparedRequestLine(
     val requestLineId: Long,
     val itemName: String,
     val requestedQty: Int,
-    val notes: String
+    val notes: String,
+    val baseUnit: String = "",
+    val enteredQty: Int = 0,
+    val orderUnit: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 object PurchaseRequestMath {
@@ -151,6 +170,7 @@ object PurchaseRequestMath {
             when (line.availability) {
                 QuoteAvailability.QUOTED -> {
                     if (line.ratePaise < 0L || line.availableQty <= 0) return FinanceError.INVALID_QUOTE
+                    PackMath.validateTransaction(line.unitName, line.unitsPerBundle)?.let { return it }
                 }
                 QuoteAvailability.UNAVAILABLE -> Unit
                 else -> return FinanceError.INVALID_QUOTE
@@ -207,11 +227,18 @@ object PurchaseRequestMath {
             if (offer.availability != QuoteAvailability.QUOTED) {
                 return AwardPlan.Rejected(FinanceError.INVALID_QUOTE)
             }
+            PackMath.validateTransaction(offer.unitName, offer.unitsPerBundle)?.let {
+                return AwardPlan.Rejected(it)
+            }
+            val base = PackMath.toBase(selection.quantity, offer.unitsPerBundle)
+                ?: return AwardPlan.Rejected(FinanceError.INVALID_PACK)
             val open = remaining(line.requestedQty, line.awardedQty + (added[line.requestLineId] ?: 0))
-            if (selection.quantity > open || selection.quantity > offer.availableQty) {
+            if (selection.quantity > offer.availableQty || base > open) {
                 return AwardPlan.Rejected(FinanceError.AWARD_EXCEEDS)
             }
-            added[line.requestLineId] = (added[line.requestLineId] ?: 0) + selection.quantity
+            val awardedBase = (added[line.requestLineId] ?: 0).toLong() + base
+            if (awardedBase > Int.MAX_VALUE) return AwardPlan.Rejected(FinanceError.INVALID_PACK)
+            added[line.requestLineId] = awardedBase.toInt()
             chosen += Triple(quote, offer, selection.quantity)
         }
         val orders = chosen.groupBy { it.first.vendorId }.map { (_, rows) ->
@@ -230,7 +257,9 @@ object PurchaseRequestMath {
                         itemId = offer.itemId,
                         itemName = offer.itemName,
                         quantity = quantity,
-                        ratePaise = offer.ratePaise
+                        ratePaise = offer.ratePaise,
+                        unitName = offer.unitName,
+                        unitsPerBundle = offer.unitsPerBundle
                     )
                 }
             )
@@ -253,13 +282,23 @@ object PurchaseRequestMath {
             val cells = quotes.map { quote ->
                 val matches = offers.filter { it.quoteId == quote.quoteId && it.requestLineId == line.requestLineId }
                 val offer = matches.firstOrNull { it.availability == QuoteAvailability.QUOTED } ?: matches.firstOrNull()
+                val pack = if (offer?.availability == QuoteAvailability.QUOTED) {
+                    PackMath.coverage(line.requestedQty, offer.availableQty, offer.unitsPerBundle)
+                } else {
+                    null
+                }
                 when (offer?.availability) {
                     QuoteAvailability.QUOTED -> ComparisonCell(
                         quoteId = quote.quoteId,
                         state = OfferState.QUOTED,
                         ratePaise = offer.ratePaise,
                         availableQty = offer.availableQty,
-                        lowest = false
+                        lowest = false,
+                        unitName = offer.unitName,
+                        unitsPerBundle = offer.unitsPerBundle,
+                        perBasePaise = PackMath.perBasePaise(offer.ratePaise, offer.unitsPerBundle),
+                        packagesNeeded = pack?.packagesNeeded,
+                        excessBase = pack?.excessBase
                     )
                     QuoteAvailability.UNAVAILABLE -> ComparisonCell(
                         quoteId = quote.quoteId,
@@ -277,26 +316,24 @@ object PurchaseRequestMath {
                     )
                 }
             }
-            val comparable = cells.mapNotNull { cell ->
-                val rate = cell.ratePaise
-                val available = cell.availableQty
-                if (cell.state == OfferState.QUOTED && rate != null && available != null && available > 0) rate else null
+            val comparable = cells.filter {
+                it.state == OfferState.QUOTED &&
+                    it.ratePaise != null &&
+                    (it.availableQty ?: 0) > 0 &&
+                    it.unitsPerBundle > 0
             }
-            val best = comparable.minOrNull()
             MaterialComparisonRow(
                 requestLineId = line.requestLineId,
                 itemName = line.itemName,
                 requestedQty = line.requestedQty,
                 notes = line.notes,
                 cells = cells.map { cell ->
-                    val rate = cell.ratePaise
-                    cell.copy(
-                        lowest = best != null &&
-                            cell.state == OfferState.QUOTED &&
-                            rate == best &&
-                            (cell.availableQty ?: 0) > 0
-                    )
-                }
+                    cell.copy(lowest = isLowestPerBase(cell, comparable))
+                },
+                baseUnit = line.baseUnit,
+                enteredQty = line.enteredQty,
+                orderUnit = line.orderUnit,
+                unitsPerBundle = line.unitsPerBundle
             )
         }
         val summaries = quotes.map { quote ->
@@ -305,7 +342,17 @@ object PurchaseRequestMath {
                     .cells.first { it.quoteId == quote.quoteId }
                 val available = cell.availableQty ?: 0
                 val rate = cell.ratePaise
-                if (cell.state != OfferState.QUOTED || rate == null || available < line.requestedQty) {
+                val coverage = if (cell.state == OfferState.QUOTED && rate != null) {
+                    PackMath.coverage(line.requestedQty, available, cell.unitsPerBundle)
+                } else {
+                    null
+                }
+                val packageCost = if (coverage != null && coverage.canCover) {
+                    PackMath.multiply(rate ?: 0L, coverage.packagesNeeded)
+                } else {
+                    null
+                }
+                if (packageCost == null) {
                     return@map VendorQuoteSummary(
                         quoteId = quote.quoteId,
                         vendorName = quote.vendorName,
@@ -314,7 +361,7 @@ object PurchaseRequestMath {
                         goodsPaise = null
                     )
                 }
-                sum + rate * line.requestedQty
+                sum + packageCost
             }
             VendorQuoteSummary(
                 quoteId = quote.quoteId,
@@ -325,5 +372,16 @@ object PurchaseRequestMath {
             )
         }
         return RequestComparison(rows, summaries)
+    }
+
+    private fun isLowestPerBase(cell: ComparisonCell, comparable: List<ComparisonCell>): Boolean {
+        val rate = cell.ratePaise ?: return false
+        if (cell.state != OfferState.QUOTED || (cell.availableQty ?: 0) <= 0) return false
+        if (comparable.isEmpty()) return false
+        return comparable.all { other ->
+            val otherRate = other.ratePaise ?: return false
+            val compared = PackMath.comparePerBase(rate, cell.unitsPerBundle, otherRate, other.unitsPerBundle)
+            compared != null && compared <= 0
+        }
     }
 }

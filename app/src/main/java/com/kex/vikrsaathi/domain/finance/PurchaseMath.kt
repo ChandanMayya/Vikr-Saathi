@@ -20,7 +20,9 @@ data class QuoteLineSnapshot(
     val itemKey: String,
     val itemName: String,
     val ratePaise: Long,
-    val quantity: Int
+    val quantity: Int,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class QuoteSnapshot(

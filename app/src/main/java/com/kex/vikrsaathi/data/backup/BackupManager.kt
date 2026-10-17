@@ -345,7 +345,10 @@ class BackupManager(
                             discount = backup.discount,
                             sellingPrice = backup.sellingPrice,
                             remarks = backup.remarks,
-                            stockQty = backup.stockQty
+                            stockQty = backup.stockQty,
+                            baseUnit = backup.baseUnit,
+                            purchaseUnit = backup.purchaseUnit,
+                            unitsPerPurchase = backup.unitsPerPurchase
                         )
                     )
                     itemIdMap[backup.legacyId] = id

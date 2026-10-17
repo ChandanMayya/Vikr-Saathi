@@ -237,7 +237,9 @@ object FinanceBackupCodec {
             itemName = obj.optString("itemName"),
             quantity = obj.optInt("quantity"),
             ratePaise = obj.optLong("ratePaise"),
-            requestLineId = optionalLong(obj, "requestLineLegacyId")
+            requestLineId = optionalLong(obj, "requestLineLegacyId"),
+            unitName = obj.optString("unitName", ""),
+            unitsPerBundle = obj.optInt("unitsPerBundle", 1)
         )
     }
 
@@ -265,7 +267,9 @@ object FinanceBackupCodec {
             shortQty = obj.optInt("shortQty"),
             damagedQty = obj.optInt("damagedQty"),
             rejectedQty = obj.optInt("rejectedQty"),
-            acceptedQty = obj.optInt("acceptedQty")
+            acceptedQty = obj.optInt("acceptedQty"),
+            unitName = obj.optString("unitName", ""),
+            unitsPerBundle = obj.optInt("unitsPerBundle", 1)
         )
     }
 
@@ -293,7 +297,9 @@ object FinanceBackupCodec {
             itemName = obj.optString("itemName"),
             quantity = obj.optInt("quantity"),
             ratePaise = obj.optLong("ratePaise"),
-            lineTotalPaise = obj.optLong("lineTotalPaise")
+            lineTotalPaise = obj.optLong("lineTotalPaise"),
+            unitName = obj.optString("unitName", ""),
+            unitsPerBundle = obj.optInt("unitsPerBundle", 1)
         )
     }
 
@@ -321,7 +327,9 @@ object FinanceBackupCodec {
             availableQty = obj.optInt("availableQty"),
             notes = obj.optString("notes"),
             requestLineId = optionalLong(obj, "requestLineLegacyId"),
-            availability = obj.optString("availability", "QUOTED")
+            availability = obj.optString("availability", "QUOTED"),
+            unitName = obj.optString("unitName", ""),
+            unitsPerBundle = obj.optInt("unitsPerBundle", 1)
         )
     }
 
@@ -343,7 +351,11 @@ object FinanceBackupCodec {
             itemId = optionalLong(obj, "itemLegacyId"),
             itemName = obj.optString("itemName"),
             quantity = obj.optInt("quantity"),
-            notes = obj.optString("notes")
+            notes = obj.optString("notes"),
+            baseUnit = obj.optString("baseUnit", ""),
+            enteredQty = obj.optInt("enteredQty", 0),
+            orderUnit = obj.optString("orderUnit", ""),
+            unitsPerBundle = obj.optInt("unitsPerBundle", 1)
         )
     }
 
@@ -551,6 +563,8 @@ object FinanceBackupCodec {
                 put("quantity", it.quantity)
                 put("ratePaise", it.ratePaise)
                 it.requestLineId?.let { id -> put("requestLineLegacyId", id) }
+                put("unitName", it.unitName)
+                put("unitsPerBundle", it.unitsPerBundle)
             })
         }
     }
@@ -583,6 +597,8 @@ object FinanceBackupCodec {
                 put("damagedQty", it.damagedQty)
                 put("rejectedQty", it.rejectedQty)
                 put("acceptedQty", it.acceptedQty)
+                put("unitName", it.unitName)
+                put("unitsPerBundle", it.unitsPerBundle)
             })
         }
     }
@@ -615,6 +631,8 @@ object FinanceBackupCodec {
                 put("quantity", it.quantity)
                 put("ratePaise", it.ratePaise)
                 put("lineTotalPaise", it.lineTotalPaise)
+                put("unitName", it.unitName)
+                put("unitsPerBundle", it.unitsPerBundle)
             })
         }
     }
@@ -647,6 +665,8 @@ object FinanceBackupCodec {
                 put("notes", it.notes)
                 it.requestLineId?.let { id -> put("requestLineLegacyId", id) }
                 put("availability", it.availability)
+                put("unitName", it.unitName)
+                put("unitsPerBundle", it.unitsPerBundle)
             })
         }
     }
@@ -673,6 +693,10 @@ object FinanceBackupCodec {
                 put("itemName", it.itemName)
                 put("quantity", it.quantity)
                 put("notes", it.notes)
+                put("baseUnit", it.baseUnit)
+                put("enteredQty", it.enteredQty)
+                put("orderUnit", it.orderUnit)
+                put("unitsPerBundle", it.unitsPerBundle)
             })
         }
     }

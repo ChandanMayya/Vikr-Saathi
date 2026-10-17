@@ -289,6 +289,9 @@ object BackupJsonCodec {
             put("remarks", item.remarks)
             put("stockQty", item.stockQty)
             item.preferredVendorId?.let { put("preferredVendorLegacyId", it) }
+            put("baseUnit", item.baseUnit)
+            put("purchaseUnit", item.purchaseUnit)
+            put("unitsPerPurchase", item.unitsPerPurchase)
         }
     }
 
@@ -305,7 +308,10 @@ object BackupJsonCodec {
             obj.getLong("preferredVendorLegacyId")
         } else {
             null
-        }
+        },
+        baseUnit = obj.optString("baseUnit", ""),
+        purchaseUnit = obj.optString("purchaseUnit", ""),
+        unitsPerPurchase = obj.optInt("unitsPerPurchase", 1)
     )
 
     private fun encodeStockMovement(
@@ -509,7 +515,10 @@ data class ItemBackup(
     val sellingPrice: Double?,
     val remarks: String,
     val stockQty: Int = 0,
-    val preferredVendorLegacyId: Long? = null
+    val preferredVendorLegacyId: Long? = null,
+    val baseUnit: String = "",
+    val purchaseUnit: String = "",
+    val unitsPerPurchase: Int = 1
 )
 
 data class StockMovementBackup(

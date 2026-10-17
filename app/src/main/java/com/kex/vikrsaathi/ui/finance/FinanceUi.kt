@@ -72,6 +72,7 @@ object FinanceUi {
             FinanceError.AWARD_EXCEEDS -> R.string.payment_error_award
             FinanceError.REQUEST_NOT_EDITABLE -> R.string.payment_error_request_locked
             FinanceError.INVALID_QUOTE -> R.string.payment_error_quote
+            FinanceError.INVALID_PACK -> R.string.payment_error_pack
             null -> R.string.payment_error_generic
         }
         return context.getString(res)

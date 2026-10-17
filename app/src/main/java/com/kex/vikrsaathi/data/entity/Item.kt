@@ -19,5 +19,13 @@ data class Item(
     val remarks: String = "",
     val stockQty: Int = 0,
     /** Soft reference. Archived vendors stay linked; hard-delete clears this in code. */
-    val preferredVendorId: Long? = null
-)
+    val preferredVendorId: Long? = null,
+    /** Stock-unit label. Blank leaves sales and stock quantities unlabeled. */
+    val baseUnit: String = "",
+    /** Blank means this item has no purchase-unit default. */
+    val purchaseUnit: String = "",
+    val unitsPerPurchase: Int = 1
+) {
+    /** The optional item unit. Packaging no longer stores a second base-unit name. */
+    fun stockUnit(): String = baseUnit.ifBlank { remarks }
+}

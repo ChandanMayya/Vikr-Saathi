@@ -27,5 +27,6 @@ enum class ListViewScreen(val pageDefault: ListViewMode? = null) {
     ITEMS,
     BILLS_HISTORY,
     INVENTORY,
-    VENDORS
+    VENDORS,
+    ORDERS
 }

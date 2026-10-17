@@ -4,7 +4,6 @@ import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -19,25 +18,28 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
-import com.kex.vikrsaathi.data.entity.PurchaseRequestLine
+import com.kex.vikrsaathi.data.entity.GoodsReceipt
+import com.kex.vikrsaathi.data.entity.GoodsReceiptLine
 import com.kex.vikrsaathi.data.entity.Vendor
 import com.kex.vikrsaathi.data.repository.PurchaseRequestDetail
 import com.kex.vikrsaathi.data.repository.PurchaseRequestSummary
 import com.kex.vikrsaathi.data.repository.RequestLineInput
-import com.kex.vikrsaathi.data.repository.RequestQuoteLineInput
 import com.kex.vikrsaathi.databinding.FragmentPurchaseRequestBinding
 import com.kex.vikrsaathi.databinding.FragmentPurchaseRequestsBinding
 import com.kex.vikrsaathi.databinding.ItemPurchaseRequestBinding
-import com.kex.vikrsaathi.domain.finance.AwardSelection
+import com.kex.vikrsaathi.databinding.ItemRequestLineBinding
+import com.kex.vikrsaathi.databinding.ItemRequestOrderBinding
 import com.kex.vikrsaathi.domain.finance.ComparedRequestLine
+import com.kex.vikrsaathi.domain.finance.HubOrderLineInput
+import com.kex.vikrsaathi.domain.finance.HubReceiptInput
 import com.kex.vikrsaathi.domain.finance.LineOffer
+import com.kex.vikrsaathi.domain.finance.OrderHubMath
 import com.kex.vikrsaathi.domain.finance.OfferState
+import com.kex.vikrsaathi.domain.finance.PackMath
 import com.kex.vikrsaathi.domain.finance.PurchaseRequestMath
-import com.kex.vikrsaathi.domain.finance.QuoteAvailability
 import com.kex.vikrsaathi.domain.finance.QuoteHeader
 import com.kex.vikrsaathi.domain.finance.RequestComparison
 import com.kex.vikrsaathi.domain.finance.RequestStatus
-import com.kex.vikrsaathi.ui.analysis.RankedBarItem
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
 import kotlinx.coroutines.launch
@@ -54,16 +56,16 @@ class PurchaseRequestListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: android.os.Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        installHelpMenu(HelpScreen.VENDORS)
-        binding.recyclerRequests.layoutManager = LinearLayoutManager(requireContext())
-        binding.buttonNewRequest.setOnClickListener {
-            findNavController().navigate(R.id.purchaseRequestFragment, bundleOf(PurchaseRequestFragment.ARG_REQUEST_ID to 0L))
+        view.post {
+            if (!isAdded) return@post
+            findNavController().navigate(
+                R.id.ordersFragment,
+                bundleOf(com.kex.vikrsaathi.ui.orders.OrdersFragment.ARG_HUB_TYPE to com.kex.vikrsaathi.ui.orders.OrdersFragment.HUB_REQUESTS),
+                androidx.navigation.navOptions {
+                    popUpTo(R.id.purchaseRequestListFragment) { inclusive = true }
+                }
+            )
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        reload()
     }
 
     private fun reload() {
@@ -154,9 +156,15 @@ class PurchaseRequestFragment : Fragment() {
         binding.buttonSaveRequest.setOnClickListener { saveDraft() }
         binding.buttonEditRequest.setOnClickListener { startEdit() }
         binding.buttonAddQuote.setOnClickListener { addQuote() }
-        binding.buttonAward.setOnClickListener { award() }
+        binding.buttonCompare.setOnClickListener { openCompare() }
+        binding.buttonAward.setOnClickListener { openCompare() }
         binding.buttonCancelRequest.setOnClickListener { cancelRequest() }
         if (requestId == 0L) showEditor() else reload()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (requestId != 0L && _binding?.detailGroup?.isVisible == true) reload()
     }
 
     private fun showEditor() {
@@ -171,6 +179,8 @@ class PurchaseRequestFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val detail = app().vendorRepository.requestDetail(requestId)
             val vendors = app().vendorRepository.getAll()
+            val receipts = app().vendorRepository.receipts()
+            val receiptLines = app().vendorRepository.allReceiptLines()
             val current = _binding ?: return@launch
             current.progressRequest.isVisible = false
             if (detail == null) {
@@ -178,168 +188,249 @@ class PurchaseRequestFragment : Fragment() {
                 return@launch
             }
             loaded = detail
-            showDetail(detail, vendors)
+            showDetail(detail, vendors, receipts, receiptLines)
         }
     }
 
-    private fun showDetail(detail: PurchaseRequestDetail, vendors: List<Vendor>) {
+    private fun showDetail(
+        detail: PurchaseRequestDetail,
+        vendors: List<Vendor>,
+        receipts: List<GoodsReceipt>,
+        receiptLines: List<GoodsReceiptLine>
+    ) {
         binding.editorGroup.isVisible = false
         binding.detailGroup.isVisible = true
         val vendorNames = vendors.associate { it.id to it.name }
-        val symbol = app().settingsRepository.currencySymbol
-        val awarded = detail.orderLines.groupBy { it.requestLineId }.mapValues { (_, lines) -> lines.sumOf { it.quantity } }
+        val awarded = awardedBase(detail.orderLines)
+        val receiptById = receipts.associateBy { it.id }
         binding.textRequestTitle.text = detail.request.requestNumber
-        val meta = buildString {
-            append(statusLabel(binding.root, detail.request.status))
-            append(" · ")
-            append(FinanceDates.format(detail.request.createdAt))
-            detail.request.requiredBy?.let {
-                append(" · ")
-                append(getString(R.string.required_by_value, FinanceDates.format(it)))
+        val orderStatuses = detail.orders.map { order ->
+            val orderLines = detail.orderLines.filter { it.orderId == order.id }
+            val hubLines = orderLines.map {
+                HubOrderLineInput(it.id, it.itemId, it.quantity, it.ratePaise, it.unitsPerBundle)
             }
-            if (detail.request.notes.isNotBlank()) {
-                append("\n")
-                append(detail.request.notes)
+            OrderHubMath.purchaseOrderStatus(
+                hubLines,
+                OrderHubMath.receivedQuantities(
+                    order.id,
+                    hubLines,
+                    receiptLines.map { line ->
+                        HubReceiptInput(
+                            orderId = receiptById[line.receiptId]?.orderId,
+                            orderLineId = line.orderLineId,
+                            itemId = line.itemId,
+                            receivedQty = line.receivedQty,
+                            unitsPerBundle = line.unitsPerBundle
+                        )
+                    }
+                )
+            )
+        }
+        bindRequestStatus(detail, orderStatuses)
+        binding.textRequestCreated.text = FinanceDates.format(detail.request.createdAt)
+        val requiredByDate = detail.request.requiredBy
+        binding.groupRequestRequired.isVisible = requiredByDate != null
+        if (requiredByDate != null) {
+            binding.textRequestRequired.text = FinanceDates.format(requiredByDate)
+        }
+        binding.groupRequestNotes.isVisible = detail.request.notes.isNotBlank()
+        binding.textRequestNotes.text = detail.request.notes
+        binding.textRequestItemCount.text = resources.getQuantityString(
+            R.plurals.request_item_count,
+            detail.lines.size,
+            detail.lines.size
+        )
+        binding.requestLines.removeAllViews()
+        val symbol = app().settingsRepository.currencySymbol
+        detail.lines.forEach { line ->
+            val awardedQty = awarded[line.id] ?: 0
+            val open = PurchaseRequestMath.remaining(line.quantity, awardedQty)
+            val baseUnit = line.baseUnit.ifBlank { getString(R.string.pack_base_unit) }
+            val card = ItemRequestLineBinding.inflate(layoutInflater, binding.requestLines, true)
+            card.textRequestItemName.text = line.itemName
+            card.textRequestItemSpec.isVisible = line.notes.isNotBlank()
+            card.textRequestItemSpec.text = line.notes
+            card.textRequestItemQty.text = if (line.enteredQty > 0) {
+                val unit = line.orderUnit.ifBlank { baseUnit }
+                if (unit.isBlank()) line.enteredQty.toString() else "${line.enteredQty} $unit"
+            } else {
+                PackMath.formatQuantity(line.quantity, baseUnit, 1)
+            }
+            val showConversion = line.enteredQty > 0 && line.unitsPerBundle > 1
+            card.groupRequestConversion.isVisible = showConversion
+            if (showConversion) {
+                val orderUnit = line.orderUnit.ifBlank { baseUnit }
+                card.textRequestItemConversion.text = getString(
+                    R.string.request_line_conversion,
+                    line.unitsPerBundle,
+                    baseUnit,
+                    orderUnit,
+                    line.quantity,
+                    baseUnit
+                )
+            }
+            val openLabel = PackMath.formatQuantity(open, baseUnit, 1)
+            val openText = getString(R.string.request_line_open, openLabel)
+            card.textRequestItemOpen.text = if (awardedQty > 0) {
+                openText + " · " + getString(
+                    R.string.request_line_awarded,
+                    PackMath.formatQuantity(awardedQty, baseUnit, 1)
+                )
+            } else {
+                openText
+            }
+            val showAwardBar = line.quantity > 0 && awardedQty > 0
+            card.barRequestAwarded.isVisible = showAwardBar
+            if (showAwardBar) {
+                card.barRequestAwarded.max = line.quantity
+                card.barRequestAwarded.progress = awardedQty.coerceAtMost(line.quantity)
             }
         }
-        binding.textRequestStatus.text = meta
-        binding.textRequestLines.text = buildString {
-            detail.lines.forEach { line ->
-                val open = PurchaseRequestMath.remaining(line.quantity, awarded[line.id] ?: 0)
-                appendLine("${line.itemName} × ${line.quantity} · ${getString(R.string.request_remaining, open)}")
-                if (line.notes.isNotBlank()) appendLine(line.notes)
+        binding.textQuoteCount.text = getString(R.string.request_quote_count, detail.quotes.size)
+        val canOpenCompare = detail.quotes.isNotEmpty()
+        binding.imageQuoteOpen.isVisible = canOpenCompare
+        binding.groupSupplierQuotes.isClickable = canOpenCompare
+        binding.groupSupplierQuotes.isFocusable = canOpenCompare
+        binding.groupSupplierQuotes.setOnClickListener(if (canOpenCompare) View.OnClickListener { openCompare() } else null)
+        binding.groupSupplierQuotes.contentDescription = getString(R.string.request_quotes_heading) + ". " +
+            binding.textQuoteCount.text +
+            if (canOpenCompare) ". " + getString(R.string.request_quotes_open_compare) else ""
+        val awardedOrders = detail.orders.isNotEmpty()
+        binding.textOrdersHeading.isVisible = awardedOrders
+        binding.textAwardIntro.isVisible = awardedOrders
+        binding.requestOrders.removeAllViews()
+        detail.orders.forEach { order ->
+            val orderLines = detail.orderLines.filter { it.orderId == order.id }
+            val hubLines = orderLines.map {
+                HubOrderLineInput(it.id, it.itemId, it.quantity, it.ratePaise, it.unitsPerBundle)
             }
-        }.trimEnd()
-        binding.textRequestOrders.isVisible = detail.orders.isNotEmpty()
-        binding.textRequestOrders.text = buildString {
-            appendLine(getString(R.string.request_orders))
-            detail.orders.forEach { order ->
-                appendLine("${order.orderNumber} · ${vendorNames[order.vendorId].orEmpty()}")
+            val received = OrderHubMath.receivedQuantities(
+                order.id,
+                hubLines,
+                receiptLines.map { line ->
+                    HubReceiptInput(
+                        orderId = receiptById[line.receiptId]?.orderId,
+                        orderLineId = line.orderLineId,
+                        itemId = line.itemId,
+                        receivedQty = line.receivedQty,
+                        unitsPerBundle = line.unitsPerBundle
+                    )
+                }
+            )
+            val poStatus = OrderHubMath.purchaseOrderStatus(hubLines, received)
+            val card = ItemRequestOrderBinding.inflate(layoutInflater, binding.requestOrders, true)
+            val vendor = vendorNames[order.vendorId].orEmpty().ifBlank { getString(R.string.orders_removed_vendor) }
+            card.textRecordTitle.text = vendor
+            card.textRecordBadge.isVisible = true
+            card.textRecordBadge.setText(com.kex.vikrsaathi.ui.orders.statusLabel(poStatus))
+            card.textRecordBadge.setTextColor(requireContext().getColor(com.kex.vikrsaathi.ui.orders.statusColor(poStatus)))
+            val lines = orderLines.joinToString("\n") { line ->
+                val qty = if (line.unitsPerBundle <= 1) {
+                    if (line.unitName.isBlank()) line.quantity.toString() else "${line.quantity} ${line.unitName}"
+                } else {
+                    "${line.quantity} ${line.unitName} × ${line.unitsPerBundle}"
+                }
+                val rate = FinanceUi.formatPaise(line.ratePaise, symbol) +
+                    if (line.unitName.isBlank()) "" else "/${line.unitName}"
+                "${line.itemName} · $qty · $rate"
             }
-        }.trimEnd()
+            val next = if (OrderHubMath.showReceive(poStatus)) {
+                getString(R.string.request_next_receive)
+            } else {
+                getString(R.string.request_received_full)
+            }
+            card.textRecordBody.text = order.orderNumber + "\n" + lines + "\n" + next
+            val canReceive = OrderHubMath.showReceive(poStatus)
+            card.buttonReceiveItems.isVisible = canReceive
+            card.buttonReceiveItems.setOnClickListener { openReceipt(order.id) }
+            card.root.setOnClickListener { openOrder(order.id) }
+            card.root.contentDescription = vendor + ". " + order.orderNumber + ". " + next
+        }
         val editable = detail.request.status == RequestStatus.DRAFT &&
             detail.quotes.isEmpty() &&
             detail.orderLines.isEmpty()
         val open = detail.request.status != RequestStatus.CANCELLED &&
             detail.request.status != RequestStatus.AWARDED
-        binding.buttonEditRequest.isVisible = editable
-        binding.buttonAddQuote.isVisible = open
-        binding.buttonCancelRequest.isVisible = detail.orderLines.isEmpty() && open
-        val comparison = comparison(detail, vendorNames)
-        val canAward = open && comparison.rows.any { row ->
+        val compared = comparison(detail, vendorNames)
+        val canAward = open && compared.rows.any { row ->
             val lineAwarded = awarded[row.requestLineId] ?: 0
             PurchaseRequestMath.remaining(row.requestedQty, lineAwarded) > 0 &&
                 row.cells.any { it.state == OfferState.QUOTED && (it.availableQty ?: 0) > 0 }
         }
-        binding.buttonAward.isVisible = canAward
-        bindComparison(comparison, symbol)
+        binding.buttonCompare.isVisible = false
+        binding.buttonAward.isVisible = false
+        binding.buttonEditRequest.isVisible = false
+        binding.buttonAddQuote.isVisible = false
+        binding.buttonCancelRequest.isVisible = detail.orderLines.isEmpty() && open
+        binding.textQuoteHint.isVisible = canAward
+        when {
+            editable -> {
+                binding.buttonAddQuote.isVisible = true
+                binding.buttonAddQuote.setText(R.string.add_vendor_quote)
+                binding.buttonAddQuote.setOnClickListener { addQuote() }
+                binding.buttonEditRequest.isVisible = true
+                binding.buttonEditRequest.setText(R.string.edit_request)
+                binding.buttonEditRequest.setOnClickListener { startEdit() }
+            }
+            canAward -> {
+                binding.buttonAddQuote.isVisible = true
+                binding.buttonAddQuote.setText(R.string.compare_and_award)
+                binding.buttonAddQuote.setOnClickListener { openCompare() }
+                binding.buttonEditRequest.isVisible = true
+                binding.buttonEditRequest.setText(R.string.add_vendor_quote)
+                binding.buttonEditRequest.setOnClickListener { addQuote() }
+            }
+            open -> {
+                binding.buttonAddQuote.isVisible = true
+                binding.buttonAddQuote.setText(R.string.add_vendor_quote)
+                binding.buttonAddQuote.setOnClickListener { addQuote() }
+            }
+        }
     }
 
-    private fun comparison(detail: PurchaseRequestDetail, vendorNames: Map<Long, String>): RequestComparison {
-        val quotes = detail.quotes.map { quote ->
-            QuoteHeader(
-                quoteId = quote.id,
-                vendorId = quote.vendorId,
-                vendorName = vendorNames[quote.vendorId] ?: "Vendor",
-                deliveryChargesPaise = quote.deliveryChargesPaise,
-                discountPaise = quote.discountPaise,
-                expectedDelivery = quote.expectedDelivery,
-                notes = quote.notes
-            )
+    private fun bindRequestStatus(
+        detail: PurchaseRequestDetail,
+        orderStatuses: List<com.kex.vikrsaathi.domain.finance.HubRecordStatus>
+    ) {
+        val display = OrderHubMath.requestDisplayStatus(
+            detail.request.status,
+            detail.quotes.size,
+            orderStatuses
+        )
+        val received = display == com.kex.vikrsaathi.domain.finance.HubRecordStatus.RECEIVED ||
+            display == com.kex.vikrsaathi.domain.finance.HubRecordStatus.PARTIALLY_RECEIVED
+        if (received) {
+            binding.textRequestStatus.setText(com.kex.vikrsaathi.ui.orders.statusLabel(display))
+            binding.textRequestStatus.setTextColor(requireContext().getColor(com.kex.vikrsaathi.ui.orders.statusColor(display)))
+        } else {
+            binding.textRequestStatus.text = statusLabel(binding.root, detail.request.status)
+            binding.textRequestStatus.setTextColor(requireContext().getColor(requestStatusColor(detail.request.status)))
         }
-        val offers = detail.quoteLines.mapNotNull { line ->
-            val requestLineId = line.requestLineId ?: return@mapNotNull null
-            LineOffer(
-                quoteId = line.quoteId,
-                requestLineId = requestLineId,
-                availability = line.availability,
-                ratePaise = line.ratePaise,
-                availableQty = line.availableQty,
-                itemId = line.itemId,
-                itemName = line.itemName
-            )
-        }
-        return PurchaseRequestMath.compare(
-            detail.lines.map { ComparedRequestLine(it.id, it.itemName, it.quantity, it.notes) },
-            quotes,
-            offers
+    }
+
+    private fun openOrder(orderId: Long) {
+        findNavController().navigate(
+            R.id.purchaseOrderFragment,
+            bundleOf(PurchaseOrderFragment.ARG_ORDER_ID to orderId)
         )
     }
 
-    private fun bindComparison(comparison: RequestComparison, symbol: String) {
-        val show = comparison.summaries.isNotEmpty()
-        binding.layoutCompareItem.isVisible = show
-        binding.chartRates.isVisible = false
-        binding.textCompare.isVisible = show
-        if (!show) return
-        binding.textCompare.text = buildString {
-            comparison.summaries.forEach { summary ->
-                appendLine(summary.vendorName)
-                appendLine(
-                    getString(
-                        R.string.compare_charges,
-                        FinanceUi.formatPaise(summary.deliveryChargesPaise, symbol),
-                        FinanceUi.formatPaise(summary.discountPaise, symbol)
-                    )
-                )
-                appendLine(
-                    if (summary.goodsPaise == null) {
-                        getString(R.string.compare_not_comparable)
-                    } else {
-                        getString(R.string.compare_goods, FinanceUi.formatPaise(summary.goodsPaise, symbol))
-                    }
-                )
-            }
-            comparison.rows.forEach { row ->
-                appendLine("${row.itemName} × ${row.requestedQty}")
-                row.cells.forEach { cell ->
-                    val vendor = comparison.summaries.first { it.quoteId == cell.quoteId }.vendorName
-                    append("  ")
-                    append(vendor)
-                    append(": ")
-                    when (cell.state) {
-                        OfferState.NOT_QUOTED -> append(getString(R.string.compare_not_quoted))
-                        OfferState.UNAVAILABLE -> append(getString(R.string.compare_unavailable))
-                        OfferState.QUOTED -> {
-                            append(FinanceUi.formatPaise(cell.ratePaise ?: 0L, symbol))
-                            append(" · ")
-                            append(cell.availableQty ?: 0)
-                            if (cell.lowest) {
-                                append(" ")
-                                append(getString(R.string.compare_lowest))
-                            }
-                        }
-                    }
-                    appendLine()
-                }
-            }
-        }.trimEnd()
-        val names = comparison.rows.map { it.itemName }
-        binding.inputCompareItem.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, names))
-        binding.inputCompareItem.setOnItemClickListener { _, _, position, _ ->
-            showRateChart(comparison, position, symbol)
-        }
-        if (names.isNotEmpty()) {
-            binding.inputCompareItem.setText(names.first(), false)
-            showRateChart(comparison, 0, symbol)
-        }
+    private fun openReceipt(orderId: Long) {
+        findNavController().navigate(
+            R.id.goodsReceiptFragment,
+            bundleOf(GoodsReceiptFragment.ARG_ORDER_ID to orderId)
+        )
     }
 
-    private fun showRateChart(comparison: RequestComparison, index: Int, symbol: String) {
-        val row = comparison.rows.getOrNull(index) ?: return
-        val quoted = row.cells.mapNotNull { cell ->
-            val rate = cell.ratePaise
-            if (cell.state != OfferState.QUOTED || rate == null || (cell.availableQty ?: 0) <= 0) return@mapNotNull null
-            val vendor = comparison.summaries.first { it.quoteId == cell.quoteId }.vendorName
-            vendor to rate
-        }
-        binding.chartRates.isVisible = quoted.isNotEmpty()
-        if (quoted.isEmpty()) return
-        val highest = quoted.maxOf { it.second }.coerceAtLeast(1L)
-        binding.chartRates.setItems(quoted.map { (vendor, rate) ->
-            RankedBarItem(vendor, rate.toFloat() / highest.toFloat(), FinanceUi.formatPaise(rate, symbol))
-        })
+    private fun openCompare() {
+        findNavController().navigate(
+            R.id.purchaseRequestCompareFragment,
+            bundleOf(PurchaseRequestCompareFragment.ARG_REQUEST_ID to requestId)
+        )
     }
+
+    private fun comparison(detail: PurchaseRequestDetail, vendorNames: Map<Long, String>): RequestComparison =
+        purchaseRequestComparison(detail, vendorNames)
 
     private fun startEdit() {
         val detail = loaded ?: return
@@ -350,7 +441,17 @@ class PurchaseRequestFragment : Fragment() {
         } ?: getString(R.string.required_by)
         draftLines.clear()
         detail.lines.forEach {
-            draftLines += DraftLine(it.itemId, it.itemName, it.quantity, it.notes)
+            val entered = if (it.enteredQty > 0) it.enteredQty else it.quantity
+            draftLines += DraftLine(
+                it.itemId,
+                it.itemName,
+                it.quantity,
+                it.notes,
+                it.baseUnit,
+                entered,
+                it.orderUnit.ifBlank { it.baseUnit },
+                it.unitsPerBundle.coerceAtLeast(1)
+            )
         }
         showEditor()
     }
@@ -364,14 +465,67 @@ class PurchaseRequestFragment : Fragment() {
             }
             val form = FinanceForm.column(this@PurchaseRequestFragment)
             var selected: com.kex.vikrsaathi.data.entity.Item? = null
-            FinanceForm.itemPicker(this@PurchaseRequestFragment, form, getString(R.string.item_name), items) { selected = it }
+            var useBulk = false
+            var qtyField: com.google.android.material.textfield.TextInputEditText? = null
+            var unitField: com.google.android.material.textfield.MaterialAutoCompleteTextView? = null
+            val preview = TextView(requireContext()).apply { setPadding(0, 8, 0, 0) }
+            fun bulkName(item: com.kex.vikrsaathi.data.entity.Item?) =
+                item?.purchaseUnit?.takeIf { it.isNotBlank() && item.unitsPerPurchase > 0 }
+            fun refreshPreview() {
+                val item = selected
+                val entered = qtyField?.text?.toString()?.toIntOrNull() ?: 0
+                val bulk = useBulk && bulkName(item) != null
+                val factor = if (bulk) item!!.unitsPerPurchase else 1
+                val unit = if (bulk) item!!.purchaseUnit else item?.stockUnit().orEmpty()
+                preview.text = if (entered <= 0) "" else PackMath.formatQuantity(entered, unit, factor, item?.stockUnit().orEmpty())
+            }
+            FinanceForm.itemPicker(this@PurchaseRequestFragment, form, getString(R.string.item_name), items) { item ->
+                selected = item
+                useBulk = false
+                val base = item.stockUnit().ifBlank { getString(R.string.pack_base_unit) }
+                val labels = listOfNotNull(base, bulkName(item))
+                unitField?.setAdapter(android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, labels))
+                unitField?.setText(base, false)
+                refreshPreview()
+            }
+            val orderUnitField = FinanceForm.picker(
+                this@PurchaseRequestFragment,
+                form,
+                getString(R.string.order_unit),
+                listOf(getString(R.string.pack_base_unit))
+            ) { index ->
+                useBulk = index == 1 && bulkName(selected) != null
+                refreshPreview()
+            }
+            unitField = orderUnitField
             val qty = FinanceForm.text(this@PurchaseRequestFragment, form, getString(R.string.ordered_qty), InputType.TYPE_CLASS_NUMBER, "1")
+            qtyField = qty
+            qty.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: android.text.Editable?) = refreshPreview()
+            })
+            form.addView(preview)
+            refreshPreview()
             val spec = FinanceForm.text(this@PurchaseRequestFragment, form, getString(R.string.line_spec))
             ask(R.string.add_material, scroll(form)) {
                 val item = selected ?: return@ask toast(R.string.select_master_item)
-                val quantity = qty.text.toString().toIntOrNull() ?: 0
-                if (quantity <= 0) return@ask toast(R.string.payment_error_request_lines)
-                draftLines += DraftLine(item.id, item.name, quantity, spec.text?.toString().orEmpty())
+                val entered = qty.text.toString().toIntOrNull() ?: 0
+                if (entered <= 0) return@ask toast(R.string.payment_error_request_lines)
+                val bulk = useBulk && bulkName(item) != null
+                val factor = if (bulk) item.unitsPerPurchase else 1
+                val orderUnit = if (bulk) item.purchaseUnit else item.stockUnit()
+                val base = PackMath.toBase(entered, factor) ?: return@ask toast(R.string.payment_error_pack)
+                draftLines += DraftLine(
+                    item.id,
+                    item.name,
+                    base,
+                    spec.text?.toString().orEmpty(),
+                    item.stockUnit(),
+                    entered,
+                    orderUnit,
+                    factor
+                )
                 renderDraftLines()
             }
         }
@@ -383,10 +537,11 @@ class PurchaseRequestFragment : Fragment() {
             val row = LinearLayout(requireContext()).apply { orientation = LinearLayout.HORIZONTAL }
             val label = TextView(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                val qtyLabel = orderedLabel(line.enteredQty, line.quantity, line.orderUnit, line.unitsPerBundle, line.baseUnit)
                 text = if (line.notes.isBlank()) {
-                    "${line.itemName} × ${line.quantity}"
+                    "${line.itemName} × $qtyLabel"
                 } else {
-                    "${line.itemName} × ${line.quantity}\n${line.notes}"
+                    "${line.itemName} × $qtyLabel\n${line.notes}"
                 }
             }
             val remove = com.google.android.material.button.MaterialButton(
@@ -413,7 +568,18 @@ class PurchaseRequestFragment : Fragment() {
                     requestId = if (requestId == 0L) null else requestId,
                     requiredBy = requiredBy,
                     notes = binding.editRequestNotes.text?.toString().orEmpty(),
-                    lines = draftLines.map { RequestLineInput(it.itemId, it.itemName, it.quantity, it.notes) }
+                    lines = draftLines.map {
+                        RequestLineInput(
+                            it.itemId,
+                            it.itemName,
+                            it.quantity,
+                            it.notes,
+                            it.baseUnit,
+                            it.enteredQty,
+                            it.orderUnit,
+                            it.unitsPerBundle
+                        )
+                    }
                 )
             }.onSuccess {
                 findNavController().popBackStack()
@@ -430,179 +596,10 @@ class PurchaseRequestFragment : Fragment() {
                 toast(if (quoted.isEmpty()) R.string.select_vendor else R.string.all_vendors_quoted)
                 return@launch
             }
-            val form = FinanceForm.column(this@PurchaseRequestFragment)
-            var vendor: Vendor? = null
-            FinanceForm.picker(this@PurchaseRequestFragment, form, getString(R.string.vendors), vendors.map { it.name }) {
-                vendor = vendors[it]
-            }
-            var validUntil: Long? = null
-            var expectedDelivery: Long? = null
-            form.addView(dateButton(R.string.valid_until) { validUntil = it })
-            form.addView(dateButton(R.string.expected_delivery_short) { expectedDelivery = it })
-            val delivery = FinanceForm.text(
-                this@PurchaseRequestFragment, form, getString(R.string.delivery_charges),
-                InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED, "0"
+            findNavController().navigate(
+                R.id.purchaseRequestQuoteFragment,
+                bundleOf(PurchaseRequestQuoteFragment.ARG_REQUEST_ID to requestId)
             )
-            val discount = FinanceForm.text(
-                this@PurchaseRequestFragment, form, getString(R.string.quote_discount),
-                InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED, "0"
-            )
-            val notes = FinanceForm.text(this@PurchaseRequestFragment, form, getString(R.string.request_notes))
-            val drafts = detail.lines.map { line -> QuoteDraft(line) }
-            drafts.forEach { draft ->
-                form.addView(TextView(requireContext()).apply {
-                    text = "${draft.line.itemName} × ${draft.line.quantity}"
-                    setPadding(0, 16, 0, 0)
-                })
-                FinanceForm.picker(
-                    this@PurchaseRequestFragment,
-                    form,
-                    getString(R.string.quote_line_state),
-                    listOf(
-                        getString(R.string.state_not_quoted),
-                        getString(R.string.state_quoted),
-                        getString(R.string.state_unavailable)
-                    )
-                ) { draft.mode = it }
-                draft.rate = FinanceForm.text(
-                    this@PurchaseRequestFragment, form, getString(R.string.rate_label),
-                    InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED
-                )
-                draft.qty = FinanceForm.text(
-                    this@PurchaseRequestFragment, form, getString(R.string.available_qty),
-                    InputType.TYPE_CLASS_NUMBER
-                )
-                draft.note = FinanceForm.text(this@PurchaseRequestFragment, form, getString(R.string.line_spec))
-            }
-            ask(R.string.add_vendor_quote, scroll(form)) {
-                val chosen = vendor ?: return@ask toast(R.string.select_vendor)
-                val inputs = mutableListOf<RequestQuoteLineInput>()
-                drafts.forEach { draft ->
-                    when (draft.mode) {
-                        1 -> {
-                            val rateText = draft.rate.text?.toString()?.trim().orEmpty()
-                            if (rateText.isEmpty()) return@ask toast(R.string.payment_error_quote)
-                            inputs += RequestQuoteLineInput(
-                                requestLineId = draft.line.id,
-                                availability = QuoteAvailability.QUOTED,
-                                ratePaise = FinanceUi.parseAmountPaise(rateText),
-                                availableQty = draft.qty.text.toString().toIntOrNull() ?: 0,
-                                notes = draft.note.text?.toString().orEmpty()
-                            )
-                        }
-                        2 -> inputs += RequestQuoteLineInput(
-                            requestLineId = draft.line.id,
-                            availability = QuoteAvailability.UNAVAILABLE,
-                            ratePaise = 0L,
-                            availableQty = 0,
-                            notes = draft.note.text?.toString().orEmpty()
-                        )
-                    }
-                }
-                viewLifecycleOwner.lifecycleScope.launch {
-                    runCatching {
-                        app().vendorRepository.saveRequestQuote(
-                            requestId = requestId,
-                            vendorId = chosen.id,
-                            quoteDate = System.currentTimeMillis(),
-                            validUntil = validUntil,
-                            deliveryChargesPaise = FinanceUi.parseAmountPaise(delivery.text?.toString()),
-                            discountPaise = FinanceUi.parseAmountPaise(discount.text?.toString()),
-                            expectedDelivery = expectedDelivery,
-                            notes = notes.text?.toString().orEmpty(),
-                            lines = inputs
-                        )
-                    }.onFailure { toast(FinanceUi.message(requireContext(), it)) }
-                    reload()
-                }
-            }
-        }
-    }
-
-    private fun award() {
-        val detail = loaded ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            val vendors = app().vendorRepository.getAll().associateBy { it.id }
-            val symbol = app().settingsRepository.currencySymbol
-            val awarded = detail.orderLines.groupBy { it.requestLineId }.mapValues { (_, lines) -> lines.sumOf { it.quantity } }
-            val form = FinanceForm.column(this@PurchaseRequestFragment)
-            val rows = mutableListOf<AwardDraft>()
-            detail.lines.forEach { line ->
-                val open = PurchaseRequestMath.remaining(line.quantity, awarded[line.id] ?: 0)
-                if (open <= 0) return@forEach
-                val options = detail.quoteLines.mapNotNull { quoteLine ->
-                    if (quoteLine.requestLineId != line.id) return@mapNotNull null
-                    if (quoteLine.availability != QuoteAvailability.QUOTED || quoteLine.availableQty <= 0) return@mapNotNull null
-                    val quote = detail.quotes.firstOrNull { it.id == quoteLine.quoteId } ?: return@mapNotNull null
-                    AwardOption(
-                        quoteId = quote.id,
-                        vendorName = vendors[quote.vendorId]?.name ?: "Vendor",
-                        ratePaise = quoteLine.ratePaise,
-                        availableQty = quoteLine.availableQty
-                    )
-                }
-                form.addView(TextView(requireContext()).apply {
-                    text = "${line.itemName} · ${getString(R.string.request_remaining, open)}"
-                    setPadding(0, 16, 0, 0)
-                })
-                if (options.isEmpty()) return@forEach
-                val draft = AwardDraft(line, open, options)
-                rows += draft
-                val labels = listOf(getString(R.string.award_skip)) + options.map {
-                    "${it.vendorName} · ${FinanceUi.formatPaise(it.ratePaise, symbol)} · ${it.availableQty}"
-                }
-                FinanceForm.picker(this@PurchaseRequestFragment, form, getString(R.string.award_vendor), labels) { index ->
-                    draft.option = options.getOrNull(index - 1)
-                    val choice = draft.option
-                    if (choice != null) {
-                        draft.qty.setText(minOf(open, choice.availableQty).toString())
-                    }
-                }
-                draft.qty = FinanceForm.text(
-                    this@PurchaseRequestFragment, form, getString(R.string.award_quantity),
-                    InputType.TYPE_CLASS_NUMBER, open.toString()
-                )
-            }
-            if (rows.isEmpty()) return@launch toast(R.string.payment_error_nothing)
-            ask(R.string.award_materials, scroll(form)) {
-                val selections = mutableListOf<AwardSelection>()
-                rows.forEach { row ->
-                    val option = row.option ?: return@forEach
-                    val quantity = row.qty.text.toString().toIntOrNull() ?: 0
-                    if (quantity <= 0) return@forEach
-                    if (quantity > row.remaining || quantity > option.availableQty) {
-                        toast(R.string.payment_error_award)
-                        return@ask
-                    }
-                    selections += AwardSelection(row.line.id, option.quoteId, quantity)
-                }
-                if (selections.isEmpty()) return@ask toast(R.string.payment_error_nothing)
-                val summary = buildString {
-                    selections.groupBy { it.quoteId }.forEach { (quoteId, lines) ->
-                        val quote = detail.quotes.first { it.id == quoteId }
-                        appendLine(vendors[quote.vendorId]?.name ?: "Vendor")
-                        lines.forEach { selection ->
-                            val line = detail.lines.first { it.id == selection.requestLineId }
-                            val offer = detail.quoteLines.first {
-                                it.quoteId == quoteId && it.requestLineId == selection.requestLineId
-                            }
-                            appendLine("  ${line.itemName} × ${selection.quantity} · ${FinanceUi.formatPaise(offer.ratePaise, symbol)}")
-                        }
-                    }
-                }.trimEnd()
-                MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(R.string.award_summary_title)
-                    .setMessage(summary)
-                    .setPositiveButton(R.string.save) { _, _ ->
-                        viewLifecycleOwner.lifecycleScope.launch {
-                            runCatching { app().vendorRepository.awardRequest(requestId, selections) }
-                                .onFailure { toast(FinanceUi.message(requireContext(), it)) }
-                            reload()
-                        }
-                    }
-                    .setNegativeButton(R.string.cancel, null)
-                    .show()
-            }
         }
     }
 
@@ -611,26 +608,6 @@ class PurchaseRequestFragment : Fragment() {
             runCatching { app().vendorRepository.cancelRequest(requestId) }
                 .onFailure { toast(FinanceUi.message(requireContext(), it)) }
             reload()
-        }
-    }
-
-    private fun dateButton(labelRes: Int, onPicked: (Long) -> Unit): com.google.android.material.button.MaterialButton {
-        return com.google.android.material.button.MaterialButton(
-            requireContext(),
-            null,
-            com.google.android.material.R.attr.materialButtonOutlinedStyle
-        ).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            text = getString(labelRes)
-            setOnClickListener {
-                FinanceDates.showSingle(this@PurchaseRequestFragment, labelRes) { picked ->
-                    text = getString(labelRes) + ": " + FinanceDates.format(picked)
-                    onPicked(picked)
-                }
-            }
         }
     }
 
@@ -653,6 +630,17 @@ class PurchaseRequestFragment : Fragment() {
             .show()
     }
 
+    private fun orderedLabel(enteredQty: Int, baseQty: Int, orderUnit: String, factor: Int, baseUnit: String): String {
+        return if (enteredQty > 0) {
+            PackMath.formatQuantity(enteredQty, orderUnit, factor.coerceAtLeast(1), baseUnit)
+        } else {
+            PackMath.formatQuantity(baseQty, baseUnit, 1)
+        }
+    }
+
+    private fun awardedBase(lines: List<com.kex.vikrsaathi.data.entity.PurchaseOrderLine>): Map<Long, Int> =
+        awardedRequestBase(lines)
+
     private fun app() = requireActivity().application as VikrSaathiApp
     private fun toast(res: Int) = Toast.makeText(requireContext(), res, Toast.LENGTH_LONG).show()
     private fun toast(message: String) = Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
@@ -671,30 +659,87 @@ private data class DraftLine(
     val itemId: Long?,
     val itemName: String,
     val quantity: Int,
-    val notes: String
+    val notes: String,
+    val baseUnit: String = "",
+    val enteredQty: Int = 0,
+    val orderUnit: String = "",
+    val unitsPerBundle: Int = 1
 )
 
-private class QuoteDraft(val line: PurchaseRequestLine) {
-    var mode: Int = 0
-    lateinit var rate: com.google.android.material.textfield.TextInputEditText
-    lateinit var qty: com.google.android.material.textfield.TextInputEditText
-    lateinit var note: com.google.android.material.textfield.TextInputEditText
+internal fun purchaseRequestComparison(
+    detail: PurchaseRequestDetail,
+    vendorNames: Map<Long, String>
+): RequestComparison {
+    val quotes = detail.quotes.map { quote ->
+        QuoteHeader(
+            quoteId = quote.id,
+            vendorId = quote.vendorId,
+            vendorName = vendorNames[quote.vendorId] ?: "Vendor",
+            deliveryChargesPaise = quote.deliveryChargesPaise,
+            discountPaise = quote.discountPaise,
+            expectedDelivery = quote.expectedDelivery,
+            notes = quote.notes
+        )
+    }
+    val offers = detail.quoteLines.mapNotNull { line ->
+        val requestLineId = line.requestLineId ?: return@mapNotNull null
+        LineOffer(
+            quoteId = line.quoteId,
+            requestLineId = requestLineId,
+            availability = line.availability,
+            ratePaise = line.ratePaise,
+            availableQty = line.availableQty,
+            itemId = line.itemId,
+            itemName = line.itemName,
+            unitName = line.unitName,
+            unitsPerBundle = line.unitsPerBundle
+        )
+    }
+    return PurchaseRequestMath.compare(
+        detail.lines.map {
+            ComparedRequestLine(
+                it.id,
+                it.itemName,
+                it.quantity,
+                it.notes,
+                it.baseUnit,
+                it.enteredQty,
+                it.orderUnit,
+                it.unitsPerBundle
+            )
+        },
+        quotes,
+        offers
+    )
 }
 
-private data class AwardOption(
-    val quoteId: Long,
-    val vendorName: String,
-    val ratePaise: Long,
-    val availableQty: Int
-)
+internal fun awardedRequestBase(lines: List<com.kex.vikrsaathi.data.entity.PurchaseOrderLine>): Map<Long, Int> {
+    val totals = mutableMapOf<Long, Int>()
+    lines.forEach { line ->
+        val id = line.requestLineId ?: return@forEach
+        totals[id] = PackMath.addBase(totals[id] ?: 0, line.quantity, line.unitsPerBundle)
+    }
+    return totals
+}
 
-private class AwardDraft(
-    val line: PurchaseRequestLine,
-    val remaining: Int,
-    val options: List<AwardOption>
-) {
-    var option: AwardOption? = null
-    lateinit var qty: com.google.android.material.textfield.TextInputEditText
+internal fun comparableQuoteCount(comparison: RequestComparison): Int {
+    return comparison.summaries.count { summary ->
+        comparison.rows.any { row ->
+            row.cells.any { cell ->
+                cell.quoteId == summary.quoteId &&
+                    cell.state == OfferState.QUOTED &&
+                    cell.ratePaise != null &&
+                    (cell.availableQty ?: 0) > 0 &&
+                    cell.unitsPerBundle > 0
+            }
+        }
+    }
+}
+
+private fun requestStatusColor(status: String): Int = when (status) {
+    RequestStatus.AWARDED -> R.color.chart_accepted
+    RequestStatus.CANCELLED -> R.color.text_secondary_dark
+    else -> R.color.text_accent
 }
 
 private fun statusLabel(view: View, status: String): String {

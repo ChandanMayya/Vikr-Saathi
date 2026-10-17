@@ -94,13 +94,54 @@ class OrderHubMathTest {
         assertEquals(HubRecordStatus.ORDERED, rows.single().status)
     }
 
-    private fun line(id: Long, quantity: Int, rate: Long) =
-        HubOrderLineInput(id, itemId = 4, quantity = quantity, ratePaise = rate)
+    @Test
+    fun receiptStatusUsesBaseQuantityNotPackageCount() {
+        val rows = OrderHubMath.rows(
+            requests = emptyList(),
+            orders = listOf(
+                order(5, createdAt = 20, lines = listOf(line(50, quantity = 10, rate = 18_000, factor = 20)))
+            ),
+            receipts = listOf(
+                HubReceiptInput(orderId = 5, orderLineId = 50, itemId = 4, receivedQty = 9, unitsPerBundle = 20)
+            )
+        )
+        assertEquals(HubRecordStatus.PARTIALLY_RECEIVED, rows.single().status)
+        assertEquals(180_000L, rows.single().amountPaise)
+    }
+
+    private fun line(id: Long, quantity: Int, rate: Long, factor: Int = 1) =
+        HubOrderLineInput(id, itemId = 4, quantity = quantity, ratePaise = rate, unitsPerBundle = factor)
+
+    @Test
+    fun awardedOrderStaysOnTheRequest() {
+        val rows = OrderHubMath.rows(
+            requests = listOf(HubRequestInput(3, "PR-003", 1_000, RequestStatus.AWARDED, 1, 2)),
+            orders = listOf(
+                order(9, createdAt = 2_000, lines = listOf(line(90, 2, 50)), vendorName = "SBC", requestId = 3)
+            ),
+            receipts = emptyList()
+        )
+        assertEquals(1, rows.size)
+        assertEquals(HubRecordKind.REQUEST, rows.single().kind)
+        assertEquals(1, rows.single().awardedSupplierCount)
+        assertEquals("SBC", rows.single().awardedSupplierName)
+        assertEquals(1, rows.single().ordersToReceive)
+        assertEquals(listOf(3L), OrderHubMath.filter(rows, HubTypeFilter.ALL, HubStatusFilter.OPEN, null, null).map { it.id })
+    }
 
     private fun order(
         id: Long,
         createdAt: Long,
         lines: List<HubOrderLineInput>,
-        vendorName: String? = "Shree"
-    ) = HubOrderInput(id, vendorId = 1, vendorName = vendorName, number = "PO-$id", createdAt = createdAt, lines = lines)
+        vendorName: String? = "Shree",
+        requestId: Long? = null
+    ) = HubOrderInput(
+        id,
+        vendorId = 1,
+        vendorName = vendorName,
+        number = "PO-$id",
+        createdAt = createdAt,
+        lines = lines,
+        requestId = requestId
+    )
 }

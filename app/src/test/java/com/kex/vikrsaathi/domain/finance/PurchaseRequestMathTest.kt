@@ -187,13 +187,84 @@ class PurchaseRequestMathTest {
         notes = "note"
     )
 
-    private fun offer(quoteId: Long, lineId: Long, availability: String, rate: Long, available: Int) = LineOffer(
+    @Test
+    fun comparisonNormalizesDifferentPackSizesAndKeepsChargesSeparate() {
+        val comparison = PurchaseRequestMath.compare(
+            lines = listOf(line(1, "Pen", 200)),
+            quotes = listOf(header(10, "Boxes", delivery = 50, discount = 10), header(11, "Packs")),
+            offers = listOf(
+                offer(10, 1, QuoteAvailability.QUOTED, rate = 18_000, available = 12, unit = "Box", factor = 20),
+                offer(11, 1, QuoteAvailability.QUOTED, rate = 10_000, available = 20, unit = "Pack", factor = 10)
+            )
+        )
+        val boxes = comparison.rows.single().cells.first { it.quoteId == 10L }
+        val packs = comparison.rows.single().cells.first { it.quoteId == 11L }
+        assertEquals(900L, boxes.perBasePaise)
+        assertEquals(1_000L, packs.perBasePaise)
+        assertTrue(boxes.lowest)
+        assertEquals(false, packs.lowest)
+        assertEquals(10, boxes.packagesNeeded)
+        assertEquals(0, boxes.excessBase)
+        assertEquals(18_000L * 10, comparison.summaries.first { it.quoteId == 10L }.goodsPaise)
+        assertEquals(50L, comparison.summaries.first { it.quoteId == 10L }.deliveryChargesPaise)
+        assertEquals(10L, comparison.summaries.first { it.quoteId == 10L }.discountPaise)
+    }
+
+    @Test
+    fun unavailablePackIsNotZeroCost() {
+        val comparison = PurchaseRequestMath.compare(
+            lines = listOf(line(1, "Pen", 20)),
+            quotes = listOf(header(10, "Boxes")),
+            offers = listOf(offer(10, 1, QuoteAvailability.UNAVAILABLE, rate = 0, available = 0, unit = "Box", factor = 20))
+        )
+        assertNull(comparison.rows.single().cells.single().ratePaise)
+        assertNull(comparison.summaries.single().goodsPaise)
+    }
+
+    @Test
+    fun awardKeepsPackageQuantityAndRejectsBaseExcess() {
+        val offer = offer(10, 1, QuoteAvailability.QUOTED, rate = 18_000, available = 10, unit = "Box", factor = 20)
+        val partial = PurchaseRequestMath.planAward(
+            RequestStatus.QUOTING,
+            listOf(AwardLineState(1, 200, 0)),
+            listOf(header(10, "Boxes")),
+            listOf(offer),
+            listOf(AwardSelection(1, 10, 4))
+        ) as AwardPlan.Accepted
+        assertEquals(RequestStatus.PARTIALLY_AWARDED, partial.status)
+        val line = partial.orders.single().lines.single()
+        assertEquals(4, line.quantity)
+        assertEquals(20, line.unitsPerBundle)
+        assertEquals("Box", line.unitName)
+        assertEquals(18_000L, line.ratePaise)
+
+        val excess = PurchaseRequestMath.planAward(
+            RequestStatus.PARTIALLY_AWARDED,
+            listOf(AwardLineState(1, 200, 80)),
+            listOf(header(10, "Boxes")),
+            listOf(offer),
+            listOf(AwardSelection(1, 10, 7))
+        )
+        assertEquals(FinanceError.AWARD_EXCEEDS, (excess as AwardPlan.Rejected).error)
+    }
+
+    private fun offer(
+        quoteId: Long,
+        lineId: Long,
+        availability: String,
+        rate: Long,
+        available: Int,
+        unit: String = "",
+        factor: Int = 1
+    ) = LineOffer(
         quoteId = quoteId,
         requestLineId = lineId,
         availability = availability,
         ratePaise = rate,
         availableQty = available,
         itemId = lineId,
-        itemName = "Item"
+        itemName = "Item",
+        unitName = unit,
+        unitsPerBundle = factor
     )
 }

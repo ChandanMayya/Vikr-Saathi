@@ -74,6 +74,18 @@
         <item name="android:textStyle">bold</item>
     </style>
 
+    <style name="VikrSaathiFilterChip" parent="Widget.Material3.Chip.Filter">
+        <item name="android:minHeight">40dp</item>
+        <item name="android:ellipsize">none</item>
+        <item name="android:singleLine">true</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="chipBackgroundColor">@color/orders_chip_bg</item>
+        <item name="chipMinHeight">40dp</item>
+        <item name="chipStrokeColor">@color/orders_chip_stroke</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="android:textColor">@color/orders_chip_text</item>
+    </style>
+
     <style name="VikrSaathiBillLineCard" parent="Widget.Material3.CardView.Outlined">
         <item name="cardCornerRadius">12dp</item>
         <item name="cardElevation">2dp</item>

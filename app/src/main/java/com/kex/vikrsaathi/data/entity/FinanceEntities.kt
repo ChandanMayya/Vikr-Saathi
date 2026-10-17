@@ -260,8 +260,15 @@ data class PurchaseRequestLine(
     val requestId: Long,
     val itemId: Long? = null,
     val itemName: String,
+    /** Normalized quantity in the item's base unit. */
     val quantity: Int,
-    val notes: String = ""
+    val notes: String = "",
+    /** Base-unit label captured when the request was saved. */
+    val baseUnit: String = "",
+    /** Quantity typed in [orderUnit]. Zero on older rows, which already stored a base quantity. */
+    val enteredQty: Int = 0,
+    val orderUnit: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 @Entity(
@@ -325,7 +332,10 @@ data class PurchaseOrderLine(
     val itemName: String,
     val quantity: Int,
     val ratePaise: Long,
-    val requestLineId: Long? = null
+    val requestLineId: Long? = null,
+    /** Entered purchase unit. Blank with factor 1 is a legacy base-unit line. */
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 @Entity(
@@ -385,7 +395,9 @@ data class GoodsReceiptLine(
     val shortQty: Int = 0,
     val damagedQty: Int = 0,
     val rejectedQty: Int = 0,
-    val acceptedQty: Int = 0
+    val acceptedQty: Int = 0,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 @Entity(
@@ -439,7 +451,9 @@ data class PurchaseInvoiceLine(
     val itemName: String,
     val quantity: Int,
     val ratePaise: Long,
-    val lineTotalPaise: Long
+    val lineTotalPaise: Long,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 @Entity(
@@ -509,5 +523,7 @@ data class VendorQuoteLine(
     val availableQty: Int = 0,
     val notes: String = "",
     val requestLineId: Long? = null,
-    val availability: String = QuoteAvailability.QUOTED
+    val availability: String = QuoteAvailability.QUOTED,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )

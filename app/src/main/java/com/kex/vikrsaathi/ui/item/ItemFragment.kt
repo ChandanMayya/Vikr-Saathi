@@ -129,7 +129,11 @@ class ItemFragment : Fragment() {
             formBinding.editItemMrp.setText(it.mrp.toString())
             formBinding.editItemDiscount.setText(it.discount.toString())
             formBinding.editItemSellingPrice.setText(it.sellingPrice?.toString().orEmpty())
-            formBinding.editItemUnit.setText(it.remarks)
+            formBinding.editItemUnit.setText(it.baseUnit.ifBlank { it.remarks })
+            formBinding.editPurchaseUnit.setText(it.purchaseUnit)
+            if (it.purchaseUnit.isNotBlank() && it.unitsPerPurchase > 0) {
+                formBinding.editUnitsPerPurchase.setText(it.unitsPerPurchase.toString())
+            }
             formBinding.layoutOpeningStock.visibility = View.GONE
             formBinding.textCurrentStock.visibility = View.VISIBLE
             formBinding.textCurrentStock.text = getString(R.string.current_stock, it.stockQty)
@@ -155,6 +159,30 @@ class ItemFragment : Fragment() {
                     return@setPositiveButton
                 }
                 val openingStock = formBinding.editOpeningStock.text.toString().toIntOrNull() ?: 0
+                val unit = formBinding.editItemUnit.text.toString().trim()
+                val purchaseUnit = formBinding.editPurchaseUnit.text.toString().trim()
+                val factorText = formBinding.editUnitsPerPurchase.text.toString().trim()
+                val parsedFactor = factorText.toIntOrNull()
+                val unitsPerPurchase = when {
+                    purchaseUnit.isBlank() && (factorText.isEmpty() || parsedFactor == 1) -> 1
+                    purchaseUnit.isBlank() || factorText.isEmpty() -> 0
+                    else -> parsedFactor ?: 0
+                }
+                val packError = com.kex.vikrsaathi.domain.finance.PackMath.validateItemPack(
+                    purchaseUnit,
+                    unitsPerPurchase
+                )
+                if (packError != null) {
+                    Toast.makeText(
+                        requireContext(),
+                        com.kex.vikrsaathi.ui.finance.FinanceUi.message(
+                            requireContext(),
+                            com.kex.vikrsaathi.domain.finance.FinanceException(packError)
+                        ),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@setPositiveButton
+                }
                 val item = Item(
                     id = existing?.id ?: 0,
                     name = name,
@@ -162,9 +190,12 @@ class ItemFragment : Fragment() {
                     mrp = mrp,
                     discount = formBinding.editItemDiscount.text.toString().toDoubleOrNull() ?: 0.0,
                     sellingPrice = formBinding.editItemSellingPrice.text.toString().toDoubleOrNull(),
-                    remarks = formBinding.editItemUnit.text.toString().trim(),
+                    remarks = unit,
                     stockQty = existing?.stockQty ?: 0,
-                    preferredVendorId = if (vendors == null) existing?.preferredVendorId else selectedVendorId
+                    preferredVendorId = if (vendors == null) existing?.preferredVendorId else selectedVendorId,
+                    baseUnit = unit,
+                    purchaseUnit = purchaseUnit,
+                    unitsPerPurchase = unitsPerPurchase
                 )
                 viewModel.saveItem(item, openingStock = if (existing == null) openingStock else 0) { result ->
                     result.onFailure {

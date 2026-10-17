@@ -59,6 +59,9 @@ class ItemAdapter(
         return PriceCalculator.formatAmount(price, currencySymbol)
     }
 
+    private fun stockLabel(item: Item): String =
+        if (item.stockUnit().isBlank()) item.stockQty.toString() else "${item.stockQty} ${item.stockUnit()}"
+
     private fun stockColor(context: android.content.Context, qty: Int): Int =
         ContextCompat.getColor(
             context,
@@ -75,7 +78,7 @@ class ItemAdapter(
             binding.textItemMrp.text = PriceCalculator.formatAmount(item.mrp, currencySymbol)
             binding.textItemDiscount.text = String.format("%.1f%%", item.discount)
             binding.textItemBarcode.text = item.barcode?.ifBlank { null } ?: "-"
-            binding.textItemStock.text = item.stockQty.toString()
+            binding.textItemStock.text = stockLabel(item)
             binding.textItemStock.setTextColor(stockColor(binding.root.context, item.stockQty))
             binding.buttonEditItem.setOnClickListener { onEdit(item) }
             binding.buttonDeleteItem.setOnClickListener { onDelete(item) }
@@ -87,8 +90,10 @@ class ItemAdapter(
         fun bind(item: Item) {
             binding.textItemName.text = item.name
             binding.textItemPrice.text = displayPrice(item)
-            binding.textItemStock.text =
-                binding.root.context.getString(R.string.stock_label_format, item.stockQty)
+            binding.textItemStock.text = binding.root.context.getString(
+                R.string.stock_label_format,
+                item.stockQty
+            ).let { label -> if (item.stockUnit().isBlank()) label else "$label ${item.stockUnit()}" }
             binding.textItemStock.setTextColor(stockColor(binding.root.context, item.stockQty))
             binding.buttonEditItem.setOnClickListener { onEdit(item) }
             binding.buttonDeleteItem.setOnClickListener { onDelete(item) }
@@ -101,7 +106,7 @@ class ItemAdapter(
             binding.textItemName.text = item.name
             binding.textItemMrp.text = PriceCalculator.formatAmount(item.mrp, currencySymbol)
             binding.textItemDiscount.text = String.format("%.0f%%", item.discount)
-            binding.textItemStock.text = item.stockQty.toString()
+            binding.textItemStock.text = stockLabel(item)
             binding.textItemStock.setTextColor(stockColor(binding.root.context, item.stockQty))
             binding.textItemBarcode.text = item.barcode?.ifBlank { null } ?: "-"
             binding.buttonEditItem.setOnClickListener { onEdit(item) }

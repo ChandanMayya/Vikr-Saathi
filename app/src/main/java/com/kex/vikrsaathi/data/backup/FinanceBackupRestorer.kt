@@ -331,10 +331,17 @@ class FinanceBackupRestorer(
                 )
             )
             val itemId = item(legacy.itemId)
-            if (applyStockEffects && itemId != null && legacy.acceptedQty > 0) {
+            val acceptedBase = com.kex.vikrsaathi.domain.finance.PackMath.toBase(
+                legacy.acceptedQty,
+                legacy.unitsPerBundle
+            )
+            if (applyStockEffects && acceptedBase == null && legacy.acceptedQty > 0) {
+                errors.add("Goods receipt line ${legacy.itemName}: pack conversion does not fit stock")
+            }
+            if (applyStockEffects && itemId != null && acceptedBase != null && acceptedBase > 0) {
                 applyStock(
                     itemId,
-                    legacy.acceptedQty,
+                    acceptedBase,
                     com.kex.vikrsaathi.data.entity.StockMovementType.PURCHASE_RECEIPT,
                     com.kex.vikrsaathi.data.entity.StockReferenceType.GOODS_RECEIPT,
                     receiptId

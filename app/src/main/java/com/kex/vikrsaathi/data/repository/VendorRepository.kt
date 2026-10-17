@@ -33,6 +33,7 @@ import com.kex.vikrsaathi.domain.finance.HubOrderLineInput
 import com.kex.vikrsaathi.domain.finance.HubReceiptInput
 import com.kex.vikrsaathi.domain.finance.HubRequestInput
 import com.kex.vikrsaathi.domain.finance.OrderHubMath
+import com.kex.vikrsaathi.domain.finance.PackMath
 import com.kex.vikrsaathi.domain.finance.OrderHubRow
 import com.kex.vikrsaathi.domain.finance.FinanceError
 import com.kex.vikrsaathi.domain.finance.FinanceException
@@ -63,7 +64,9 @@ data class OrderLineInput(
     val itemId: Long?,
     val itemName: String,
     val quantity: Int,
-    val ratePaise: Long
+    val ratePaise: Long,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class ReceiptLineInput(
@@ -73,14 +76,18 @@ data class ReceiptLineInput(
     val orderedQty: Int,
     val receivedQty: Int,
     val damagedQty: Int,
-    val rejectedQty: Int
+    val rejectedQty: Int,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class InvoiceLineInput(
     val itemId: Long?,
     val itemName: String,
     val quantity: Int,
-    val ratePaise: Long
+    val ratePaise: Long,
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class QuoteLineInput(
@@ -88,14 +95,20 @@ data class QuoteLineInput(
     val itemName: String,
     val ratePaise: Long,
     val availableQty: Int,
-    val notes: String = ""
+    val notes: String = "",
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class RequestLineInput(
     val itemId: Long?,
     val itemName: String,
     val quantity: Int,
-    val notes: String = ""
+    val notes: String = "",
+    val baseUnit: String = "",
+    val enteredQty: Int = 0,
+    val orderUnit: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class RequestQuoteLineInput(
@@ -103,7 +116,9 @@ data class RequestQuoteLineInput(
     val availability: String,
     val ratePaise: Long,
     val availableQty: Int,
-    val notes: String = ""
+    val notes: String = "",
+    val unitName: String = "",
+    val unitsPerBundle: Int = 1
 )
 
 data class PurchaseRequestSummary(
@@ -277,6 +292,9 @@ class VendorRepository(
         if (lines.isEmpty() || lines.any { it.quantity <= 0 || it.itemName.isBlank() }) {
             throw FinanceException(FinanceError.QUOTE_LINE_REQUIRED)
         }
+        lines.forEach { line ->
+            PackMath.validateTransaction(line.unitName, line.unitsPerBundle)?.let { throw FinanceException(it) }
+        }
         return database.withTransaction {
             val id = purchaseDao.insertOrder(
                 PurchaseOrder(
@@ -299,7 +317,9 @@ class VendorRepository(
                         itemId = line.itemId,
                         itemName = line.itemName.trim(),
                         quantity = line.quantity,
-                        ratePaise = line.ratePaise
+                        ratePaise = line.ratePaise,
+                        unitName = line.unitName.trim(),
+                        unitsPerBundle = line.unitsPerBundle
                     )
                 )
             }
@@ -315,6 +335,9 @@ class VendorRepository(
         lines: List<ReceiptLineInput>
     ): Long {
         if (lines.isEmpty()) throw FinanceException(FinanceError.RECEIPT_QTY_INVALID)
+        lines.forEach { line ->
+            PackMath.validateTransaction(line.unitName, line.unitsPerBundle)?.let { throw FinanceException(it) }
+        }
         val computed = lines.map { input ->
             val qty = PurchaseMath.receiptQuantities(
                 ReceiptQtyInput(input.orderedQty, input.receivedQty, input.damagedQty, input.rejectedQty)
@@ -345,14 +368,18 @@ class VendorRepository(
                         shortQty = qty.shortQty,
                         damagedQty = qty.damagedQty,
                         rejectedQty = qty.rejectedQty,
-                        acceptedQty = qty.acceptedQty
+                        acceptedQty = qty.acceptedQty,
+                        unitName = input.unitName.trim(),
+                        unitsPerBundle = input.unitsPerBundle
                     )
                 )
                 val itemId = input.itemId
-                if (itemId != null && qty.acceptedQty > 0) {
+                val acceptedBase = PackMath.toBase(qty.acceptedQty, input.unitsPerBundle)
+                    ?: throw FinanceException(FinanceError.INVALID_PACK)
+                if (itemId != null && acceptedBase > 0) {
                     inventoryRepository.applyMovementUnchecked(
                         itemId = itemId,
-                        delta = qty.acceptedQty,
+                        delta = acceptedBase,
                         type = StockMovementType.PURCHASE_RECEIPT,
                         referenceType = StockReferenceType.GOODS_RECEIPT,
                         referenceId = id,
@@ -378,7 +405,12 @@ class VendorRepository(
         existingInvoiceId: Long? = null
     ): Long {
         if (invoiceNumber.isBlank() || lines.isEmpty()) throw FinanceException(FinanceError.QUOTE_LINE_REQUIRED)
-        val lineTotals = lines.map { it.ratePaise * it.quantity }
+        lines.forEach { line ->
+            PackMath.validateTransaction(line.unitName, line.unitsPerBundle)?.let { throw FinanceException(it) }
+        }
+        val lineTotals = lines.map {
+            PackMath.lineTotalPaise(it.quantity, it.ratePaise) ?: throw FinanceException(FinanceError.INVOICE_TOTAL_MISMATCH)
+        }
         val total = PurchaseMath.invoiceTotalPaise(
             lineTotals, deliveryChargesPaise, otherChargesPaise, discountPaise
         )
@@ -429,7 +461,10 @@ class VendorRepository(
                         itemName = line.itemName.trim(),
                         quantity = line.quantity,
                         ratePaise = line.ratePaise,
-                        lineTotalPaise = line.ratePaise * line.quantity
+                        lineTotalPaise = PackMath.lineTotalPaise(line.quantity, line.ratePaise)
+                            ?: throw FinanceException(FinanceError.INVOICE_TOTAL_MISMATCH),
+                        unitName = line.unitName.trim(),
+                        unitsPerBundle = line.unitsPerBundle
                     )
                 )
             }
@@ -478,6 +513,9 @@ class VendorRepository(
         lines: List<QuoteLineInput>
     ): Long {
         if (lines.isEmpty()) throw FinanceException(FinanceError.QUOTE_LINE_REQUIRED)
+        lines.forEach { line ->
+            PackMath.validateTransaction(line.unitName, line.unitsPerBundle)?.let { throw FinanceException(it) }
+        }
         return database.withTransaction {
             val id = purchaseDao.insertQuote(
                 VendorQuote(
@@ -498,7 +536,9 @@ class VendorRepository(
                         itemName = line.itemName.trim(),
                         ratePaise = line.ratePaise,
                         availableQty = line.availableQty,
-                        notes = line.notes.trim()
+                        notes = line.notes.trim(),
+                        unitName = line.unitName.trim(),
+                        unitsPerBundle = line.unitsPerBundle
                     )
                 )
             }
@@ -520,7 +560,9 @@ class VendorRepository(
                         itemKey = line.itemId?.toString() ?: line.itemName.lowercase(),
                         itemName = line.itemName,
                         ratePaise = line.ratePaise,
-                        quantity = line.availableQty
+                        quantity = line.availableQty,
+                        unitName = line.unitName,
+                        unitsPerBundle = line.unitsPerBundle
                     )
                 }
             )
@@ -541,7 +583,7 @@ class VendorRepository(
             purchaseDao.getOrderLines(orderId).forEach { line ->
                 val key = line.itemId?.toString() ?: line.itemName.lowercase()
                 val current = ordered[key]
-                ordered[key] = line.itemName to ((current?.second ?: 0) + line.quantity)
+                ordered[key] = line.itemName to PackMath.addBase(current?.second ?: 0, line.quantity, line.unitsPerBundle)
             }
         }
         val accepted = mutableMapOf<String, Int>()
@@ -549,13 +591,13 @@ class VendorRepository(
             .filter { orderId == null || purchaseDao.getReceipt(it.receiptId)?.orderId == orderId }
         receiptLines.forEach { line ->
             val key = line.itemId?.toString() ?: line.itemName.lowercase()
-            accepted[key] = (accepted[key] ?: 0) + line.acceptedQty
+            accepted[key] = PackMath.addBase(accepted[key] ?: 0, line.acceptedQty, line.unitsPerBundle)
         }
         val invoiced = mutableMapOf<String, Int>()
         val invoiceLines = if (invoiceId != null) purchaseDao.getInvoiceLines(invoiceId) else emptyList()
         invoiceLines.forEach { line ->
             val key = line.itemId?.toString() ?: line.itemName.lowercase()
-            invoiced[key] = (invoiced[key] ?: 0) + line.quantity
+            invoiced[key] = PackMath.addBase(invoiced[key] ?: 0, line.quantity, line.unitsPerBundle)
         }
         return PurchaseMath.reconcile(ordered, accepted, invoiced)
     }
@@ -585,7 +627,8 @@ class VendorRepository(
                 orderId = receiptOrderId[line.receiptId],
                 orderLineId = line.orderLineId,
                 itemId = line.itemId,
-                receivedQty = line.receivedQty
+                receivedQty = line.receivedQty,
+                unitsPerBundle = line.unitsPerBundle
             )
         }
         return OrderHubMath.rows(
@@ -596,7 +639,8 @@ class VendorRepository(
                     createdAt = request.createdAt,
                     status = request.status,
                     lineCount = requestLines[request.id].orEmpty().size,
-                    quoteCount = quotesByRequest[request.id].orEmpty().size
+                    quoteCount = quotesByRequest[request.id].orEmpty().size,
+                    requiredBy = request.requiredBy
                 )
             },
             orders = orders.map { order ->
@@ -607,8 +651,15 @@ class VendorRepository(
                     number = order.orderNumber,
                     createdAt = order.createdAt,
                     lines = linesByOrder[order.id].orEmpty().map { line ->
-                        HubOrderLineInput(line.id, line.itemId, line.quantity, line.ratePaise)
-                    }
+                        HubOrderLineInput(
+                            line.id,
+                            line.itemId,
+                            line.quantity,
+                            line.ratePaise,
+                            line.unitsPerBundle
+                        )
+                    },
+                    requestId = order.requestId
                 )
             },
             receipts = receipts
@@ -616,7 +667,7 @@ class VendorRepository(
     }
 
     suspend fun purchasingAttentionCount(): Int =
-        orderHubRows().count { OrderHubMath.isOpen(it.status) }
+        orderHubRows().count { OrderHubMath.isOpen(it.status) || it.ordersToReceive > 0 }
 
     suspend fun requestSummaries(): List<PurchaseRequestSummary> {
         val quotes = purchaseDao.getQuotes()
@@ -680,13 +731,23 @@ class VendorRepository(
                 requestId
             }
             lines.forEach { line ->
+                val factor = if (line.enteredQty > 0) line.unitsPerBundle.coerceAtLeast(1) else 1
+                val baseQuantity = if (line.enteredQty > 0) {
+                    PackMath.toBase(line.enteredQty, factor) ?: throw FinanceException(FinanceError.INVALID_PACK)
+                } else {
+                    line.quantity
+                }
                 purchaseDao.insertRequestLine(
                     PurchaseRequestLine(
                         requestId = id,
                         itemId = line.itemId,
                         itemName = line.itemName.trim(),
-                        quantity = line.quantity,
-                        notes = line.notes.trim()
+                        quantity = baseQuantity,
+                        notes = line.notes.trim(),
+                        baseUnit = line.baseUnit.trim(),
+                        enteredQty = line.enteredQty,
+                        orderUnit = line.orderUnit.trim(),
+                        unitsPerBundle = factor
                     )
                 )
             }
@@ -726,7 +787,14 @@ class VendorRepository(
                     deliveryChargesPaise,
                     discountPaise,
                     lines.map {
-                        RequestQuoteDraft(it.requestLineId, it.availability, it.ratePaise, it.availableQty)
+                        RequestQuoteDraft(
+                            it.requestLineId,
+                            it.availability,
+                            it.ratePaise,
+                            it.availableQty,
+                            it.unitName,
+                            it.unitsPerBundle
+                        )
                     },
                     requestLines.map { it.id }.toSet()
                 )
@@ -763,7 +831,9 @@ class VendorRepository(
                             availableQty = if (quoted) line.availableQty else 0,
                             notes = line.notes.trim(),
                             requestLineId = source.id,
-                            availability = line.availability
+                            availability = line.availability,
+                            unitName = if (quoted) line.unitName.trim() else "",
+                            unitsPerBundle = if (quoted) line.unitsPerBundle else 1
                         )
                     )
                 }
@@ -784,7 +854,9 @@ class VendorRepository(
             val lines = purchaseDao.getRequestLines(requestId)
             val awardedByLine = purchaseDao.orderLinesForRequest(requestId)
                 .groupBy { it.requestLineId }
-                .mapValues { (_, rows) -> rows.sumOf { it.quantity } }
+                .mapValues { (_, rows) ->
+                    rows.fold(0) { sum, line -> PackMath.addBase(sum, line.quantity, line.unitsPerBundle) }
+                }
             val quotes = purchaseDao.quotesForRequest(requestId)
             val offers = quotes.flatMap { quote ->
                 purchaseDao.getQuoteLines(quote.id).mapNotNull { line ->
@@ -796,7 +868,9 @@ class VendorRepository(
                         ratePaise = line.ratePaise,
                         availableQty = line.availableQty,
                         itemId = line.itemId,
-                        itemName = line.itemName
+                        itemName = line.itemName,
+                        unitName = line.unitName,
+                        unitsPerBundle = line.unitsPerBundle
                     )
                 }
             }
@@ -849,7 +923,9 @@ class VendorRepository(
                             itemName = line.itemName,
                             quantity = line.quantity,
                             ratePaise = line.ratePaise,
-                            requestLineId = line.requestLineId
+                            requestLineId = line.requestLineId,
+                            unitName = line.unitName,
+                            unitsPerBundle = line.unitsPerBundle
                         )
                     )
                 }
@@ -864,10 +940,11 @@ class VendorRepository(
         database.withTransaction {
             purchaseDao.getAllReceiptLines().forEach { line ->
                 val itemId = line.itemId ?: return@forEach
-                if (line.acceptedQty == 0) return@forEach
+                val acceptedBase = PackMath.toBase(line.acceptedQty, line.unitsPerBundle) ?: 0
+                if (acceptedBase == 0) return@forEach
                 inventoryRepository.applyMovementUnchecked(
                     itemId = itemId,
-                    delta = -line.acceptedQty,
+                    delta = -acceptedBase,
                     type = StockMovementType.PURCHASE_REVERSAL,
                     referenceType = StockReferenceType.GOODS_RECEIPT,
                     referenceId = line.receiptId,

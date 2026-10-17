@@ -676,3 +676,28 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         )
     }
 }
+
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE items ADD COLUMN baseUnit TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE items ADD COLUMN purchaseUnit TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE items ADD COLUMN unitsPerPurchase INTEGER NOT NULL DEFAULT 1")
+        db.execSQL("ALTER TABLE purchase_request_lines ADD COLUMN baseUnit TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vendor_quote_lines ADD COLUMN unitName TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE vendor_quote_lines ADD COLUMN unitsPerBundle INTEGER NOT NULL DEFAULT 1")
+        db.execSQL("ALTER TABLE purchase_order_lines ADD COLUMN unitName TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE purchase_order_lines ADD COLUMN unitsPerBundle INTEGER NOT NULL DEFAULT 1")
+        db.execSQL("ALTER TABLE goods_receipt_lines ADD COLUMN unitName TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE goods_receipt_lines ADD COLUMN unitsPerBundle INTEGER NOT NULL DEFAULT 1")
+        db.execSQL("ALTER TABLE purchase_invoice_lines ADD COLUMN unitName TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE purchase_invoice_lines ADD COLUMN unitsPerBundle INTEGER NOT NULL DEFAULT 1")
+    }
+}
+
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE purchase_request_lines ADD COLUMN enteredQty INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE purchase_request_lines ADD COLUMN orderUnit TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE purchase_request_lines ADD COLUMN unitsPerBundle INTEGER NOT NULL DEFAULT 1")
+    }
+}

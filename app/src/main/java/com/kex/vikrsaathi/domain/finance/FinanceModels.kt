@@ -89,7 +89,8 @@ enum class FinanceError {
     DUPLICATE_QUOTE,
     AWARD_EXCEEDS,
     REQUEST_NOT_EDITABLE,
-    INVALID_QUOTE
+    INVALID_QUOTE,
+    INVALID_PACK
 }
 
 class FinanceException(val code: FinanceError) : IllegalArgumentException(code.name)

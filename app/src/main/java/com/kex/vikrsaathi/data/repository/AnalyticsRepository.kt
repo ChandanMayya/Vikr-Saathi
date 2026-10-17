@@ -16,6 +16,7 @@ import com.kex.vikrsaathi.data.model.analytics.PeakHourPoint
 import com.kex.vikrsaathi.data.model.analytics.SalesTrendPoint
 import com.kex.vikrsaathi.data.model.analytics.VendorAnalytics
 import com.kex.vikrsaathi.domain.finance.LedgerRow
+import com.kex.vikrsaathi.domain.finance.PackMath
 import com.kex.vikrsaathi.util.AnalyticsDateRange
 import com.kex.vikrsaathi.util.DayRange
 import java.util.Calendar
@@ -90,10 +91,10 @@ class AnalyticsRepository(
             VendorAnalyticsMath.ReceiptQty(
                 vendorId = receipt.vendorId,
                 receivedAt = receipt.receivedAt,
-                receivedQty = line.receivedQty,
-                acceptedQty = line.acceptedQty,
-                damagedQty = line.damagedQty,
-                rejectedQty = line.rejectedQty
+                receivedQty = PackMath.toBase(line.receivedQty, line.unitsPerBundle) ?: 0,
+                acceptedQty = PackMath.toBase(line.acceptedQty, line.unitsPerBundle) ?: 0,
+                damagedQty = PackMath.toBase(line.damagedQty, line.unitsPerBundle) ?: 0,
+                rejectedQty = PackMath.toBase(line.rejectedQty, line.unitsPerBundle) ?: 0
             )
         }
         return VendorAnalyticsMath.compute(

@@ -444,7 +444,27 @@
         android:id="@+id/ordersFragment"
         android:name="com.kex.vikrsaathi.ui.orders.OrdersFragment"
         android:label="@string/orders"
-        tools:layout="@layout/fragment_orders" />
+        tools:layout="@layout/fragment_orders">
+        <argument
+            android:name="hubType"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/purchaseOrderFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.PurchaseOrderFragment"
+        android:label="@string/orders_badge_po"
+        tools:layout="@layout/fragment_purchase_order">
+        <argument
+            android:name="orderId"
+            android:defaultValue="0L"
+            app:argType="long" />
+        <argument
+            android:name="startReceipt"
+            android:defaultValue="false"
+            app:argType="boolean" />
+    </fragment>
 
     <fragment
         android:id="@+id/purchaseRequestListFragment"
@@ -459,6 +479,39 @@
         tools:layout="@layout/fragment_purchase_request">
         <argument
             android:name="requestId"
+            android:defaultValue="0L"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/purchaseRequestQuoteFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.PurchaseRequestQuoteFragment"
+        android:label="@string/add_vendor_quote"
+        tools:layout="@layout/fragment_purchase_request_quote">
+        <argument
+            android:name="requestId"
+            android:defaultValue="0L"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/purchaseRequestCompareFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.PurchaseRequestCompareFragment"
+        android:label="@string/compare_and_award"
+        tools:layout="@layout/fragment_purchase_request_compare">
+        <argument
+            android:name="requestId"
+            android:defaultValue="0L"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/goodsReceiptFragment"
+        android:name="com.kex.vikrsaathi.ui.finance.GoodsReceiptFragment"
+        android:label="@string/po_receive_goods"
+        tools:layout="@layout/fragment_goods_receipt">
+        <argument
+            android:name="orderId"
             android:defaultValue="0L"
             app:argType="long" />
     </fragment>

@@ -9,59 +9,31 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/vendor_balance_sign"
-            android:textAppearance="?attr/textAppearanceBodySmall" />
-
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonPurchaseRequests"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/purchase_requests" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonNewOrder"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/new_purchase_order" />
+            android:text="@string/orders" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonNewReceipt"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/new_goods_receipt" />
+            android:text="@string/direct_receipt" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonNewInvoice"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/new_purchase_invoice" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonNewQuote"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+        <LinearLayout
+            android:id="@+id/historyGroup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/new_quote" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonCompareQuotes"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/compare_quotes" />
-
-        <TextView
-            android:id="@+id/textPurchaseBody"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:textAppearance="?attr/textAppearanceBodyMedium" />
+            android:orientation="vertical" />
     </LinearLayout>
 </ScrollView>

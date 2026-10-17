@@ -104,7 +104,7 @@
     <string name="view_mode_compact">Compact</string>
     <string name="view_mode_details">Details</string>
     <string name="master_view_mode_section">Master view mode</string>
-    <string name="master_view_mode_hint">Default list density for Customers, Vendors, Items, Inventory, and Bills History. A choice made on a screen overrides this for that screen only.</string>
+    <string name="master_view_mode_hint">Default list density for Customers, Vendors, Items, Inventory, Bills History, and Orders. A choice made on a screen overrides this for that screen only.</string>
     <string name="customers_options">Customers options</string>
     <string name="vendors_options">Vendors options</string>
     <string name="items_options">Items options</string>
@@ -216,6 +216,11 @@
     <string name="bill_line_new_badge_stock">New · Stock %1$d</string>
     <string name="rate">Rate</string>
     <string name="auto_saved_customer">New customer saved</string>
+    <plurals name="request_item_count">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+
     <plurals name="auto_saved_items">
         <item quantity="one">%d new item saved</item>
         <item quantity="other">%d new items saved</item>
