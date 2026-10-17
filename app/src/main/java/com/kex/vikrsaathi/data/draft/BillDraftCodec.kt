@@ -18,6 +18,7 @@ object BillDraftCodec {
                     put("quantity", line.quantity)
                     put("roundOff", line.roundOff)
                     put("isNew", line.isNew)
+                    if (line.lineKey.isNotEmpty()) put("lineKey", line.lineKey)
                     line.openingStock?.let { put("openingStock", it) }
                     line.barcode?.let { put("barcode", it) }
                 }
@@ -47,7 +48,8 @@ object BillDraftCodec {
                             } else {
                                 null
                             },
-                            barcode = obj.optString("barcode").trim().ifEmpty { null }
+                            barcode = obj.optString("barcode").trim().ifEmpty { null },
+                            lineKey = obj.optString("lineKey").trim()
                         )
                     )
                 }

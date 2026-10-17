@@ -443,25 +443,30 @@ class BillViewModel(
     }
 
     private fun addOrIncrementLine(line: BillLineItem, quantityToAdd: Int = 1) {
+        val keyed = if (line.lineKey.isNotEmpty()) {
+            line
+        } else {
+            line.copy(lineKey = java.util.UUID.randomUUID().toString())
+        }
         val items = _lineItems.value?.toMutableList() ?: mutableListOf()
         val existingIndex = items.indexOfFirst {
-            (it.itemId != null && it.itemId == line.itemId) ||
-                (line.isNew && it.isNew && it.name.trim().equals(line.name.trim(), ignoreCase = true))
+            (it.itemId != null && it.itemId == keyed.itemId) ||
+                (keyed.isNew && it.isNew && it.name.trim().equals(keyed.name.trim(), ignoreCase = true))
         }
         if (existingIndex >= 0) {
             val existing = items[existingIndex]
-            items[existingIndex] = if (line.isNew) {
+            items[existingIndex] = if (keyed.isNew) {
                 existing.copy(
                     quantity = existing.quantity + quantityToAdd,
-                    mrp = line.mrp,
-                    openingStock = line.openingStock ?: existing.openingStock,
-                    barcode = existing.barcode ?: line.barcode
+                    mrp = keyed.mrp,
+                    openingStock = keyed.openingStock ?: existing.openingStock,
+                    barcode = existing.barcode ?: keyed.barcode
                 )
             } else {
                 existing.copy(quantity = existing.quantity + quantityToAdd)
             }
         } else {
-            items.add(line.copy(quantity = quantityToAdd))
+            items.add(keyed.copy(quantity = quantityToAdd))
         }
         _lineItems.value = items
         recalculate()

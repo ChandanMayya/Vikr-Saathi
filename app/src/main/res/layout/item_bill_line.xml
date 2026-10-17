@@ -21,18 +21,18 @@
 
             <TextView
                 android:id="@+id/textSlNo"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:background="@drawable/bg_bill_line_badge"
                 android:gravity="center"
                 android:textColor="@color/text_accent"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
+                android:layout_marginStart="10dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -54,18 +54,51 @@
                     android:background="@drawable/bg_new_flag"
                     android:paddingHorizontal="8dp"
                     android:paddingVertical="2dp"
+                    android:text="@string/new_item_flag"
                     android:textAllCaps="true"
                     android:textColor="@color/text_accent"
                     android:textSize="10sp"
                     android:textStyle="bold"
                     android:visibility="gone" />
             </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/bill_unit_price"
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textColor="@color/text_secondary_dark" />
+
+            <TextView
+                android:id="@+id/textUnitPrice"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:textColor="@color/text_primary_dark"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:text="@string/line_total"
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textColor="@color/text_secondary_dark" />
 
             <TextView
                 android:id="@+id/textPrice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
                 android:background="@drawable/bg_bill_line_total"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="6dp"
@@ -74,16 +107,71 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <View
+        <LinearLayout
+            android:id="@+id/layoutQuantity"
             android:layout_width="match_parent"
-            android:layout_height="1dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:layout_marginBottom="12dp"
-            android:background="@color/surface_divider" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="visible">
+
+            <TextView
+                style="@style/VikrSaathiBillLineLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/quantity" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonQtyMinus"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/quantity_decrease"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="40dp"
+                android:minHeight="40dp"
+                android:padding="0dp"
+                android:text="−"
+                android:textColor="@color/text_accent"
+                app:strokeColor="@color/text_accent" />
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editQuantity"
+                style="@style/VikrSaathiBillLineEditableInput"
+                android:layout_width="72dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="8dp"
+                android:gravity="center"
+                android:inputType="number"
+                android:minWidth="0dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonQtyPlus"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/quantity_increase"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="40dp"
+                android:minHeight="40dp"
+                android:padding="0dp"
+                android:text="+"
+                android:textColor="@color/text_accent"
+                app:strokeColor="@color/text_accent" />
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:baselineAligned="false"
             android:orientation="horizontal">
 
@@ -92,7 +180,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="6dp"
                 android:layout_weight="1"
-                android:gravity="center_horizontal"
                 android:orientation="vertical">
 
                 <TextView
@@ -105,10 +192,11 @@
                 <TextView
                     android:id="@+id/textMrp"
                     android:layout_width="match_parent"
-                    android:layout_height="36dp"
+                    android:layout_height="40dp"
                     android:layout_marginTop="6dp"
                     android:background="@drawable/bg_bill_line_input"
                     android:gravity="center"
+                    android:minWidth="0dp"
                     android:textColor="@color/text_primary_dark"
                     android:textSize="15sp"
                     android:textStyle="bold" />
@@ -117,9 +205,10 @@
                     android:id="@+id/editRate"
                     style="@style/VikrSaathiBillLineEditableInput"
                     android:layout_width="match_parent"
-                    android:layout_height="36dp"
+                    android:layout_height="40dp"
                     android:layout_marginTop="6dp"
                     android:inputType="numberDecimal"
+                    android:minWidth="0dp"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -128,7 +217,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="3dp"
                 android:layout_weight="1"
-                android:gravity="center_horizontal"
                 android:orientation="vertical">
 
                 <TextView
@@ -139,7 +227,7 @@
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="36dp"
+                    android:layout_height="40dp"
                     android:layout_marginTop="6dp"
                     android:background="@drawable/bg_bill_line_input"
                     android:gravity="center"
@@ -154,6 +242,7 @@
                         android:layout_weight="1"
                         android:background="@android:color/transparent"
                         android:inputType="numberDecimal"
+                        android:minWidth="0dp"
                         android:minHeight="0dp"
                         android:padding="0dp" />
 
@@ -172,60 +261,26 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
-                android:gravity="center_horizontal"
                 android:orientation="vertical">
 
                 <TextView
                     style="@style/VikrSaathiBillLineLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/qty_short" />
+                    android:text="@string/round_off_short" />
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editQuantity"
+                    android:id="@+id/editRoundOff"
                     style="@style/VikrSaathiBillLineEditableInput"
                     android:layout_width="match_parent"
-                    android:layout_height="36dp"
+                    android:layout_height="40dp"
                     android:layout_marginTop="6dp"
-                    android:inputType="number" />
+                    android:inputType="numberDecimal|numberSigned"
+                    android:minWidth="0dp" />
             </LinearLayout>
-            </LinearLayout>
+        </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical">
-
-                    <TextView
-                        style="@style/VikrSaathiBillLineLabel"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/round_off_short" />
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/editRoundOff"
-                        style="@style/VikrSaathiBillLineEditableInput"
-                        android:layout_width="match_parent"
-                        android:layout_height="36dp"
-                        android:layout_marginTop="6dp"
-                        android:inputType="numberDecimal|numberSigned" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="2" />
-            </LinearLayout>
-
-            <com.google.android.material.button.MaterialButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonRemoveLine"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"

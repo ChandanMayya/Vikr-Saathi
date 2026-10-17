@@ -172,41 +172,68 @@ class BillLineItemAdapter(
                     if (pos != RecyclerView.NO_POSITION) onRemove(pos)
                 }
             }
+
+            binding.buttonQtyMinus.setOnClickListener { stepQuantity(-1) }
+            binding.buttonQtyPlus.setOnClickListener { stepQuantity(1) }
+        }
+
+        private fun stepQuantity(delta: Int) {
+            if (readOnly) return
+            val pos = bindingAdapterPosition
+            if (pos == RecyclerView.NO_POSITION) return
+            val next = getItem(pos).quantity + delta
+            if (next < 1) return
+            suppressUpdates = true
+            binding.editQuantity.setText(next.toString())
+            suppressUpdates = false
+            updateLineTotalForQuantity(getItem(pos), next)
+            onQuantityChange(pos, next)
         }
 
         fun bind(line: BillLineItem) {
             suppressUpdates = true
             binding.textSlNo.text = bindingAdapterPosition.plus(1).toString()
             binding.textParticulars.text = line.name
-            binding.textMrp.text = PriceCalculator.formatAmount(line.mrp, currencySymbol)
             bindNewItemState(line)
-            setQuantityTextIfNeeded(line.quantity)
-            setDiscountTextIfNeeded(line.discount)
-            setRoundOffTextIfNeeded(line.roundOff)
-            binding.textPrice.text = PriceCalculator.formatAmount(line.lineTotal, currencySymbol)
+            binding.layoutQuantity.visibility = View.VISIBLE
+            binding.editQuantity.visibility = View.VISIBLE
+            refreshFigures(line)
             suppressUpdates = false
 
+            val editable = !readOnly
             binding.buttonRemoveLine.visibility = if (readOnly) View.GONE else View.VISIBLE
-            binding.editDiscount.isEnabled = !readOnly
-            binding.editQuantity.isEnabled = !readOnly
-            binding.editRoundOff.isEnabled = !readOnly
-            binding.editRate.isEnabled = !readOnly
+            binding.editDiscount.isEnabled = editable
+            binding.editQuantity.isEnabled = editable
+            binding.editRoundOff.isEnabled = editable
+            binding.editRate.isEnabled = editable
+            binding.buttonQtyMinus.isEnabled = editable
+            binding.buttonQtyPlus.isEnabled = editable
         }
 
         fun updateLineTotal(line: BillLineItem) {
+            refreshFigures(line)
+        }
+
+        private fun refreshFigures(line: BillLineItem) {
+            val wasSuppressed = suppressUpdates
+            suppressUpdates = true
+            setQuantityTextIfNeeded(line.quantity)
+            setDiscountTextIfNeeded(line.discount)
+            setRoundOffTextIfNeeded(line.roundOff)
+            if (line.isNew) setRateTextIfNeeded(line.mrp)
+            val unitPrice = PriceCalculator.formatAmount(line.mrp, currencySymbol)
+            binding.textUnitPrice.text = unitPrice
+            binding.textMrp.text = unitPrice
             binding.textPrice.text = PriceCalculator.formatAmount(line.lineTotal, currencySymbol)
+            suppressUpdates = wasSuppressed
         }
 
         private fun bindNewItemState(line: BillLineItem) {
-            val context = binding.root.context
             binding.textNewBadge.visibility = if (line.isNew) View.VISIBLE else View.GONE
-            binding.textNewBadge.text = line.openingStock?.takeIf { it > 0 }?.let {
-                context.getString(R.string.bill_line_new_badge_stock, it)
-            } ?: context.getString(R.string.bill_line_new_badge)
+            binding.textNewBadge.setText(R.string.new_item_flag)
             binding.textMrpLabel.setText(if (line.isNew) R.string.rate else R.string.mrp)
             binding.textMrp.visibility = if (line.isNew) View.GONE else View.VISIBLE
             binding.editRate.visibility = if (line.isNew) View.VISIBLE else View.GONE
-            if (line.isNew) setRateTextIfNeeded(line.mrp)
         }
 
         private fun updateLineTotalForRate(line: BillLineItem, rate: Double) {
@@ -283,18 +310,25 @@ class BillLineItemAdapter(
     }
 
     private class DiffCallback : DiffUtil.ItemCallback<BillLineItem>() {
-        override fun areItemsTheSame(oldItem: BillLineItem, newItem: BillLineItem) =
-            oldItem.itemId == newItem.itemId && oldItem.name == newItem.name
+        override fun areItemsTheSame(oldItem: BillLineItem, newItem: BillLineItem): Boolean {
+            if (oldItem.lineKey.isNotEmpty() && oldItem.lineKey == newItem.lineKey) return true
+            if (oldItem.itemId != null && oldItem.itemId == newItem.itemId && oldItem.name == newItem.name) {
+                return true
+            }
+            return oldItem.itemId == null && newItem.itemId == null &&
+                oldItem.isNew && newItem.isNew &&
+                oldItem.name.trim().equals(newItem.name.trim(), ignoreCase = true)
+        }
 
         override fun areContentsTheSame(oldItem: BillLineItem, newItem: BillLineItem) =
             oldItem == newItem
 
         override fun getChangePayload(oldItem: BillLineItem, newItem: BillLineItem): Any? {
-            if (oldItem.itemId != newItem.itemId ||
+            if (oldItem.lineKey != newItem.lineKey ||
+                oldItem.itemId != newItem.itemId ||
                 oldItem.name != newItem.name ||
                 oldItem.isNew != newItem.isNew ||
-                oldItem.openingStock != newItem.openingStock ||
-                (!newItem.isNew && oldItem.mrp != newItem.mrp)
+                oldItem.openingStock != newItem.openingStock
             ) {
                 return null
             }

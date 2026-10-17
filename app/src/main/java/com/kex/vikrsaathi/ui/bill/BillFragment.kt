@@ -86,8 +86,16 @@ class BillFragment : Fragment() {
 
         isReadOnly = arguments?.getBoolean(ARG_READ_ONLY, false) == true
 
-        binding.imageHeader.setImageBitmap(settings.getHeaderImage())
-        binding.imageSignature.setImageBitmap(settings.getSignatureImage())
+        binding.textShopName.text = settings.shopName
+        val logo = settings.getShopLogoImage()
+        binding.imageShopLogo.isVisible = logo != null
+        if (logo != null) binding.imageShopLogo.setImageBitmap(logo)
+        val header = settings.getHeaderImage()
+        binding.imageHeader.isVisible = header != null
+        if (header != null) binding.imageHeader.setImageBitmap(header)
+        val signature = settings.getSignatureImage()
+        binding.cardSignature.isVisible = signature != null
+        if (signature != null) binding.imageSignature.setImageBitmap(signature)
 
         lineAdapter = BillLineItemAdapter(
             currencySymbol = viewModel.currencySymbol,
@@ -138,7 +146,11 @@ class BillFragment : Fragment() {
             binding.autoCompleteCustomer.dismissDropDown()
             binding.autoCompleteCustomer.post { suppressCustomerSearch = false }
         }
-        viewModel.lineItems.observe(viewLifecycleOwner) { lineAdapter.submitList(it) }
+        viewModel.lineItems.observe(viewLifecycleOwner) { lines ->
+            lineAdapter.submitList(lines)
+            binding.textBillItemsCount.text = getString(R.string.bill_items_count, lines.size)
+            binding.textBillItemsEmpty.isVisible = lines.isEmpty()
+        }
         viewModel.grandTotal.observe(viewLifecycleOwner) { total ->
             binding.textGrandTotal.text = getString(
                 R.string.grand_total,
@@ -732,6 +744,7 @@ class BillFragment : Fragment() {
             barcode = pendingNewItemBarcode
         )
         clearNewItemSection()
+        scrollToView(binding.recyclerBillItems)
     }
 
     private fun scrollToView(target: View) {

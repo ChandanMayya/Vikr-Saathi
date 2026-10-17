@@ -238,6 +238,17 @@
     <string name="subtotal">Subtotal: %1$s</string>
     <string name="quantity_label">Qty:</string>
     <string name="bill_items">Items</string>
+    <string name="bill_customer_search">Search customer</string>
+    <string name="bill_address_optional">Address (optional)</string>
+    <string name="bill_phone_optional">Phone (optional)</string>
+    <string name="bill_item_search">Search item by name</string>
+    <string name="bill_scan">Scan</string>
+    <string name="bill_shop_logo">Shop logo</string>
+    <string name="bill_items_count">Bill items · %1$d</string>
+    <string name="bill_items_empty">Add an item to start this bill</string>
+    <string name="bill_unit_price">Unit price</string>
+    <string name="quantity_decrease">Decrease quantity</string>
+    <string name="quantity_increase">Increase quantity</string>
     <string name="bills_list">Bills</string>
     <string name="bill_date">Date</string>
     <string name="bill_customer">Customer</string>
