@@ -8,6 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.kex.vikrsaathi.data.entity.Item
+import com.kex.vikrsaathi.data.model.ItemUnitRow
 import com.kex.vikrsaathi.data.model.analytics.SlowMoverRow
 import com.kex.vikrsaathi.data.model.analytics.StockValueRow
 
@@ -25,6 +26,9 @@ interface ItemDao {
 
     @Query("SELECT * FROM items ORDER BY name ASC")
     fun getAllItems(): LiveData<List<Item>>
+
+    @Query("SELECT id, baseUnit FROM items WHERE TRIM(baseUnit) != ''")
+    fun observeLabeledUnits(): LiveData<List<ItemUnitRow>>
 
     @Query("SELECT * FROM items ORDER BY name ASC")
     suspend fun getAllItemsSync(): List<Item>

@@ -10,6 +10,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
@@ -25,11 +26,13 @@ import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.databinding.FragmentBillsHistoryBinding
 import com.kex.vikrsaathi.ui.bill.BillFragment
-import com.kex.vikrsaathi.ui.common.applyListViewMode
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.kex.vikrsaathi.util.BillsFilterHelper
 import com.kex.vikrsaathi.util.BillsHistoryPreferences
 import com.kex.vikrsaathi.util.BillsSortHelper
 import com.kex.vikrsaathi.util.FileShareHelper
+import com.kex.vikrsaathi.util.PdfPrintHelper
 import com.kex.vikrsaathi.util.ListViewMode
 import com.kex.vikrsaathi.util.ListViewPreferences
 import com.kex.vikrsaathi.util.ListViewScreen
@@ -97,6 +100,7 @@ class BillsHistoryFragment : Fragment() {
                     )
                 }
             },
+            onPrint = { bill -> printBill(bill) },
             onDelete = { bill -> confirmDelete(bill) }
         )
         binding.recyclerBills.adapter = adapter
@@ -111,6 +115,9 @@ class BillsHistoryFragment : Fragment() {
         viewModel.allBills.observe(viewLifecycleOwner) { bills ->
             allBills = bills
             applyFilters()
+        }
+        viewModel.itemUnits.observe(viewLifecycleOwner) { units ->
+            adapter.itemUnits = units
         }
 
         binding.editSearchBills.addTextChangedListener(object : TextWatcher {
@@ -243,8 +250,11 @@ class BillsHistoryFragment : Fragment() {
             listViewPrefs.setMode(ListViewScreen.BILLS_HISTORY, mode)
         }
         adapter.viewMode = mode
-        binding.recyclerBills.applyListViewMode(mode)
-        binding.detailsHeader.root.isVisible = mode == ListViewMode.DETAILS
+        val layoutManager = binding.recyclerBills.layoutManager
+        if (layoutManager !is LinearLayoutManager || layoutManager is GridLayoutManager) {
+            binding.recyclerBills.layoutManager = LinearLayoutManager(requireContext())
+        }
+        binding.detailsHeader.root.isVisible = false
     }
 
     private fun applyFilterVisibility() {
@@ -388,6 +398,21 @@ class BillsHistoryFragment : Fragment() {
         calendar.set(Calendar.SECOND, 59)
         calendar.set(Calendar.MILLISECOND, 999)
         return calendar.timeInMillis
+    }
+
+    private fun printBill(bill: BillWithDetails) {
+        viewModel.printBillPdf(requireContext(), bill.bill.id) { file ->
+            if (!isAdded) return@printBillPdf
+            if (file == null) {
+                Toast.makeText(requireContext(), R.string.pdf_generation_failed, Toast.LENGTH_SHORT).show()
+                return@printBillPdf
+            }
+            PdfPrintHelper.print(
+                requireContext(),
+                file,
+                getString(R.string.print_pdf_job, bill.bill.billNumber)
+            )
+        }
     }
 
     private fun confirmDelete(bill: BillWithDetails) {

@@ -3,10 +3,12 @@ package com.kex.vikrsaathi.data.repository
 import androidx.lifecycle.LiveData
 import com.kex.vikrsaathi.data.dao.ItemDao
 import com.kex.vikrsaathi.data.entity.Item
+import com.kex.vikrsaathi.data.model.ItemUnitRow
 
 class ItemRepository(private val itemDao: ItemDao) {
 
     val allItems: LiveData<List<Item>> = itemDao.getAllItems()
+    val labeledUnits: LiveData<List<ItemUnitRow>> = itemDao.observeLabeledUnits()
 
     suspend fun insert(item: Item): Long = itemDao.insert(item.copy(stockQty = 0))
 

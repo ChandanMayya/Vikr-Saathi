@@ -1,78 +1,117 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    style="@style/VikrSaathiBillLineCard"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp"
+    android:background="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true"
-    app:rippleColor="@color/ripple_subtle">
+    android:orientation="vertical"
+    android:paddingHorizontal="4dp"
+    android:paddingTop="10dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="10dp">
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <TextView
             android:id="@+id/textBillNumber"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="2"
             android:textColor="@color/text_primary_dark"
-            android:textSize="13sp"
+            android:textSize="16sp"
             android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/textBillCustomer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textColor="@color/text_secondary_dark"
-            android:textSize="12sp" />
 
         <TextView
             android:id="@+id/textBillTotal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/bg_bill_line_total"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
+            android:layout_marginStart="8dp"
             android:textColor="@color/text_accent"
-            android:textSize="13sp"
+            android:textSize="16sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/textBillDate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="@color/text_secondary_dark" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:gravity="end"
-            android:orientation="horizontal">
-
-            <ImageButton
-                android:id="@+id/buttonDuplicateBill"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/duplicate"
-                android:src="@android:drawable/ic_menu_upload" />
-
-            <ImageButton
-                android:id="@+id/buttonDeleteBill"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/delete"
-                android:src="@android:drawable/ic_menu_delete" />
-        </LinearLayout>
+        <ImageButton
+            android:id="@+id/buttonBillActions"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/bill_history_actions"
+            android:src="@drawable/ic_more_vert"
+            android:tint="@color/text_secondary_dark" />
     </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="48dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/textBillCustomer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/text_primary_dark"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/textPaymentMethod"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_new_flag"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/textBillDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="48dp"
+        android:textColor="@color/text_secondary_dark"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/textItemSummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="8dp"
+        android:textColor="@color/text_secondary_dark"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/buttonMoreItems"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:paddingEnd="12dp"
+        android:textColor="@color/text_accent"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="8dp"
+        android:background="@color/surface_divider" />
+</LinearLayout>
