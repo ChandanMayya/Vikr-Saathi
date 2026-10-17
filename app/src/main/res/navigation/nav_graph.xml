@@ -324,6 +324,20 @@
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
+            android:id="@+id/action_invoice_configuration_to_request_number"
+            app:destination="@id/requestNumberSettingsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
+            android:id="@+id/action_invoice_configuration_to_quote_number"
+            app:destination="@id/quoteNumberSettingsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
             android:id="@+id/action_invoice_configuration_to_layout"
             app:destination="@id/invoiceTemplatesFragment"
             app:enterAnim="@anim/nav_fade_in"
@@ -343,6 +357,28 @@
         android:name="com.kex.vikrsaathi.ui.settings.InvoiceCounterSettingsFragment"
         android:label="@string/settings_invoice_counter_configuration"
         tools:layout="@layout/fragment_invoice_counter_settings" />
+
+    <fragment
+        android:id="@+id/requestNumberSettingsFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.DocumentNumberSettingsFragment"
+        android:label="@string/settings_request_number"
+        tools:layout="@layout/fragment_document_number_settings">
+        <argument
+            android:name="series"
+            android:defaultValue="REQUEST"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/quoteNumberSettingsFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.DocumentNumberSettingsFragment"
+        android:label="@string/settings_quote_number"
+        tools:layout="@layout/fragment_document_number_settings">
+        <argument
+            android:name="series"
+            android:defaultValue="QUOTE"
+            app:argType="string" />
+    </fragment>
 
     <fragment
         android:id="@+id/backupFragment"

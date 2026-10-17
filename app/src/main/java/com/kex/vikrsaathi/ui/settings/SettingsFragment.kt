@@ -43,7 +43,7 @@ class SettingsFragment : SettingsNavHubFragment() {
                     findNavController().navigate(R.id.action_settings_to_inventory)
                 },
                 SettingsNavEntry(
-                    iconRes = R.drawable.ic_dashboard_customers,
+                    iconRes = R.drawable.ic_settings_configurations,
                     title = getString(R.string.settings_accounts_title),
                     subtitle = getString(R.string.settings_accounts_subtitle)
                 ) {

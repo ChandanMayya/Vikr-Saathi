@@ -341,6 +341,9 @@ interface PurchaseDao {
     @androidx.room.Update
     suspend fun updateRequest(request: PurchaseRequest)
 
+    @Query("SELECT requestNumber FROM purchase_requests")
+    suspend fun requestNumbers(): List<String>
+
     @Query("SELECT * FROM purchase_requests ORDER BY createdAt DESC")
     suspend fun getRequests(): List<PurchaseRequest>
 

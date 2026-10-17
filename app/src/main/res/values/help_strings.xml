@@ -240,11 +240,13 @@
 
     <!-- Invoice configuration hub -->
     <string name="help_invoice_config_title">Invoice Configuration</string>
-    <string name="help_invoice_config_overview">Hub for invoice images, bill numbering, and template layouts.</string>
+    <string name="help_invoice_config_overview">Hub for invoice images, bill numbering, purchase request numbers, quote numbers, and template layouts.</string>
     <string name="help_invoice_config_s1_title">Sections</string>
     <string-array name="help_invoice_config_s1">
         <item>Image Configuration — header and signature images on every PDF.</item>
         <item>Invoice Counter — prefix, suffix, and next bill number.</item>
+        <item>Purchase request number — prefix, counter, and suffix for new requests.</item>
+        <item>Quote number — prefix and suffix. Each request numbers its quotes from 1.</item>
         <item>Invoice Layout — open templates and the visual Invoice Builder.</item>
         <item>In the builder, use ? on the page toolbar for tools and ? inside properties for each field.</item>
     </string-array>

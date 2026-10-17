@@ -701,3 +701,9 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
         db.execSQL("ALTER TABLE purchase_request_lines ADD COLUMN unitsPerBundle INTEGER NOT NULL DEFAULT 1")
     }
 }
+
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE vendor_quotes ADD COLUMN quoteNumber TEXT NOT NULL DEFAULT ''")
+    }
+}

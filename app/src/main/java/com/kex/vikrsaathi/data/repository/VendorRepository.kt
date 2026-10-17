@@ -40,6 +40,7 @@ import com.kex.vikrsaathi.domain.finance.FinanceException
 import com.kex.vikrsaathi.domain.finance.LineOffer
 import com.kex.vikrsaathi.domain.finance.PurchaseRequestMath
 import com.kex.vikrsaathi.domain.finance.QuoteAvailability
+import com.kex.vikrsaathi.util.InvoiceNumberFormatter
 import com.kex.vikrsaathi.domain.finance.QuoteHeader
 import com.kex.vikrsaathi.domain.finance.RequestLineDraft
 import com.kex.vikrsaathi.domain.finance.RequestQuoteDraft
@@ -141,7 +142,8 @@ class VendorRepository(
     private val vendorDao: VendorDao,
     private val purchaseDao: PurchaseDao,
     private val itemDao: ItemDao,
-    private val inventoryRepository: InventoryRepository
+    private val inventoryRepository: InventoryRepository,
+    private val settingsRepository: SettingsRepository
 ) {
     suspend fun getActive(): List<Vendor> = vendorDao.getActive()
     suspend fun getAll(): List<Vendor> = vendorDao.getAll()
@@ -707,14 +709,9 @@ class VendorRepository(
             val id = if (requestId == null) {
                 val created = purchaseDao.insertRequest(
                     PurchaseRequest(
-                        requestNumber = "PENDING",
+                        requestNumber = nextRequestNumber(),
                         requiredBy = requiredBy,
                         notes = notes.trim()
-                    )
-                )
-                purchaseDao.updateRequest(
-                    purchaseDao.getRequest(created)!!.copy(
-                        requestNumber = "PR-" + created.toString().padStart(3, '0')
                     )
                 )
                 created
@@ -806,6 +803,7 @@ class VendorRepository(
                 if (purchaseDao.quoteForVendorRequest(vendorId, requestId) != null) {
                     throw FinanceException(FinanceError.DUPLICATE_QUOTE)
                 }
+                val existingQuotes = purchaseDao.quotesForRequest(requestId)
                 val id = purchaseDao.insertQuote(
                     VendorQuote(
                         vendorId = vendorId,
@@ -815,7 +813,8 @@ class VendorRepository(
                         discountPaise = discountPaise,
                         expectedDelivery = expectedDelivery,
                         notes = notes.trim(),
-                        requestId = requestId
+                        requestId = requestId,
+                        quoteNumber = nextQuoteNumber(existingQuotes)
                     )
                 )
                 val byId = requestLines.associateBy { it.id }
@@ -1008,6 +1007,53 @@ class VendorRepository(
                     )
                 )
             }
+    }
+
+    private suspend fun nextRequestNumber(): String {
+        val existing = purchaseDao.requestNumbers().toSet()
+        var counter = settingsRepository.requestCounter.coerceAtLeast(1)
+        var number = InvoiceNumberFormatter.format(
+            prefix = settingsRepository.requestPrefix,
+            counter = counter,
+            suffix = settingsRepository.requestSuffix,
+            separator = settingsRepository.requestSeparator,
+            counterMinDigits = settingsRepository.requestCounterMinDigits
+        )
+        while (number in existing) {
+            counter++
+            number = InvoiceNumberFormatter.format(
+                prefix = settingsRepository.requestPrefix,
+                counter = counter,
+                suffix = settingsRepository.requestSuffix,
+                separator = settingsRepository.requestSeparator,
+                counterMinDigits = settingsRepository.requestCounterMinDigits
+            )
+        }
+        settingsRepository.requestCounter = counter + 1
+        return number
+    }
+
+    private fun nextQuoteNumber(existing: List<VendorQuote>): String {
+        val used = existing.map { it.quoteNumber }.filter { it.isNotBlank() }.toSet()
+        var index = used.size + 1
+        var number = InvoiceNumberFormatter.format(
+            prefix = settingsRepository.quotePrefix,
+            counter = index,
+            suffix = settingsRepository.quoteSuffix,
+            separator = settingsRepository.quoteSeparator,
+            counterMinDigits = 0
+        )
+        while (number in used) {
+            index++
+            number = InvoiceNumberFormatter.format(
+                prefix = settingsRepository.quotePrefix,
+                counter = index,
+                suffix = settingsRepository.quoteSuffix,
+                separator = settingsRepository.quoteSeparator,
+                counterMinDigits = 0
+            )
+        }
+        return number
     }
 }
 

@@ -243,8 +243,11 @@ class PurchasingFragment : Fragment() {
                 )
             })
             addHistorySection(R.string.history_quotes, quotes.map { quote ->
-                val title = quote.requestId?.let { requestNumbers[it] }?.let { getString(R.string.linked_request_quote, it) }
-                    ?: getString(R.string.legacy_quote)
+                val requestLabel = quote.requestId?.let { requestNumbers[it] }?.let {
+                    getString(R.string.linked_request_quote, it)
+                } ?: getString(R.string.legacy_quote)
+                val number = quote.quoteNumber.trim()
+                val title = if (number.isEmpty()) requestLabel else "$number · $requestLabel"
                 HistoryRow(title, FinanceDates.format(quote.quoteDate), null)
             })
         }

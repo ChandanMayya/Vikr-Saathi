@@ -487,7 +487,8 @@ data class VendorQuote(
     val discountPaise: Long = 0,
     val expectedDelivery: Long? = null,
     val notes: String = "",
-    val requestId: Long? = null
+    val requestId: Long? = null,
+    val quoteNumber: String = ""
 )
 
 @Entity(

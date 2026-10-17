@@ -671,10 +671,12 @@ internal fun purchaseRequestComparison(
     vendorNames: Map<Long, String>
 ): RequestComparison {
     val quotes = detail.quotes.map { quote ->
+        val vendor = vendorNames[quote.vendorId] ?: "Vendor"
+        val number = quote.quoteNumber.trim()
         QuoteHeader(
             quoteId = quote.id,
             vendorId = quote.vendorId,
-            vendorName = vendorNames[quote.vendorId] ?: "Vendor",
+            vendorName = if (number.isEmpty()) vendor else "$number · $vendor",
             deliveryChargesPaise = quote.deliveryChargesPaise,
             discountPaise = quote.discountPaise,
             expectedDelivery = quote.expectedDelivery,

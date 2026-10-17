@@ -26,11 +26,15 @@ class AccountsSettingsFragment : Fragment() {
         val settings = (requireActivity().application as VikrSaathiApp).settingsRepository
         binding.switchCustomerBalances.isChecked = settings.customerBalanceEnabled
         binding.switchVendorManagement.isChecked = settings.vendorManagementEnabled
+        binding.switchOrderManagement.isChecked = settings.orderManagementEnabled
         binding.switchCustomerBalances.setOnCheckedChangeListener { _, checked ->
             settings.customerBalanceEnabled = checked
         }
         binding.switchVendorManagement.setOnCheckedChangeListener { _, checked ->
             settings.vendorManagementEnabled = checked
+        }
+        binding.switchOrderManagement.setOnCheckedChangeListener { _, checked ->
+            settings.orderManagementEnabled = checked
         }
     }
 

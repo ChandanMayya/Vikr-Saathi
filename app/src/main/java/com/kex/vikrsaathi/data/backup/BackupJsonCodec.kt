@@ -207,11 +207,19 @@ object BackupJsonCodec {
             put("lowStockThreshold", settings.lowStockThreshold)
             put("customerBalanceEnabled", settings.customerBalanceEnabled)
             put("vendorManagementEnabled", settings.vendorManagementEnabled)
+            put("orderManagementEnabled", settings.orderManagementEnabled)
             put("invoicePrefix", settings.invoicePrefix)
             put("invoiceSuffix", settings.invoiceSuffix)
             put("invoiceSeparator", settings.invoiceSeparator)
             put("invoiceCounter", settings.invoiceCounter)
             put("invoiceCounterMinDigits", settings.invoiceCounterMinDigits)
+            put("requestPrefix", settings.requestPrefix)
+            put("requestSuffix", settings.requestSuffix)
+            put("requestSeparator", settings.requestSeparator)
+            put("requestCounter", settings.requestCounter)
+            put("quotePrefix", settings.quotePrefix)
+            put("quoteSuffix", settings.quoteSuffix)
+            put("quoteSeparator", settings.quoteSeparator)
             put("images", JSONObject().apply {
                 encodeBitmap(settings.getHeaderImage())?.let { put("header", it) }
                 encodeBitmap(settings.getSignatureImage())?.let { put("signature", it) }
@@ -241,11 +249,23 @@ object BackupJsonCodec {
             } else {
                 null
             },
+            orderManagementEnabled = if (obj.has("orderManagementEnabled")) {
+                obj.getBoolean("orderManagementEnabled")
+            } else {
+                null
+            },
             invoicePrefix = obj.optString("invoicePrefix", ""),
             invoiceSuffix = obj.optString("invoiceSuffix", ""),
             invoiceSeparator = obj.optString("invoiceSeparator", "/"),
             invoiceCounter = obj.optInt("invoiceCounter", 1),
             invoiceCounterMinDigits = obj.optInt("invoiceCounterMinDigits", 2),
+            requestPrefix = obj.optString("requestPrefix", "PR"),
+            requestSuffix = obj.optString("requestSuffix", ""),
+            requestSeparator = obj.optString("requestSeparator", "-"),
+            requestCounter = obj.optInt("requestCounter", 1),
+            quotePrefix = obj.optString("quotePrefix", "Q"),
+            quoteSuffix = obj.optString("quoteSuffix", ""),
+            quoteSeparator = obj.optString("quoteSeparator", "-"),
             headerImageBase64 = images?.optString("header"),
             signatureImageBase64 = images?.optString("signature"),
             logoImageBase64 = images?.optString("logo")
@@ -484,11 +504,19 @@ data class SettingsBackup(
     val lowStockThreshold: Int = 5,
     val customerBalanceEnabled: Boolean? = null,
     val vendorManagementEnabled: Boolean? = null,
+    val orderManagementEnabled: Boolean? = null,
     val invoicePrefix: String,
     val invoiceSuffix: String,
     val invoiceSeparator: String,
     val invoiceCounter: Int,
     val invoiceCounterMinDigits: Int,
+    val requestPrefix: String = "PR",
+    val requestSuffix: String = "",
+    val requestSeparator: String = "-",
+    val requestCounter: Int = 1,
+    val quotePrefix: String = "Q",
+    val quoteSuffix: String = "",
+    val quoteSeparator: String = "-",
     val headerImageBase64: String?,
     val signatureImageBase64: String?,
     val logoImageBase64: String?

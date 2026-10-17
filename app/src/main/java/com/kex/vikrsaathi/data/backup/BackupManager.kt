@@ -518,6 +518,7 @@ class BackupManager(
         settingsRepository.lowStockThreshold = backup.lowStockThreshold
         backup.customerBalanceEnabled?.let { settingsRepository.customerBalanceEnabled = it }
         backup.vendorManagementEnabled?.let { settingsRepository.vendorManagementEnabled = it }
+        backup.orderManagementEnabled?.let { settingsRepository.orderManagementEnabled = it }
         AppThemeManager.apply(backup.themeMode)
 
         BackupJsonCodec.decodeBitmap(backup.headerImageBase64)?.let {
@@ -537,6 +538,13 @@ class BackupManager(
         settingsRepository.invoiceSeparator = backup.invoiceSeparator.ifBlank { "/" }
         settingsRepository.invoiceCounter = backup.invoiceCounter.coerceAtLeast(1)
         settingsRepository.invoiceCounterMinDigits = backup.invoiceCounterMinDigits
+        settingsRepository.requestPrefix = backup.requestPrefix
+        settingsRepository.requestSuffix = backup.requestSuffix
+        settingsRepository.requestSeparator = backup.requestSeparator.ifBlank { "-" }
+        settingsRepository.requestCounter = backup.requestCounter.coerceAtLeast(1)
+        settingsRepository.quotePrefix = backup.quotePrefix
+        settingsRepository.quoteSuffix = backup.quoteSuffix
+        settingsRepository.quoteSeparator = backup.quoteSeparator.ifBlank { "-" }
     }
 
     private fun collectTemplateImages(

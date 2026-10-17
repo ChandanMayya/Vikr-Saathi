@@ -76,7 +76,7 @@ import com.kex.vikrsaathi.data.entity.VendorQuoteLine
         PurchaseRequest::class,
         PurchaseRequestLine::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -117,7 +117,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_9_10,
                         MIGRATION_10_11,
                         MIGRATION_11_12,
-                        MIGRATION_12_13
+                        MIGRATION_12_13,
+                        MIGRATION_13_14
                     )
                     .build()
                     .also { INSTANCE = it }

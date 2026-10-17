@@ -313,7 +313,8 @@ object FinanceBackupCodec {
             discountPaise = obj.optLong("discountPaise"),
             expectedDelivery = optionalLong(obj, "expectedDelivery"),
             notes = obj.optString("notes"),
-            requestId = optionalLong(obj, "requestLegacyId")
+            requestId = optionalLong(obj, "requestLegacyId"),
+            quoteNumber = obj.optString("quoteNumber", "")
         )
     }
 
@@ -649,6 +650,7 @@ object FinanceBackupCodec {
                 it.expectedDelivery?.let { date -> put("expectedDelivery", date) }
                 put("notes", it.notes)
                 it.requestId?.let { id -> put("requestLegacyId", id) }
+                put("quoteNumber", it.quoteNumber)
             })
         }
     }

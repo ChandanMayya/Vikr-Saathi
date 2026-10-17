@@ -186,12 +186,13 @@ class DashboardFragment : Fragment() {
                 height = iconSize
             }
         }
+        val ordersEnabled = settings.orderManagementEnabled
         binding.textCustomerDues.isVisible = settings.customerBalanceEnabled
         binding.textVendorPayables.isVisible = vendorsEnabled
-        binding.cardOrders.isVisible = vendorsEnabled
-        binding.rowTools.columnCount = if (vendorsEnabled) 3 else 2
-        val toolHeight = if (vendorsEnabled) dp(108) else dp(92)
-        val toolIcon = if (vendorsEnabled) dp(28) else dp(36)
+        binding.cardOrders.isVisible = ordersEnabled
+        binding.rowTools.columnCount = if (ordersEnabled) 3 else 2
+        val toolHeight = if (ordersEnabled) dp(108) else dp(92)
+        val toolIcon = if (ordersEnabled) dp(28) else dp(36)
         listOf(binding.cardStock, binding.cardAnalysis, binding.cardOrders).forEach { card ->
             card.layoutParams = card.layoutParams.apply { height = toolHeight }
         }

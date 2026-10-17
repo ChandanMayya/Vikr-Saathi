@@ -66,7 +66,8 @@ class VikrSaathiApp : Application() {
             vendorDao = database.vendorDao(),
             purchaseDao = database.purchaseDao(),
             itemDao = database.itemDao(),
-            inventoryRepository = inventoryRepository
+            inventoryRepository = inventoryRepository,
+            settingsRepository = settingsRepository
         )
     }
     val analyticsRepository by lazy {

@@ -29,6 +29,20 @@ class InvoiceConfigurationFragment : SettingsNavHubFragment() {
                     findNavController().navigate(R.id.action_invoice_configuration_to_counter)
                 },
                 SettingsNavEntry(
+                    iconRes = R.drawable.ic_invoice_counter,
+                    title = getString(R.string.settings_request_number),
+                    subtitle = getString(R.string.settings_request_number_subtitle)
+                ) {
+                    findNavController().navigate(R.id.action_invoice_configuration_to_request_number)
+                },
+                SettingsNavEntry(
+                    iconRes = R.drawable.ic_invoice_counter,
+                    title = getString(R.string.settings_quote_number),
+                    subtitle = getString(R.string.settings_quote_number_subtitle)
+                ) {
+                    findNavController().navigate(R.id.action_invoice_configuration_to_quote_number)
+                },
+                SettingsNavEntry(
                     iconRes = R.drawable.ic_invoice_layout,
                     title = getString(R.string.settings_invoice_layout_configuration),
                     subtitle = getString(R.string.settings_invoice_layout_configuration_subtitle)

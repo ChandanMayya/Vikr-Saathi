@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_accounts_title">Accounts</string>
-    <string name="settings_accounts_subtitle">Customer balances and vendors</string>
-    <string name="accounts_settings_hint">These switches only show or hide workflows. Turning one off keeps vendors, purchase records, and ledger entries. It does not delete them. Reset is separate and asks before anything is removed.</string>
+    <string name="settings_accounts_title">Configurations</string>
+    <string name="settings_accounts_subtitle">Customer balances, vendors, and orders</string>
+    <string name="accounts_settings_hint">These switches only show or hide workflows. They start on. Turning one off keeps the records and does not delete them. Reset is separate and asks before anything is removed.</string>
     <string name="enable_customer_balances">Enable Customer Balance Management</string>
     <string name="enable_customer_balances_hint">When this is on, new bills can be paid by cash, UPI, credit, or a split. Credit needs a saved customer. Older bills stay Legacy / unknown until you record a payment yourself. They are not turned into debt automatically.</string>
     <string name="enable_vendor_management">Enable Vendor Management</string>
     <string name="enable_vendor_management_hint">When this is on, you can keep vendors, quotes, purchase orders, goods receipts, invoices, and vendor balances. Ordering stock is not the same as receiving it, and receiving it is not the same as paying the invoice.</string>
+    <string name="enable_order_management">Enable Order Management</string>
+    <string name="enable_order_management_hint">When this is on, the dashboard shows Orders. Turning it off hides that button and keeps the purchase requests and orders already saved.</string>
     <string name="customer_balance_sign">Green: the customer owes the shop. Red: the shop owes the customer or holds an advance.</string>
     <string name="vendor_balance_sign">Green: the vendor owes the shop or the shop holds a credit. Red: the shop owes the vendor.</string>
     <string name="payment_section">Payment</string>
@@ -410,12 +412,13 @@
     <string name="show_archived">Show archived</string>
     <string name="customer_ledger_action">Balance</string>
     <string name="unallocated_advance">Unallocated %1$s (advance or opening balance)</string>
-    <string name="help_accounts_title">Accounts</string>
-    <string name="help_accounts_overview">Customer balances and vendor purchases are optional. Switching them off hides the screens and keeps the data.</string>
+    <string name="help_accounts_title">Configurations</string>
+    <string name="help_accounts_overview">Customer balances, vendors, and orders start on. Switching one off hides that workflow and keeps the data.</string>
     <string name="help_accounts_s1_title">Switches</string>
     <string-array name="help_accounts_s1">
         <item>Enable Customer Balance Management to record cash, UPI, credit, and split payments on bills.</item>
         <item>Enable Vendor Management for vendors, quotes, orders, receipts, invoices, and vendor balances.</item>
+        <item>Enable Order Management to show Orders on the dashboard.</item>
         <item>Turning a switch off does not delete ledger entries, vendors, or purchases.</item>
     </string-array>
     <string name="help_customer_ledger_title">Customer balance</string>

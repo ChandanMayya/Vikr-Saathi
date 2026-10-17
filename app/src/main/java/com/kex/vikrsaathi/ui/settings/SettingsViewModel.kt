@@ -83,6 +83,28 @@ class SettingsViewModel(
     fun invoiceSeparator(): String = repository.invoiceSeparator
     fun invoiceCounter(): Int = repository.invoiceCounter
 
+    fun saveRequestNumberConfig(prefix: String, suffix: String, separator: String, counter: Int) {
+        repository.requestPrefix = prefix
+        repository.requestSuffix = suffix
+        repository.requestSeparator = separator
+        repository.requestCounter = counter.coerceAtLeast(1)
+    }
+
+    fun requestPrefix(): String = repository.requestPrefix
+    fun requestSuffix(): String = repository.requestSuffix
+    fun requestSeparator(): String = repository.requestSeparator
+    fun requestCounter(): Int = repository.requestCounter
+
+    fun saveQuoteNumberConfig(prefix: String, suffix: String, separator: String) {
+        repository.quotePrefix = prefix
+        repository.quoteSuffix = suffix
+        repository.quoteSeparator = separator
+    }
+
+    fun quotePrefix(): String = repository.quotePrefix
+    fun quoteSuffix(): String = repository.quoteSuffix
+    fun quoteSeparator(): String = repository.quoteSeparator
+
     fun previewInvoiceNumber(): String {
         return com.kex.vikrsaathi.util.InvoiceNumberFormatter.preview(
             prefix = repository.invoicePrefix,

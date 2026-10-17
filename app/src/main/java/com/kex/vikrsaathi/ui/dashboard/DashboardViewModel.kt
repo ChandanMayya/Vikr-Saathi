@@ -73,7 +73,7 @@ class DashboardViewModel(
             _vendorPayablesPaise.value = if (settingsRepository.vendorManagementEnabled) {
                 vendorRepository.totalPayablePaise()
             } else 0L
-            _orderAttentionCount.value = if (settingsRepository.vendorManagementEnabled) {
+            _orderAttentionCount.value = if (settingsRepository.orderManagementEnabled) {
                 vendorRepository.purchasingAttentionCount()
             } else 0
             _loading.value = false

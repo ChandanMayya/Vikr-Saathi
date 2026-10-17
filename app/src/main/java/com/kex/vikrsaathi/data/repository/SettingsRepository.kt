@@ -46,13 +46,18 @@ class SettingsRepository(context: Context) {
 
     /** When false, payment and ledger screens are hidden. Stored rows are kept. */
     var customerBalanceEnabled: Boolean
-        get() = prefs.getBoolean(KEY_CUSTOMER_BALANCE, false)
+        get() = prefs.getBoolean(KEY_CUSTOMER_BALANCE, true)
         set(value) = prefs.edit().putBoolean(KEY_CUSTOMER_BALANCE, value).apply()
 
     /** When false, vendor and purchase screens are hidden. Stored rows are kept. */
     var vendorManagementEnabled: Boolean
-        get() = prefs.getBoolean(KEY_VENDOR_MANAGEMENT, false)
+        get() = prefs.getBoolean(KEY_VENDOR_MANAGEMENT, true)
         set(value) = prefs.edit().putBoolean(KEY_VENDOR_MANAGEMENT, value).apply()
+
+    /** When false, the dashboard Orders button is hidden. Purchase records are kept. */
+    var orderManagementEnabled: Boolean
+        get() = prefs.getBoolean(KEY_ORDER_MANAGEMENT, true)
+        set(value) = prefs.edit().putBoolean(KEY_ORDER_MANAGEMENT, value).apply()
 
     var invoicePrefix: String
         get() = prefs.getString(KEY_INVOICE_PREFIX, "") ?: ""
@@ -73,6 +78,38 @@ class SettingsRepository(context: Context) {
     var invoiceCounterMinDigits: Int
         get() = prefs.getInt(KEY_INVOICE_COUNTER_DIGITS, 2).coerceIn(0, 6)
         set(value) = prefs.edit().putInt(KEY_INVOICE_COUNTER_DIGITS, value.coerceIn(0, 6)).apply()
+
+    var requestPrefix: String
+        get() = prefs.getString(KEY_REQUEST_PREFIX, "PR") ?: "PR"
+        set(value) = prefs.edit().putString(KEY_REQUEST_PREFIX, value).apply()
+
+    var requestSuffix: String
+        get() = prefs.getString(KEY_REQUEST_SUFFIX, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_REQUEST_SUFFIX, value).apply()
+
+    var requestSeparator: String
+        get() = prefs.getString(KEY_REQUEST_SEPARATOR, "-") ?: "-"
+        set(value) = prefs.edit().putString(KEY_REQUEST_SEPARATOR, value).apply()
+
+    var requestCounter: Int
+        get() = prefs.getInt(KEY_REQUEST_COUNTER, 1).coerceAtLeast(1)
+        set(value) = prefs.edit().putInt(KEY_REQUEST_COUNTER, value.coerceAtLeast(1)).apply()
+
+    var requestCounterMinDigits: Int
+        get() = prefs.getInt(KEY_REQUEST_COUNTER_DIGITS, 3).coerceIn(0, 6)
+        set(value) = prefs.edit().putInt(KEY_REQUEST_COUNTER_DIGITS, value.coerceIn(0, 6)).apply()
+
+    var quotePrefix: String
+        get() = prefs.getString(KEY_QUOTE_PREFIX, "Q") ?: "Q"
+        set(value) = prefs.edit().putString(KEY_QUOTE_PREFIX, value).apply()
+
+    var quoteSuffix: String
+        get() = prefs.getString(KEY_QUOTE_SUFFIX, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_QUOTE_SUFFIX, value).apply()
+
+    var quoteSeparator: String
+        get() = prefs.getString(KEY_QUOTE_SEPARATOR, "-") ?: "-"
+        set(value) = prefs.edit().putString(KEY_QUOTE_SEPARATOR, value).apply()
 
     fun getHeaderImage(): Bitmap? = loadImage(HEADER_FILE)
 
@@ -97,8 +134,9 @@ class SettingsRepository(context: Context) {
         defaultDiscount = 0.0
         inventoryMode = InventoryMode.WARN
         lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD
-        customerBalanceEnabled = false
-        vendorManagementEnabled = false
+        customerBalanceEnabled = true
+        vendorManagementEnabled = true
+        orderManagementEnabled = true
         File(filesDir, HEADER_FILE).delete()
         File(filesDir, SIGNATURE_FILE).delete()
         File(filesDir, LOGO_FILE).delete()
@@ -111,6 +149,14 @@ class SettingsRepository(context: Context) {
         invoiceSeparator = "/"
         invoiceCounter = 1
         invoiceCounterMinDigits = 2
+        requestPrefix = "PR"
+        requestSuffix = ""
+        requestSeparator = "-"
+        requestCounter = 1
+        requestCounterMinDigits = 3
+        quotePrefix = "Q"
+        quoteSuffix = ""
+        quoteSeparator = "-"
     }
 
     fun copyAssetHeaderIfNeeded(context: Context) {
@@ -171,11 +217,20 @@ class SettingsRepository(context: Context) {
         private const val KEY_LOW_STOCK_THRESHOLD = "low_stock_threshold"
         private const val KEY_CUSTOMER_BALANCE = "customer_balance_enabled"
         private const val KEY_VENDOR_MANAGEMENT = "vendor_management_enabled"
+        private const val KEY_ORDER_MANAGEMENT = "order_management_enabled"
         private const val KEY_INVOICE_PREFIX = "invoice_prefix"
         private const val KEY_INVOICE_SUFFIX = "invoice_suffix"
         private const val KEY_INVOICE_SEPARATOR = "invoice_separator"
         private const val KEY_INVOICE_COUNTER = "invoice_counter"
         private const val KEY_INVOICE_COUNTER_DIGITS = "invoice_counter_digits"
+        private const val KEY_REQUEST_PREFIX = "request_prefix"
+        private const val KEY_REQUEST_SUFFIX = "request_suffix"
+        private const val KEY_REQUEST_SEPARATOR = "request_separator"
+        private const val KEY_REQUEST_COUNTER = "request_counter"
+        private const val KEY_REQUEST_COUNTER_DIGITS = "request_counter_digits"
+        private const val KEY_QUOTE_PREFIX = "quote_prefix"
+        private const val KEY_QUOTE_SUFFIX = "quote_suffix"
+        private const val KEY_QUOTE_SEPARATOR = "quote_separator"
         private const val DEFAULT_SHOP_NAME = "Vikr Saathi Shop"
         private const val DEFAULT_CURRENCY = "₹"
         private const val DEFAULT_LOW_STOCK_THRESHOLD = 5
