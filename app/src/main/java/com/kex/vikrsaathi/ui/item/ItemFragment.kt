@@ -15,7 +15,7 @@ import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.databinding.DialogItemFormBinding
 import com.kex.vikrsaathi.databinding.DialogStockAdjustBinding
 import com.kex.vikrsaathi.databinding.FragmentItemsBinding
-import com.kex.vikrsaathi.ui.common.applyListViewMode
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.kex.vikrsaathi.ui.common.installInventoryOptionsDrawer
@@ -86,12 +86,28 @@ class ItemFragment : Fragment() {
         binding.fabAddItem.setOnClickListener { showItemDialog(null) }
     }
 
+    override fun onResume() {
+        super.onResume()
+        val app = requireActivity().application as VikrSaathiApp
+        if (!app.settingsRepository.vendorManagementEnabled) {
+            adapter.vendorNames = emptyMap()
+            return
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            if (!isAdded) return@launch
+            adapter.vendorNames = app.vendorRepository.getAll().associate { it.id to it.name }
+        }
+    }
+
     private fun applyViewMode(mode: ListViewMode, persist: Boolean = true) {
         viewMode = mode
         if (persist) listViewPrefs.setMode(ListViewScreen.ITEMS, mode)
         adapter.viewMode = mode
-        binding.recyclerItems.applyListViewMode(mode)
-        binding.detailsHeader.root.isVisible = mode == ListViewMode.DETAILS
+        val recycler = binding.recyclerItems
+        val first = (recycler.layoutManager as? LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0
+        recycler.layoutManager = LinearLayoutManager(requireContext())
+        if (first > 0) recycler.scrollToPosition(first)
+        binding.detailsHeader.root.isVisible = false
     }
 
     private fun showItemDialog(existing: Item?) {

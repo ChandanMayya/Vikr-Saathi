@@ -9,12 +9,14 @@ import com.kex.vikrsaathi.data.entity.StockMovement
 import com.kex.vikrsaathi.data.repository.InventoryRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.data.repository.VendorRepository
 import kotlinx.coroutines.launch
 
 class StockViewModel(
     private val itemRepository: ItemRepository,
     private val inventoryRepository: InventoryRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val vendorRepository: VendorRepository
 ) : ViewModel() {
 
     val items: LiveData<List<Item>> = itemRepository.allItems
@@ -31,6 +33,23 @@ class StockViewModel(
 
     val lowStockThreshold: Int
         get() = settingsRepository.lowStockThreshold
+
+    private val _vendorNames = MutableLiveData<Map<Long, String>>(emptyMap())
+    val vendorNames: LiveData<Map<Long, String>> = _vendorNames
+
+    init {
+        refreshVendorNames()
+    }
+
+    fun refreshVendorNames() {
+        if (!settingsRepository.vendorManagementEnabled) {
+            _vendorNames.value = emptyMap()
+            return
+        }
+        viewModelScope.launch {
+            _vendorNames.value = vendorRepository.getAll().associate { it.id to it.name }
+        }
+    }
 
     fun onItemsChanged(items: List<Item>) {
         allItemsCache = items

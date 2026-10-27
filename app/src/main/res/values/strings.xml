@@ -117,6 +117,12 @@
     <string name="col_mrp">MRP</string>
     <string name="col_discount">Disc%</string>
     <string name="col_stock">Stock</string>
+    <string name="list_selling_price">Selling price</string>
+    <string name="list_remarks">Remarks</string>
+    <string name="list_archived">Archived</string>
+    <string name="list_section_pricing">Pricing</string>
+    <string name="list_section_identification">Identification</string>
+    <string name="list_section_purchase">Purchase</string>
     <string name="col_barcode">Barcode</string>
     <string name="col_invoice">Invoice</string>
     <string name="col_customer">Customer</string>

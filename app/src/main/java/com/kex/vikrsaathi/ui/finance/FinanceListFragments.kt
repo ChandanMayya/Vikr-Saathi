@@ -17,7 +17,7 @@ import com.kex.vikrsaathi.data.entity.Vendor
 import com.kex.vikrsaathi.databinding.DialogVendorFormBinding
 import com.kex.vikrsaathi.databinding.FragmentFinanceListBinding
 import com.kex.vikrsaathi.databinding.FragmentVendorsBinding
-import com.kex.vikrsaathi.ui.common.applyListViewMode
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.kex.vikrsaathi.ui.common.installListViewOptionsDrawer
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
@@ -141,8 +141,11 @@ class VendorListFragment : Fragment() {
         viewMode = mode
         if (persist) listViewPrefs.setMode(ListViewScreen.VENDORS, mode)
         adapter.viewMode = mode
-        binding.recyclerVendors.applyListViewMode(mode)
-        binding.detailsHeader.root.isVisible = mode == ListViewMode.DETAILS
+        val recycler = binding.recyclerVendors
+        val first = (recycler.layoutManager as? LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0
+        recycler.layoutManager = LinearLayoutManager(recycler.context)
+        if (first > 0) recycler.scrollToPosition(first)
+        binding.detailsHeader.root.isVisible = false
     }
 
     private fun reload() {

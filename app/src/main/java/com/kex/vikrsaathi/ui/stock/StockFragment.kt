@@ -19,7 +19,7 @@ import com.kex.vikrsaathi.data.entity.StockMovementType
 import com.kex.vikrsaathi.databinding.DialogStockAdjustBinding
 import com.kex.vikrsaathi.databinding.FragmentStockBinding
 import com.kex.vikrsaathi.databinding.ItemStockMovementBinding
-import com.kex.vikrsaathi.ui.common.applyListViewMode
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.kex.vikrsaathi.ui.common.installInventoryOptionsDrawer
@@ -79,6 +79,7 @@ class StockFragment : Fragment() {
         )
 
         adapter = StockAdapter(
+            currencySymbol = app.settingsRepository.currencySymbol,
             lowStockThreshold = viewModel.lowStockThreshold,
             onAdjust = { showAdjustDialog(it) },
             onStockIn = { showAdjustDialog(it, prefillDelta = 1) },
@@ -89,6 +90,7 @@ class StockFragment : Fragment() {
 
         viewModel.items.observe(viewLifecycleOwner) { viewModel.onItemsChanged(it) }
         viewModel.filteredItems.observe(viewLifecycleOwner) { adapter.submitList(it) }
+        viewModel.vendorNames.observe(viewLifecycleOwner) { adapter.vendorNames = it }
 
         binding.editStockSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -106,8 +108,16 @@ class StockFragment : Fragment() {
         viewMode = mode
         if (persist) listViewPrefs.setMode(ListViewScreen.INVENTORY, mode)
         adapter.viewMode = mode
-        binding.recyclerStock.applyListViewMode(mode)
-        binding.detailsHeader.root.isVisible = mode == ListViewMode.DETAILS
+        val recycler = binding.recyclerStock
+        val first = (recycler.layoutManager as? LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0
+        recycler.layoutManager = LinearLayoutManager(requireContext())
+        if (first > 0) recycler.scrollToPosition(first)
+        binding.detailsHeader.root.isVisible = false
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshVendorNames()
     }
 
     private fun showAdjustDialog(item: Item, prefillDelta: Int? = null) {

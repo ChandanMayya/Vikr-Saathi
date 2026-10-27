@@ -1,7 +1,10 @@
 package com.kex.vikrsaathi.ui.finance
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -55,15 +58,30 @@ class VendorAdapter(
         }
     }
 
+    private fun initials(name: String): String {
+        val parts = name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (parts.isEmpty()) return "?"
+        val letters = if (parts.size == 1) parts[0].take(1) else parts[0].take(1) + parts[1].take(1)
+        return letters.uppercase()
+    }
+
+    private fun showText(container: View, textView: TextView, value: String) {
+        val shown = value.trim()
+        container.isVisible = shown.isNotEmpty()
+        if (shown.isNotEmpty()) textView.text = shown
+    }
+
     inner class ComfortableViewHolder(
         private val binding: ItemVendorBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(card: VendorCard) {
             val vendor = card.vendor
-            binding.textVendorBadge.text = vendor.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
-            binding.textVendorName.text = displayName(vendor)
-            binding.textVendorPhone.text = vendor.phone.ifBlank { "-" }
-            binding.textVendorAddress.text = vendor.address.ifBlank { "-" }
+            binding.textVendorBadge.text = initials(vendor.name)
+            binding.textVendorName.text = vendor.name
+            binding.textVendorArchived.isVisible = vendor.archived
+            showText(binding.layoutVendorPhone, binding.textVendorPhone, vendor.phone)
+            showText(binding.layoutVendorAddress, binding.textVendorAddress, vendor.address)
+            showText(binding.layoutVendorEmail, binding.textVendorEmail, vendor.email)
             bindBalance(binding.textVendorBalance, card.balancePaise)
             binding.buttonEditVendor.setOnClickListener { onEdit(vendor) }
             binding.buttonArchiveVendor.setOnClickListener { onArchive(vendor) }
@@ -76,10 +94,12 @@ class VendorAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(card: VendorCard) {
             val vendor = card.vendor
-            binding.textVendorBadge.text = vendor.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
-            binding.textVendorName.text = displayName(vendor)
-            binding.textVendorPhone.text = vendor.phone.ifBlank { "-" }
-            binding.textVendorAddress.text = vendor.address.ifBlank { "-" }
+            binding.textVendorBadge.text = initials(vendor.name)
+            binding.textVendorName.text = vendor.name
+            binding.textVendorArchived.isVisible = vendor.archived
+            val phone = vendor.phone.trim()
+            binding.textVendorPhone.isVisible = phone.isNotEmpty()
+            if (phone.isNotEmpty()) binding.textVendorPhone.text = phone
             bindBalance(binding.textVendorBalance, card.balancePaise)
             binding.buttonEditVendor.setOnClickListener { onEdit(vendor) }
             binding.buttonArchiveVendor.setOnClickListener { onArchive(vendor) }
@@ -92,9 +112,13 @@ class VendorAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(card: VendorCard) {
             val vendor = card.vendor
-            binding.textVendorName.text = displayName(vendor)
-            binding.textVendorPhone.text = vendor.phone.ifBlank { "-" }
-            binding.textVendorAddress.text = vendor.address.ifBlank { "-" }
+            binding.textVendorBadge.text = initials(vendor.name)
+            binding.textVendorName.text = vendor.name
+            binding.textVendorArchived.isVisible = vendor.archived
+            showText(binding.layoutVendorPhone, binding.textVendorPhone, vendor.phone)
+            showText(binding.layoutVendorAddress, binding.textVendorAddress, vendor.address)
+            showText(binding.layoutVendorEmail, binding.textVendorEmail, vendor.email)
+            showText(binding.layoutVendorNotes, binding.textVendorNotes, vendor.notes)
             bindBalance(binding.textVendorBalance, card.balancePaise)
             binding.buttonEditVendor.setOnClickListener { onEdit(vendor) }
             binding.buttonArchiveVendor.setOnClickListener { onArchive(vendor) }
@@ -102,14 +126,10 @@ class VendorAdapter(
         }
     }
 
-    private fun bindBalance(view: android.widget.TextView, paise: Long) {
+    private fun bindBalance(view: TextView, paise: Long) {
         val symbol = (view.context.applicationContext as com.kex.vikrsaathi.VikrSaathiApp).settingsRepository.currencySymbol
         view.text = view.context.getString(R.string.vendor_balance, FinanceUi.formatBalance(paise, symbol))
         view.setTextColor(view.context.getColor(FinanceUi.balanceColorRes(paise, customer = false)))
-    }
-
-    private fun displayName(vendor: Vendor): String {
-        return if (vendor.archived) "${vendor.name} · archived" else vendor.name
     }
 
     private class DiffCallback : DiffUtil.ItemCallback<VendorCard>() {

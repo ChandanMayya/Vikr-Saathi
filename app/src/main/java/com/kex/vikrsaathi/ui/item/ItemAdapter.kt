@@ -1,8 +1,11 @@
 package com.kex.vikrsaathi.ui.item
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -13,6 +16,7 @@ import com.kex.vikrsaathi.databinding.ItemMasterCompactBinding
 import com.kex.vikrsaathi.databinding.ItemMasterDetailsBinding
 import com.kex.vikrsaathi.util.ListViewMode
 import com.kex.vikrsaathi.util.PriceCalculator
+import java.util.Locale
 
 class ItemAdapter(
     private val currencySymbol: String,
@@ -22,6 +26,14 @@ class ItemAdapter(
 ) : ListAdapter<Item, RecyclerView.ViewHolder>(DiffCallback()) {
 
     var viewMode: ListViewMode = ListViewMode.COMFORTABLE
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyDataSetChanged()
+            }
+        }
+
+    var vendorNames: Map<Long, String> = emptyMap()
         set(value) {
             if (field != value) {
                 field = value
@@ -53,33 +65,61 @@ class ItemAdapter(
         }
     }
 
-    private fun displayPrice(item: Item): String {
-        val price = item.sellingPrice
-            ?: PriceCalculator.priceAfterDiscount(item.mrp, item.discount)
-        return PriceCalculator.formatAmount(price, currencySymbol)
-    }
+    private fun money(amount: Double): String = PriceCalculator.formatAmount(amount, currencySymbol)
 
-    private fun stockLabel(item: Item): String =
-        if (item.stockUnit().isBlank()) item.stockQty.toString() else "${item.stockQty} ${item.stockUnit()}"
+    private fun sellingAmount(item: Item): Double =
+        item.sellingPrice ?: PriceCalculator.priceAfterDiscount(item.mrp, item.discount)
+
+    private fun stockLabel(item: Item): String {
+        val unit = item.stockUnit().trim()
+        return if (unit.isEmpty()) item.stockQty.toString() else "${item.stockQty} $unit"
+    }
 
     private fun stockColor(context: android.content.Context, qty: Int): Int =
         ContextCompat.getColor(
             context,
-            if (qty <= lowStockThreshold) R.color.orange_700 else R.color.text_primary_dark
+            if (qty <= lowStockThreshold) R.color.orange_700 else R.color.text_accent
         )
+
+    private fun bindStock(view: TextView, low: TextView, item: Item) {
+        view.text = stockLabel(item)
+        view.setTextColor(stockColor(view.context, item.stockQty))
+        low.isVisible = item.stockQty <= lowStockThreshold
+    }
+
+    private fun discountText(discount: Double): String? {
+        if (kotlin.math.abs(discount) < 0.005) return null
+        val whole = kotlin.math.abs(discount - discount.toInt()) < 0.05
+        return if (whole) "${discount.toInt()}%" else String.format(Locale.getDefault(), "%.1f%%", discount)
+    }
+
+    private fun remarkText(item: Item): String? {
+        val remarks = item.remarks.trim()
+        if (remarks.isEmpty()) return null
+        if (item.baseUnit.isBlank() && remarks == item.stockUnit().trim()) return null
+        return remarks
+    }
+
+    private fun vendorName(item: Item): String? =
+        item.preferredVendorId?.let { vendorNames[it]?.trim() }?.takeIf { it.isNotEmpty() }
+
+    private fun showText(container: View, textView: TextView, value: String?) {
+        val shown = value?.trim().orEmpty()
+        container.isVisible = shown.isNotEmpty()
+        if (shown.isNotEmpty()) textView.text = shown
+    }
 
     inner class ComfortableVH(private val binding: ItemMasterBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(item: Item) {
-            binding.textItemBadge.text =
-                item.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
             binding.textItemName.text = item.name
-            binding.textItemPrice.text = displayPrice(item)
-            binding.textItemMrp.text = PriceCalculator.formatAmount(item.mrp, currencySymbol)
-            binding.textItemDiscount.text = String.format("%.1f%%", item.discount)
-            binding.textItemBarcode.text = item.barcode?.ifBlank { null } ?: "-"
-            binding.textItemStock.text = stockLabel(item)
-            binding.textItemStock.setTextColor(stockColor(binding.root.context, item.stockQty))
+            bindStock(binding.textItemStock, binding.textItemLow, item)
+            showText(binding.layoutItemBarcode, binding.textItemBarcode, item.barcode)
+            binding.textItemMrp.text = money(item.mrp)
+            binding.textItemPrice.text = money(sellingAmount(item))
+            val discount = discountText(item.discount)
+            binding.layoutItemDiscount.isVisible = discount != null
+            if (discount != null) binding.textItemDiscount.text = discount
             binding.buttonEditItem.setOnClickListener { onEdit(item) }
             binding.buttonDeleteItem.setOnClickListener { onDelete(item) }
         }
@@ -88,13 +128,16 @@ class ItemAdapter(
     inner class CompactVH(private val binding: ItemMasterCompactBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(item: Item) {
+            val context = binding.root.context
             binding.textItemName.text = item.name
-            binding.textItemPrice.text = displayPrice(item)
-            binding.textItemStock.text = binding.root.context.getString(
-                R.string.stock_label_format,
-                item.stockQty
-            ).let { label -> if (item.stockUnit().isBlank()) label else "$label ${item.stockUnit()}" }
-            binding.textItemStock.setTextColor(stockColor(binding.root.context, item.stockQty))
+            bindStock(binding.textItemStock, binding.textItemLow, item)
+            val parts = mutableListOf(
+                context.getString(R.string.list_selling_price) + " " + money(sellingAmount(item))
+            )
+            item.barcode?.trim()?.takeIf { it.isNotEmpty() }?.let { barcode ->
+                parts += context.getString(R.string.col_barcode) + " " + barcode
+            }
+            binding.textItemMeta.text = parts.joinToString("  ·  ")
             binding.buttonEditItem.setOnClickListener { onEdit(item) }
             binding.buttonDeleteItem.setOnClickListener { onDelete(item) }
         }
@@ -104,11 +147,32 @@ class ItemAdapter(
         RecyclerView.ViewHolder(binding.root) {
         fun bind(item: Item) {
             binding.textItemName.text = item.name
-            binding.textItemMrp.text = PriceCalculator.formatAmount(item.mrp, currencySymbol)
-            binding.textItemDiscount.text = String.format("%.0f%%", item.discount)
-            binding.textItemStock.text = stockLabel(item)
-            binding.textItemStock.setTextColor(stockColor(binding.root.context, item.stockQty))
-            binding.textItemBarcode.text = item.barcode?.ifBlank { null } ?: "-"
+            bindStock(binding.textItemStock, binding.textItemLow, item)
+            binding.textItemMrp.text = money(item.mrp)
+            binding.textItemPrice.text = money(sellingAmount(item))
+            val discount = discountText(item.discount)
+            binding.layoutItemDiscount.isVisible = discount != null
+            if (discount != null) binding.textItemDiscount.text = discount
+            showText(binding.layoutItemBarcode, binding.textItemBarcode, item.barcode)
+            showText(binding.layoutItemBaseUnit, binding.textItemBaseUnit, item.baseUnit)
+            showText(binding.layoutItemRemarks, binding.textItemRemarks, remarkText(item))
+            binding.layoutItemIdentity.isVisible =
+                binding.layoutItemBarcode.isVisible ||
+                    binding.layoutItemBaseUnit.isVisible ||
+                    binding.layoutItemRemarks.isVisible
+            val purchaseUnit = item.purchaseUnit.trim()
+            binding.layoutItemPurchaseUnit.isVisible = purchaseUnit.isNotEmpty()
+            if (purchaseUnit.isNotEmpty()) binding.textItemPurchaseUnit.text = purchaseUnit
+            val showFactor = purchaseUnit.isNotEmpty() && item.unitsPerPurchase > 0
+            binding.layoutItemPackFactor.isVisible = showFactor
+            if (showFactor) binding.textItemPackFactor.text = item.unitsPerPurchase.toString()
+            val vendor = vendorName(item)
+            binding.layoutItemVendor.isVisible = vendor != null
+            if (vendor != null) binding.textItemVendor.text = vendor
+            binding.layoutItemPurchase.isVisible =
+                binding.layoutItemPurchaseUnit.isVisible ||
+                    binding.layoutItemPackFactor.isVisible ||
+                    binding.layoutItemVendor.isVisible
             binding.buttonEditItem.setOnClickListener { onEdit(item) }
             binding.buttonDeleteItem.setOnClickListener { onDelete(item) }
         }

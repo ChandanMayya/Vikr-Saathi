@@ -53,7 +53,8 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                 StockViewModel(
                     app.itemRepository,
                     app.inventoryRepository,
-                    app.settingsRepository
+                    app.settingsRepository,
+                    app.vendorRepository
                 ) as T
             modelClass.isAssignableFrom(BillViewModel::class.java) ->
                 BillViewModel(

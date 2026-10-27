@@ -27,6 +27,7 @@ import com.kex.vikrsaathi.data.repository.RequestLineInput
 import com.kex.vikrsaathi.databinding.FragmentPurchaseRequestBinding
 import com.kex.vikrsaathi.databinding.FragmentPurchaseRequestsBinding
 import com.kex.vikrsaathi.databinding.ItemPurchaseRequestBinding
+import com.kex.vikrsaathi.databinding.ItemRequestDraftLineBinding
 import com.kex.vikrsaathi.databinding.ItemRequestLineBinding
 import com.kex.vikrsaathi.databinding.ItemRequestOrderBinding
 import com.kex.vikrsaathi.domain.finance.ComparedRequestLine
@@ -145,12 +146,12 @@ class PurchaseRequestFragment : Fragment() {
         binding.buttonRequiredBy.setOnClickListener {
             FinanceDates.showSingle(this, R.string.required_by) { picked ->
                 requiredBy = picked
-                binding.buttonRequiredBy.text = getString(R.string.required_by_value, FinanceDates.format(picked))
+                bindRequiredBy()
             }
         }
         binding.buttonClearRequiredBy.setOnClickListener {
             requiredBy = null
-            binding.buttonRequiredBy.setText(R.string.required_by)
+            bindRequiredBy()
         }
         binding.buttonAddMaterial.setOnClickListener { addMaterial() }
         binding.buttonSaveRequest.setOnClickListener { saveDraft() }
@@ -170,7 +171,9 @@ class PurchaseRequestFragment : Fragment() {
     private fun showEditor() {
         binding.editorGroup.isVisible = true
         binding.detailGroup.isVisible = false
+        binding.buttonSaveRequest.isVisible = true
         binding.progressRequest.isVisible = false
+        bindRequiredBy()
         renderDraftLines()
     }
 
@@ -200,6 +203,7 @@ class PurchaseRequestFragment : Fragment() {
     ) {
         binding.editorGroup.isVisible = false
         binding.detailGroup.isVisible = true
+        binding.buttonSaveRequest.isVisible = false
         val vendorNames = vendors.associate { it.id to it.name }
         val awarded = awardedBase(detail.orderLines)
         val receiptById = receipts.associateBy { it.id }
@@ -436,9 +440,6 @@ class PurchaseRequestFragment : Fragment() {
         val detail = loaded ?: return
         requiredBy = detail.request.requiredBy
         binding.editRequestNotes.setText(detail.request.notes)
-        binding.buttonRequiredBy.text = requiredBy?.let {
-            getString(R.string.required_by_value, FinanceDates.format(it))
-        } ?: getString(R.string.required_by)
         draftLines.clear()
         detail.lines.forEach {
             val entered = if (it.enteredQty > 0) it.enteredQty else it.quantity
@@ -464,11 +465,28 @@ class PurchaseRequestFragment : Fragment() {
                 return@launch
             }
             val form = FinanceForm.column(this@PurchaseRequestFragment)
+            form.addView(TextView(requireContext()).apply {
+                setText(R.string.add_material_help)
+                setTextColor(requireContext().getColor(R.color.text_secondary_dark))
+                textSize = 14f
+                setPadding(0, 0, 0, (8 * resources.displayMetrics.density).toInt())
+            })
             var selected: com.kex.vikrsaathi.data.entity.Item? = null
             var useBulk = false
             var qtyField: com.google.android.material.textfield.TextInputEditText? = null
             var unitField: com.google.android.material.textfield.MaterialAutoCompleteTextView? = null
-            val preview = TextView(requireContext()).apply { setPadding(0, 8, 0, 0) }
+            val conversionLabel = TextView(requireContext()).apply {
+                setText(R.string.request_line_conversion_label)
+                setTextColor(requireContext().getColor(R.color.text_secondary_dark))
+                textSize = 12f
+                isVisible = false
+                setPadding(0, (8 * resources.displayMetrics.density).toInt(), 0, 0)
+            }
+            val preview = TextView(requireContext()).apply {
+                setTextColor(requireContext().getColor(R.color.text_primary_dark))
+                textSize = 15f
+                isVisible = false
+            }
             fun bulkName(item: com.kex.vikrsaathi.data.entity.Item?) =
                 item?.purchaseUnit?.takeIf { it.isNotBlank() && item.unitsPerPurchase > 0 }
             fun refreshPreview() {
@@ -477,9 +495,12 @@ class PurchaseRequestFragment : Fragment() {
                 val bulk = useBulk && bulkName(item) != null
                 val factor = if (bulk) item!!.unitsPerPurchase else 1
                 val unit = if (bulk) item!!.purchaseUnit else item?.stockUnit().orEmpty()
-                preview.text = if (entered <= 0) "" else PackMath.formatQuantity(entered, unit, factor, item?.stockUnit().orEmpty())
+                val text = if (entered <= 0) "" else PackMath.formatQuantity(entered, unit, factor, item?.stockUnit().orEmpty())
+                preview.text = text
+                preview.isVisible = text.isNotEmpty()
+                conversionLabel.isVisible = text.isNotEmpty()
             }
-            FinanceForm.itemPicker(this@PurchaseRequestFragment, form, getString(R.string.item_name), items) { item ->
+            FinanceForm.itemPicker(this@PurchaseRequestFragment, form, getString(R.string.select_master_item), items) { item ->
                 selected = item
                 useBulk = false
                 val base = item.stockUnit().ifBlank { getString(R.string.pack_base_unit) }
@@ -498,17 +519,18 @@ class PurchaseRequestFragment : Fragment() {
                 refreshPreview()
             }
             unitField = orderUnitField
-            val qty = FinanceForm.text(this@PurchaseRequestFragment, form, getString(R.string.ordered_qty), InputType.TYPE_CLASS_NUMBER, "1")
+            val qty = FinanceForm.text(this@PurchaseRequestFragment, form, getString(R.string.request_line_qty), InputType.TYPE_CLASS_NUMBER, "1")
             qtyField = qty
             qty.addTextChangedListener(object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
                 override fun afterTextChanged(s: android.text.Editable?) = refreshPreview()
             })
+            form.addView(conversionLabel)
             form.addView(preview)
             refreshPreview()
-            val spec = FinanceForm.text(this@PurchaseRequestFragment, form, getString(R.string.line_spec))
-            ask(R.string.add_material, scroll(form)) {
+            val spec = FinanceForm.text(this@PurchaseRequestFragment, form, getString(R.string.request_line_spec_optional))
+            ask(R.string.add_requested_material, scroll(form)) {
                 val item = selected ?: return@ask toast(R.string.select_master_item)
                 val entered = qty.text.toString().toIntOrNull() ?: 0
                 if (entered <= 0) return@ask toast(R.string.payment_error_request_lines)
@@ -531,33 +553,47 @@ class PurchaseRequestFragment : Fragment() {
         }
     }
 
+    private fun bindRequiredBy() {
+        val picked = requiredBy
+        if (picked == null) {
+            binding.buttonRequiredBy.setText(R.string.request_date_prompt)
+            binding.buttonClearRequiredBy.isVisible = false
+        } else {
+            binding.buttonRequiredBy.text = getString(R.string.required_by_value, FinanceDates.format(picked))
+            binding.buttonClearRequiredBy.isVisible = true
+        }
+    }
+
     private fun renderDraftLines() {
+        val count = draftLines.size
+        binding.textRequestDraftCount.text = resources.getQuantityString(R.plurals.request_item_count, count, count)
+        binding.textRequestDraftEmpty.isVisible = count == 0
         binding.editorLines.removeAllViews()
         draftLines.forEachIndexed { index, line ->
-            val row = LinearLayout(requireContext()).apply { orientation = LinearLayout.HORIZONTAL }
-            val label = TextView(requireContext()).apply {
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-                val qtyLabel = orderedLabel(line.enteredQty, line.quantity, line.orderUnit, line.unitsPerBundle, line.baseUnit)
-                text = if (line.notes.isBlank()) {
-                    "${line.itemName} × $qtyLabel"
-                } else {
-                    "${line.itemName} × $qtyLabel\n${line.notes}"
-                }
+            val row = ItemRequestDraftLineBinding.inflate(layoutInflater, binding.editorLines, true)
+            row.textDraftItemName.text = line.itemName
+            row.textDraftItemSpec.isVisible = line.notes.isNotBlank()
+            row.textDraftItemSpec.text = line.notes
+            val unit = line.orderUnit.ifBlank { line.baseUnit }
+            row.textDraftItemQty.text = if (line.enteredQty > 0) {
+                if (unit.isBlank()) line.enteredQty.toString() else "${line.enteredQty} $unit"
+            } else {
+                PackMath.formatQuantity(line.quantity, line.baseUnit, 1)
             }
-            val remove = com.google.android.material.button.MaterialButton(
-                requireContext(),
-                null,
-                com.google.android.material.R.attr.materialButtonOutlinedStyle
-            ).apply {
-                text = getString(R.string.remove_line)
-                setOnClickListener {
-                    draftLines.removeAt(index)
-                    renderDraftLines()
-                }
+            val showConversion = line.enteredQty > 0 && line.unitsPerBundle > 1
+            row.textDraftItemConversion.isVisible = showConversion
+            if (showConversion) {
+                row.textDraftItemConversion.text = PackMath.formatQuantity(
+                    line.enteredQty,
+                    line.orderUnit,
+                    line.unitsPerBundle,
+                    line.baseUnit
+                )
             }
-            row.addView(label)
-            row.addView(remove)
-            binding.editorLines.addView(row)
+            row.buttonRemoveDraftLine.setOnClickListener {
+                draftLines.removeAt(index)
+                renderDraftLines()
+            }
         }
     }
 
@@ -628,14 +664,6 @@ class PurchaseRequestFragment : Fragment() {
             .setPositiveButton(R.string.save) { _, _ -> onSave() }
             .setNegativeButton(R.string.cancel, null)
             .show()
-    }
-
-    private fun orderedLabel(enteredQty: Int, baseQty: Int, orderUnit: String, factor: Int, baseUnit: String): String {
-        return if (enteredQty > 0) {
-            PackMath.formatQuantity(enteredQty, orderUnit, factor.coerceAtLeast(1), baseUnit)
-        } else {
-            PackMath.formatQuantity(baseQty, baseUnit, 1)
-        }
     }
 
     private fun awardedBase(lines: List<com.kex.vikrsaathi.data.entity.PurchaseOrderLine>): Map<Long, Int> =

@@ -16,7 +16,7 @@ import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Customer
 import com.kex.vikrsaathi.databinding.DialogCustomerFormBinding
 import com.kex.vikrsaathi.databinding.FragmentCustomersBinding
-import com.kex.vikrsaathi.ui.common.applyListViewMode
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.kex.vikrsaathi.ui.common.installListViewOptionsDrawer
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
@@ -95,8 +95,11 @@ class CustomerFragment : Fragment() {
         viewMode = mode
         if (persist) listViewPrefs.setMode(ListViewScreen.CUSTOMERS, mode)
         adapter.viewMode = mode
-        binding.recyclerCustomers.applyListViewMode(mode)
-        binding.detailsHeader.root.isVisible = mode == ListViewMode.DETAILS
+        val recycler = binding.recyclerCustomers
+        val first = (recycler.layoutManager as? LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0
+        recycler.layoutManager = LinearLayoutManager(requireContext())
+        if (first > 0) recycler.scrollToPosition(first)
+        binding.detailsHeader.root.isVisible = false
     }
 
     private fun showCustomerDialog(existing: Customer?) {
