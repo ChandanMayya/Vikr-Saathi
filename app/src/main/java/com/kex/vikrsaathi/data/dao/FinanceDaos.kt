@@ -107,8 +107,20 @@ interface CustomerLedgerDao {
     @Query("SELECT * FROM sales_returns")
     suspend fun getAllReturns(): List<SalesReturn>
 
-    @Query("SELECT * FROM sales_returns WHERE billId = :billId")
+    @Query("SELECT * FROM sales_returns WHERE billId = :billId ORDER BY occurredAt DESC, id DESC")
     suspend fun getReturnsForBill(billId: Long): List<SalesReturn>
+
+    @Query("SELECT * FROM sales_returns WHERE id = :id")
+    suspend fun getReturnById(id: Long): SalesReturn?
+
+    @Query("UPDATE sales_returns SET exchangeBillId = :billId WHERE id = :id")
+    suspend fun setExchangeBill(id: Long, billId: Long)
+
+    @Query("UPDATE sales_returns SET voidedAt = :voidedAt WHERE id = :id")
+    suspend fun markReturnVoided(id: Long, voidedAt: Long)
+
+    @Query("UPDATE sales_returns SET voidsReturnId = :voidsReturnId WHERE id = :id")
+    suspend fun setVoidsReturn(id: Long, voidsReturnId: Long)
 
     @Query("SELECT * FROM sales_return_lines")
     suspend fun getAllReturnLines(): List<SalesReturnLine>

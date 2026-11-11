@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.ui.analysis.AnalysisViewModel
+import com.kex.vikrsaathi.data.repository.OperatorRepository
 import com.kex.vikrsaathi.ui.bill.BillPreviewViewModel
+import com.kex.vikrsaathi.ui.bill.BillReturnViewModel
+import com.kex.vikrsaathi.ui.bill.BillReturnsViewModel
 import com.kex.vikrsaathi.ui.bill.BillVersionsViewModel
 import com.kex.vikrsaathi.ui.bill.BillViewModel
 import com.kex.vikrsaathi.ui.bill.HeldBillsViewModel
@@ -61,6 +64,22 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                 BillVersionsViewModel(
                     app.billRepository,
                     app.settingsRepository
+                ) as T
+            modelClass.isAssignableFrom(BillReturnViewModel::class.java) ->
+                BillReturnViewModel(
+                    app.customerFinanceRepository,
+                    app.billRepository,
+                    app.customerRepository,
+                    app.itemRepository,
+                    app.settingsRepository,
+                    OperatorRepository(app.database, app.settingsRepository)
+                ) as T
+            modelClass.isAssignableFrom(BillReturnsViewModel::class.java) ->
+                BillReturnsViewModel(
+                    app.customerFinanceRepository,
+                    app.billRepository,
+                    app.settingsRepository,
+                    OperatorRepository(app.database, app.settingsRepository)
                 ) as T
             modelClass.isAssignableFrom(BillViewModel::class.java) ->
                 BillViewModel(

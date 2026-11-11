@@ -812,3 +812,108 @@ val MIGRATION_15_16 = object : Migration(15, 16) {
         )
     }
 }
+
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS sales_return_lines_keep (
+                id INTEGER NOT NULL,
+                returnId INTEGER NOT NULL,
+                itemId INTEGER,
+                itemName TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                unitCostPaise INTEGER
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO sales_return_lines_keep (id, returnId, itemId, itemName, quantity, unitCostPaise)
+            SELECT id, returnId, itemId, itemName, quantity, unitCostPaise FROM sales_return_lines
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE sales_return_lines")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS sales_returns_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                customerId INTEGER,
+                billId INTEGER,
+                reason TEXT NOT NULL,
+                moneyRefundedPaise INTEGER NOT NULL,
+                creditAdjustmentPaise INTEGER NOT NULL,
+                occurredAt INTEGER NOT NULL,
+                createdAt INTEGER NOT NULL,
+                refundMethod TEXT NOT NULL DEFAULT '',
+                note TEXT,
+                exchangeBillId INTEGER,
+                voidedAt INTEGER,
+                voidsReturnId INTEGER,
+                returnValuePaise INTEGER NOT NULL DEFAULT 0,
+                actorLabel TEXT NOT NULL DEFAULT 'This device',
+                FOREIGN KEY(customerId) REFERENCES customers(id) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO sales_returns_new (
+                id, customerId, billId, reason, moneyRefundedPaise, creditAdjustmentPaise,
+                occurredAt, createdAt, refundMethod, note, exchangeBillId, voidedAt, voidsReturnId,
+                returnValuePaise, actorLabel
+            )
+            SELECT
+                id, customerId, billId, reason, moneyRefundedPaise, creditAdjustmentPaise,
+                occurredAt, createdAt,
+                CASE
+                    WHEN creditAdjustmentPaise > 0 AND moneyRefundedPaise = 0 THEN 'STORE_CREDIT'
+                    WHEN moneyRefundedPaise > 0 AND creditAdjustmentPaise = 0 THEN 'CASH'
+                    ELSE ''
+                END,
+                NULL, NULL, NULL, NULL,
+                moneyRefundedPaise + creditAdjustmentPaise,
+                'This device'
+            FROM sales_returns
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE sales_returns")
+        db.execSQL("ALTER TABLE sales_returns_new RENAME TO sales_returns")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_sales_returns_customerId ON sales_returns(customerId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_sales_returns_billId ON sales_returns(billId)")
+        db.execSQL(
+            "INSERT OR REPLACE INTO sqlite_sequence(name, seq) SELECT 'sales_returns', IFNULL(MAX(id), 0) FROM sales_returns"
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS sales_return_lines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                returnId INTEGER NOT NULL,
+                itemId INTEGER,
+                itemName TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                unitCostPaise INTEGER,
+                billItemId INTEGER,
+                restock INTEGER NOT NULL DEFAULT 1,
+                lineValuePaise INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY(returnId) REFERENCES sales_returns(id) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO sales_return_lines (
+                id, returnId, itemId, itemName, quantity, unitCostPaise, billItemId, restock, lineValuePaise
+            )
+            SELECT id, returnId, itemId, itemName, quantity, unitCostPaise, NULL, 1, 0
+            FROM sales_return_lines_keep
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE sales_return_lines_keep")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_sales_return_lines_returnId ON sales_return_lines(returnId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_sales_return_lines_itemId ON sales_return_lines(itemId)")
+        db.execSQL(
+            "INSERT OR REPLACE INTO sqlite_sequence(name, seq) SELECT 'sales_return_lines', IFNULL(MAX(id), 0) FROM sales_return_lines"
+        )
+    }
+}

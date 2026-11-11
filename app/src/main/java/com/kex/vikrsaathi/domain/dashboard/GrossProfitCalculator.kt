@@ -13,7 +13,9 @@ object GrossProfitCalculator {
     data class SaleSlice(
         val revenuePaise: Long,
         val quantity: Int,
-        val unitCostPaise: Long?
+        val unitCostPaise: Long?,
+        /** False when the unit was not put back into stock, so its cost stays in this result. */
+        val recoverCost: Boolean = true
     )
 
     data class ReturnSlice(
@@ -53,7 +55,9 @@ object GrossProfitCalculator {
             )
         }
         val cost = soldUnits.sumOf { it.quantity * (it.unitCostPaise ?: 0L) } -
-            returnLines.sumOf { it.quantity * (it.unitCostPaise ?: 0L) }
+            returnLines.sumOf { line ->
+                if (!line.recoverCost) 0L else line.quantity * (line.unitCostPaise ?: 0L)
+            }
         val profit = revenue - cost
         val margin = if (revenue == 0L) null else (profit.toDouble() / revenue.toDouble()) * 100.0
         return Result(

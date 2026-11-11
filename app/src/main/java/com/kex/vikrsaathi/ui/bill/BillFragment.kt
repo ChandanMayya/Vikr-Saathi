@@ -433,6 +433,24 @@ class BillFragment : Fragment() {
                 bundleOf(BillVersionsFragment.ARG_BILL_ID to billId)
             )
         }
+        binding.billDrawer.rowReturnExchange.setOnClickListener {
+            val billId = savedBillId()
+            if (billId <= 0L || !isReadOnly) return@setOnClickListener
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            findNavController().navigate(
+                R.id.action_bill_to_return,
+                bundleOf(BillReturnFragment.ARG_BILL_ID to billId)
+            )
+        }
+        binding.billDrawer.rowReturns.setOnClickListener {
+            val billId = savedBillId()
+            if (billId <= 0L) return@setOnClickListener
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            findNavController().navigate(
+                R.id.action_bill_to_returns,
+                bundleOf(BillReturnsFragment.ARG_BILL_ID to billId)
+            )
+        }
         viewModel.versionCount.observe(viewLifecycleOwner) { count ->
             if (count > 0) binding.billDrawer.textVersionCount.text = count.toString()
         }
@@ -484,6 +502,11 @@ class BillFragment : Fragment() {
         binding.billDrawer.layoutViewBillOptions.visibility =
             if (isReadOnly) View.VISIBLE else View.GONE
         binding.billDrawer.rowVersions.visibility =
+            if (savedBillId() > 0L) View.VISIBLE else View.GONE
+        val savedReadOnly = isReadOnly && savedBillId() > 0L
+        binding.billDrawer.rowReturnExchange.visibility =
+            if (savedReadOnly) View.VISIBLE else View.GONE
+        binding.billDrawer.rowReturns.visibility =
             if (savedBillId() > 0L) View.VISIBLE else View.GONE
     }
 

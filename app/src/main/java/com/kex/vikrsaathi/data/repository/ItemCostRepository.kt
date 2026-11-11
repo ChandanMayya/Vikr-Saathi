@@ -102,4 +102,8 @@ class ItemCostRepository(
     suspend fun importLot(lot: ItemCostLot) {
         dao.insert(lot.copy(id = 0))
     }
+
+    suspend fun discardSource(sourceType: String, sourceId: Long) {
+        dao.deleteSource(sourceType, sourceId)
+    }
 }

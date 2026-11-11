@@ -24,6 +24,7 @@ import com.kex.vikrsaathi.domain.finance.FinanceReference
 import com.kex.vikrsaathi.domain.finance.LedgerRow
 import com.kex.vikrsaathi.domain.finance.PaymentPortion
 import com.kex.vikrsaathi.domain.finance.PaymentSplitValidator
+import com.kex.vikrsaathi.domain.finance.ReturnReporting
 import com.kex.vikrsaathi.domain.finance.ReversalReason
 import com.kex.vikrsaathi.domain.money.Money
 import com.kex.vikrsaathi.data.model.BillLineItem
@@ -348,27 +349,65 @@ class BillRepository(
         val zone = java.util.TimeZone.getDefault()
         val window = DashboardPeriods.current(period, nowMillis, zone)
         val previous = DashboardPeriods.previous(window, zone)
-        val total = billDao.getTotalSalesBetween(window.startInclusive, window.endExclusive)
+        val gross = billDao.getTotalSalesBetween(window.startInclusive, window.endExclusive)
         val billCount = billDao.getBillCountBetween(window.startInclusive, window.endExclusive)
-        val previousTotal = billDao.getTotalSalesBetween(previous.startInclusive, previous.endExclusive)
+        val previousGross = billDao.getTotalSalesBetween(previous.startInclusive, previous.endExclusive)
         val previousCount = billDao.getBillCountBetween(previous.startInclusive, previous.endExclusive)
-        val topItems = billDao.getTopSoldItemsBetween(window.startInclusive, window.endExclusive).map { row ->
-            DashboardTopItem(name = row.itemName, quantity = row.totalQuantity, itemId = row.itemId)
+        val returnLines = database.customerLedgerDao().getAllReturnLines().groupBy { it.returnId }
+        val activeReturns = database.customerLedgerDao().getAllReturns()
+            .filter { it.voidedAt == null && it.voidsReturnId == null }
+        fun merchandiseIn(start: Long, end: Long): Long {
+            return activeReturns.filter { it.occurredAt >= start && it.occurredAt < end }
+                .sumOf {
+                    ReturnReporting.merchandisePaise(
+                        it.returnValuePaise,
+                        it.moneyRefundedPaise,
+                        it.creditAdjustmentPaise
+                    )
+                }
         }
+        val total = ReturnReporting.netSalesRupees(
+            gross,
+            merchandiseIn(window.startInclusive, window.endExclusive)
+        )
+        val previousTotal = ReturnReporting.netSalesRupees(
+            previousGross,
+            merchandiseIn(previous.startInclusive, previous.endExclusive)
+        )
+        val returnedQty = mutableMapOf<Pair<Long?, String>, Int>()
+        activeReturns.filter { it.occurredAt >= window.startInclusive && it.occurredAt < window.endExclusive }
+            .forEach { entry ->
+                returnLines[entry.id].orEmpty().forEach { line ->
+                    val key = line.itemId to line.itemName
+                    returnedQty[key] = (returnedQty[key] ?: 0) + line.quantity
+                }
+            }
+        val topItems = billDao.getTopSoldItemsBetween(window.startInclusive, window.endExclusive).map { row ->
+            val less = returnedQty[row.itemId to row.itemName] ?: 0
+            DashboardTopItem(
+                name = row.itemName,
+                quantity = (row.totalQuantity - less).coerceAtLeast(0),
+                itemId = row.itemId
+            )
+        }.filter { it.quantity > 0 }
         val bills = billDao.getAllBillsWithDetailsSync().filter { details ->
             details.bill.date >= window.startInclusive && details.bill.date < window.endExclusive
         }
-        val returnLines = database.customerLedgerDao().getAllReturnLines().groupBy { it.returnId }
-        val returns = database.customerLedgerDao().getAllReturns()
+        val returns = activeReturns
             .filter { it.occurredAt >= window.startInclusive && it.occurredAt < window.endExclusive }
             .map { entry ->
                 GrossProfitCalculator.ReturnSlice(
-                    refundPaise = entry.moneyRefundedPaise + entry.creditAdjustmentPaise,
+                    refundPaise = ReturnReporting.merchandisePaise(
+                        entry.returnValuePaise,
+                        entry.moneyRefundedPaise,
+                        entry.creditAdjustmentPaise
+                    ),
                     lines = returnLines[entry.id].orEmpty().map { line ->
                         GrossProfitCalculator.SaleSlice(
                             revenuePaise = 0L,
                             quantity = line.quantity,
-                            unitCostPaise = line.unitCostPaise
+                            unitCostPaise = line.unitCostPaise,
+                            recoverCost = line.restock
                         )
                     }
                 )

@@ -135,6 +135,66 @@
             app:exitAnim="@anim/nav_fade_out"
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
+            android:id="@+id/action_bill_to_return"
+            app:destination="@id/billReturnFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
+            android:id="@+id/action_bill_to_returns"
+            app:destination="@id/billReturnsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/billReturnFragment"
+        android:name="com.kex.vikrsaathi.ui.bill.BillReturnFragment"
+        android:label="@string/return_items_title"
+        tools:layout="@layout/fragment_bill_return">
+        <argument
+            android:name="billId"
+            app:argType="long" />
+        <action
+            android:id="@+id/action_return_to_review"
+            app:destination="@id/billReturnReviewFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/billReturnReviewFragment"
+        android:name="com.kex.vikrsaathi.ui.bill.BillReturnReviewFragment"
+        android:label="@string/return_review"
+        tools:layout="@layout/fragment_bill_return_review">
+        <action
+            android:id="@+id/action_review_to_returns"
+            app:destination="@id/billReturnsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out"
+            app:popUpTo="@id/billFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/billReturnsFragment"
+        android:name="com.kex.vikrsaathi.ui.bill.BillReturnsFragment"
+        android:label="@string/returns"
+        tools:layout="@layout/fragment_bill_returns">
+        <argument
+            android:name="billId"
+            app:argType="long" />
+        <argument
+            android:name="postedReturnId"
+            android:defaultValue="0"
+            app:argType="long" />
     </fragment>
 
     <fragment

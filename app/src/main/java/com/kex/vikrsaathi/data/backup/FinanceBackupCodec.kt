@@ -152,13 +152,28 @@ object FinanceBackupCodec {
     fun salesReturns(root: JSONObject) = array(root, "salesReturns").map { obj ->
         SalesReturn(
             id = obj.getLong("legacyId"),
-            customerId = obj.getLong("customerLegacyId"),
+            customerId = if (!obj.has("customerLegacyId") || obj.isNull("customerLegacyId")) {
+                null
+            } else {
+                obj.getLong("customerLegacyId")
+            },
             billId = obj.optLong("billLegacyId").takeIf { obj.has("billLegacyId") && !obj.isNull("billLegacyId") },
             reason = obj.optString("reason"),
             moneyRefundedPaise = obj.optLong("moneyRefundedPaise"),
             creditAdjustmentPaise = obj.optLong("creditAdjustmentPaise"),
             occurredAt = obj.optLong("occurredAt"),
-            createdAt = obj.optLong("createdAt")
+            createdAt = obj.optLong("createdAt"),
+            refundMethod = obj.optString("refundMethod"),
+            note = obj.optString("note").ifBlank { null },
+            exchangeBillId = obj.optLong("exchangeBillLegacyId").takeIf {
+                obj.has("exchangeBillLegacyId") && !obj.isNull("exchangeBillLegacyId")
+            },
+            voidedAt = obj.optLong("voidedAt").takeIf { obj.has("voidedAt") && !obj.isNull("voidedAt") },
+            voidsReturnId = obj.optLong("voidsReturnLegacyId").takeIf {
+                obj.has("voidsReturnLegacyId") && !obj.isNull("voidsReturnLegacyId")
+            },
+            returnValuePaise = obj.optLong("returnValuePaise"),
+            actorLabel = obj.optString("actorLabel").ifBlank { com.kex.vikrsaathi.domain.bill.OperatorLabels.THIS_DEVICE }
         )
     }
 
@@ -173,7 +188,10 @@ object FinanceBackupCodec {
                 obj.getLong("unitCostPaise")
             } else {
                 null
-            }
+            },
+            billItemId = null,
+            restock = if (obj.has("restock")) obj.optBoolean("restock", true) else true,
+            lineValuePaise = obj.optLong("lineValuePaise")
         )
     }
 
@@ -434,13 +452,20 @@ object FinanceBackupCodec {
         list.forEach {
             put(JSONObject().apply {
                 put("legacyId", it.id)
-                put("customerLegacyId", it.customerId)
+                if (it.customerId == null) put("customerLegacyId", JSONObject.NULL) else put("customerLegacyId", it.customerId)
                 it.billId?.let { id -> put("billLegacyId", id) }
                 put("reason", it.reason)
                 put("moneyRefundedPaise", it.moneyRefundedPaise)
                 put("creditAdjustmentPaise", it.creditAdjustmentPaise)
                 put("occurredAt", it.occurredAt)
                 put("createdAt", it.createdAt)
+                put("refundMethod", it.refundMethod)
+                it.note?.let { note -> put("note", note) }
+                it.exchangeBillId?.let { id -> put("exchangeBillLegacyId", id) }
+                it.voidedAt?.let { at -> put("voidedAt", at) }
+                it.voidsReturnId?.let { id -> put("voidsReturnLegacyId", id) }
+                put("returnValuePaise", it.returnValuePaise)
+                put("actorLabel", it.actorLabel)
             })
         }
     }
@@ -454,6 +479,9 @@ object FinanceBackupCodec {
                 put("itemName", it.itemName)
                 put("quantity", it.quantity)
                 it.unitCostPaise?.let { cost -> put("unitCostPaise", cost) }
+                it.billItemId?.let { id -> put("billItemLegacyId", id) }
+                put("restock", it.restock)
+                put("lineValuePaise", it.lineValuePaise)
             })
         }
     }

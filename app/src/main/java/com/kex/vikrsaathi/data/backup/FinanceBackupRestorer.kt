@@ -173,20 +173,36 @@ class FinanceBackupRestorer(
         }
 
         if (root.has("salesReturns")) {
-            FinanceBackupCodec.salesReturns(root).forEach { legacy ->
-                val customerId = customer(legacy.customerId) ?: return@forEach
+            val decodedReturns = FinanceBackupCodec.salesReturns(root)
+            val voidedLegacyIds = decodedReturns.filter { it.voidedAt != null }.map { it.id }.toSet()
+            val pendingVoids = mutableListOf<Pair<Long, Long>>()
+            decodedReturns.forEach { legacy ->
+                val customerId = legacy.customerId?.let { customer(it) }
+                if (legacy.customerId != null && customerId == null) return@forEach
                 val id = database.customerLedgerDao().insertReturn(
-                    legacy.copy(id = 0, customerId = customerId, billId = bill(legacy.billId))
+                    legacy.copy(
+                        id = 0,
+                        customerId = customerId,
+                        billId = bill(legacy.billId),
+                        exchangeBillId = legacy.exchangeBillId?.let { bill(it) },
+                        voidsReturnId = null
+                    )
                 )
                 returnIds[legacy.id] = id
+                legacy.voidsReturnId?.let { pendingVoids += id to it }
+            }
+            pendingVoids.forEach { (id, legacyTarget) ->
+                val mapped = returnIds[legacyTarget] ?: return@forEach
+                database.customerLedgerDao().setVoidsReturn(id, mapped)
             }
             FinanceBackupCodec.salesReturnLines(root).forEach { legacy ->
                 val returnId = returnIds[legacy.returnId] ?: return@forEach
                 database.customerLedgerDao().insertReturnLine(
-                    legacy.copy(id = 0, returnId = returnId, itemId = item(legacy.itemId))
+                    legacy.copy(id = 0, returnId = returnId, itemId = item(legacy.itemId), billItemId = null)
                 )
                 val itemId = item(legacy.itemId)
-                if (applyStockEffects && itemId != null && legacy.quantity > 0) {
+                val parentVoided = legacy.returnId in voidedLegacyIds
+                if (applyStockEffects && legacy.restock && !parentVoided && itemId != null && legacy.quantity > 0) {
                     applyStock(itemId, legacy.quantity, com.kex.vikrsaathi.data.entity.StockMovementType.SALES_RETURN, "SALES_RETURN", returnId)
                 }
             }

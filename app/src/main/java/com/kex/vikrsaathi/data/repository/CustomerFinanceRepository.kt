@@ -26,7 +26,15 @@ import com.kex.vikrsaathi.domain.finance.LedgerMath
 import com.kex.vikrsaathi.domain.finance.LedgerRow
 import com.kex.vikrsaathi.domain.finance.LedgerStatement
 import com.kex.vikrsaathi.domain.finance.OutstandingBill
+import com.kex.vikrsaathi.data.model.BillLineItem
+import com.kex.vikrsaathi.domain.bill.OperatorLabels
+import com.kex.vikrsaathi.domain.finance.BillPaymentRequest
+import com.kex.vikrsaathi.domain.finance.ExchangeMoney
 import com.kex.vikrsaathi.domain.finance.PaymentMethod
+import com.kex.vikrsaathi.domain.finance.PaymentPortion
+import com.kex.vikrsaathi.domain.finance.RefundMethod
+import com.kex.vikrsaathi.domain.finance.ReturnSettlement
+import com.kex.vikrsaathi.domain.finance.ReturnValuation
 import com.kex.vikrsaathi.domain.money.Money
 
 data class CustomerBalanceSummary(
@@ -47,6 +55,18 @@ data class ReturnLineInput(
     val quantity: Int
 )
 
+data class BillReturnLineInput(
+    val billItemId: Long,
+    val quantity: Int,
+    val restock: Boolean
+)
+
+data class PostedReturn(
+    val returnId: Long,
+    val returnValuePaise: Long,
+    val replacementBillId: Long? = null
+)
+
 class CustomerFinanceRepository(
     private val database: AppDatabase,
     private val ledgerDao: CustomerLedgerDao,
@@ -54,7 +74,8 @@ class CustomerFinanceRepository(
     private val billItemDao: BillItemDao,
     private val billPaymentDao: BillPaymentDao,
     private val inventoryRepository: InventoryRepository,
-    private val itemCostRepository: ItemCostRepository = ItemCostRepository(database)
+    private val itemCostRepository: ItemCostRepository = ItemCostRepository(database),
+    private val billRepository: BillRepository? = null
 ) {
 
     suspend fun hasLedger(customerId: Long): Boolean = ledgerDao.countForCustomer(customerId) > 0
@@ -172,14 +193,12 @@ class CustomerFinanceRepository(
         if (moneyRefundedPaise < 0L || creditAdjustmentPaise < 0L) {
             throw FinanceException(FinanceError.AMOUNT_REQUIRED)
         }
-        val stockLines = lines.filter { it.quantity > 0 }
-        if (stockLines.isEmpty() && moneyRefundedPaise == 0L && creditAdjustmentPaise == 0L) {
+        if (lines.any { it.quantity <= 0 }) throw FinanceException(FinanceError.RETURN_QTY_INVALID)
+        if (lines.isEmpty() && moneyRefundedPaise == 0L && creditAdjustmentPaise == 0L) {
             throw FinanceException(FinanceError.NOTHING_TO_RECORD)
         }
-        if (billId != null) {
-            validateReturnQuantities(billId, stockLines)
-        }
         return database.withTransaction {
+            if (billId != null) validateReturnQuantities(billId, lines)
             val returnId = ledgerDao.insertReturn(
                 SalesReturn(
                     customerId = customerId,
@@ -187,11 +206,18 @@ class CustomerFinanceRepository(
                     reason = reason.trim(),
                     moneyRefundedPaise = moneyRefundedPaise,
                     creditAdjustmentPaise = creditAdjustmentPaise,
-                    occurredAt = occurredAt
+                    occurredAt = occurredAt,
+                    refundMethod = when {
+                        creditAdjustmentPaise > 0L && moneyRefundedPaise == 0L -> RefundMethod.STORE_CREDIT
+                        moneyRefundedPaise > 0L && creditAdjustmentPaise == 0L -> RefundMethod.CASH
+                        else -> ""
+                    },
+                    returnValuePaise = moneyRefundedPaise + creditAdjustmentPaise,
+                    actorLabel = OperatorLabels.THIS_DEVICE
                 )
             )
             val billItems = billId?.let { billItemDao.getItemsForBill(it) }.orEmpty()
-            stockLines.forEach { line ->
+            lines.forEach { line ->
                 val matches = billItems.filter { it.itemId != null && it.itemId == line.itemId && it.quantity > 0 }
                 val unitCost = if (matches.isNotEmpty() && matches.all { it.unitCostPaise != null }) {
                     val qty = matches.sumOf { it.quantity }
@@ -200,58 +226,170 @@ class CustomerFinanceRepository(
                 } else {
                     null
                 }
-                ledgerDao.insertReturnLine(
-                    SalesReturnLine(
-                        returnId = returnId,
-                        itemId = line.itemId,
-                        itemName = line.itemName,
-                        quantity = line.quantity,
-                        unitCostPaise = unitCost
-                    )
+                insertReturnLineEffects(
+                    returnId = returnId,
+                    itemId = line.itemId,
+                    itemName = line.itemName,
+                    quantity = line.quantity,
+                    unitCost = unitCost,
+                    billItemId = null,
+                    lineValuePaise = 0L,
+                    restock = true,
+                    occurredAt = occurredAt
                 )
-                val itemIdForCost = line.itemId
-                if (itemIdForCost != null && unitCost != null) {
-                    itemCostRepository.restore(
-                        itemId = itemIdForCost,
-                        qty = line.quantity,
-                        unitCostPaise = unitCost,
-                        sourceType = CostSourceType.SALES_RETURN,
-                        sourceId = returnId,
-                        receivedAt = occurredAt
-                    )
-                }
-                val itemId = line.itemId
-                if (itemId != null && itemId > 0L) {
-                    inventoryRepository.applyMovementUnchecked(
-                        itemId = itemId,
-                        delta = line.quantity,
-                        type = StockMovementType.SALES_RETURN,
-                        referenceType = StockReferenceType.SALES_RETURN,
-                        referenceId = returnId,
-                        note = "Sales return"
-                    )
-                }
             }
-            if (creditAdjustmentPaise > 0L || moneyRefundedPaise > 0L) {
+            insertStoreCreditLedger(
+                customerId = customerId,
+                creditPaise = creditAdjustmentPaise,
+                moneyRefundedPaise = moneyRefundedPaise,
+                reason = reason.trim(),
+                occurredAt = occurredAt,
+                returnId = returnId,
+                billId = billId
+            )
+            returnId
+        }
+    }
+
+    suspend fun returnsForBill(billId: Long): List<SalesReturn> = ledgerDao.getReturnsForBill(billId)
+
+    suspend fun linesForReturn(returnId: Long): List<SalesReturnLine> = ledgerDao.getLinesForReturn(returnId)
+
+    suspend fun postBillReturn(
+        billId: Long,
+        lines: List<BillReturnLineInput>,
+        refundMethod: String,
+        reason: String,
+        note: String?,
+        occurredAt: Long,
+        actorLabel: String,
+        walkInCustomerId: Long? = null
+    ): PostedReturn {
+        return database.withTransaction {
+            val prepared = prepareBillReturn(billId, lines, walkInCustomerId)
+            val refund = ReturnSettlement.resolveRefund(
+                prepared.value.totalPaise,
+                refundMethod,
+                prepared.customerId != null
+            )
+            val returnId = insertPreparedReturn(
+                prepared = prepared,
+                refund = refund,
+                reason = reason,
+                note = note,
+                occurredAt = occurredAt,
+                actorLabel = actorLabel,
+                exchangeBillId = null
+            )
+            PostedReturn(returnId, prepared.value.totalPaise, null)
+        }
+    }
+
+    suspend fun postExchange(
+        billId: Long,
+        lines: List<BillReturnLineInput>,
+        replacementLines: List<BillLineItem>,
+        replacementRoundOff: Double,
+        dueMethod: String,
+        reason: String,
+        note: String?,
+        occurredAt: Long,
+        actorLabel: String,
+        walkInCustomerId: Long? = null,
+        shortageAcknowledged: Boolean = false
+    ): PostedReturn {
+        val bills = billRepository ?: throw FinanceException(FinanceError.NOTHING_TO_RECORD)
+        if (replacementLines.isEmpty() || replacementLines.any { it.quantity <= 0 }) {
+            throw FinanceException(FinanceError.NOTHING_TO_RECORD)
+        }
+        return database.withTransaction {
+            val prepared = prepareBillReturn(billId, lines, walkInCustomerId)
+            val replacementPaise = Money.rupeesToPaise(
+                BillTotalsCalculator.grandTotal(replacementLines, replacementRoundOff)
+            )
+            val exchange = ReturnSettlement.resolveExchange(
+                prepared.value.totalPaise,
+                replacementPaise,
+                dueMethod,
+                prepared.customerId != null
+            )
+            val returnId = insertPreparedReturn(
+                prepared = prepared,
+                refund = exchange.refund,
+                reason = reason,
+                note = note,
+                occurredAt = occurredAt,
+                actorLabel = actorLabel,
+                exchangeBillId = null
+            )
+            val portions = exchangePortions(exchange)
+            val replacementId = bills.saveBill(
+                customerId = prepared.customerId,
+                lineItems = replacementLines,
+                billRoundOff = replacementRoundOff,
+                payment = BillPaymentRequest.Record(portions),
+                shortageAcknowledged = shortageAcknowledged
+            )
+            ledgerDao.setExchangeBill(returnId, replacementId)
+            PostedReturn(returnId, prepared.value.totalPaise, replacementId)
+        }
+    }
+
+    suspend fun voidSalesReturn(returnId: Long, reason: String, occurredAt: Long, actorLabel: String) {
+        if (reason.isBlank()) throw FinanceException(FinanceError.REASON_REQUIRED)
+        database.withTransaction {
+            val original = ledgerDao.getReturnById(returnId)
+                ?: throw FinanceException(FinanceError.NOTHING_TO_RECORD)
+            if (original.voidedAt != null || original.voidsReturnId != null) {
+                throw FinanceException(FinanceError.ALREADY_VOIDED)
+            }
+            if (original.exchangeBillId != null) {
+                throw FinanceException(FinanceError.EXCHANGE_NOT_VOIDABLE)
+            }
+            val lines = ledgerDao.getLinesForReturn(returnId)
+            lines.filter { it.restock }.forEach { line ->
+                val itemId = line.itemId ?: return@forEach
+                inventoryRepository.applyMovementUnchecked(
+                    itemId = itemId,
+                    delta = -line.quantity,
+                    type = StockMovementType.ADJUSTMENT,
+                    referenceType = StockReferenceType.SALES_RETURN,
+                    referenceId = returnId,
+                    note = "Void sales return"
+                )
+            }
+            itemCostRepository.discardSource(CostSourceType.SALES_RETURN, returnId)
+            val entries = ledgerDao.getAll().filter {
+                it.referenceType == FinanceReference.SALES_RETURN && it.referenceId == returnId
+            }
+            entries.forEach { entry ->
+                val reversal = BillLedgerPlanner.planNegatingReversal(entry.toLedgerRow(), reason.trim())
                 ledgerDao.insert(
                     CustomerLedgerEntry(
-                        customerId = customerId,
-                        entryType = CustomerLedgerType.SALES_RETURN,
-                        amountPaise = -creditAdjustmentPaise,
+                        customerId = reversal.partyId,
+                        entryType = CustomerLedgerType.REVERSAL,
+                        amountPaise = reversal.amountPaise,
                         occurredAt = occurredAt,
-                        reason = reason.trim(),
-                        note = if (moneyRefundedPaise > 0L) {
-                            "Money refunded ${Money.paiseToRupees(moneyRefundedPaise)}"
-                        } else {
-                            null
-                        },
+                        reason = reversal.reason,
                         referenceType = FinanceReference.SALES_RETURN,
                         referenceId = returnId,
-                        billId = billId
+                        reversesEntryId = reversal.reversesEntryId,
+                        billId = reversal.billId
                     )
                 )
             }
-            returnId
+            ledgerDao.markReturnVoided(returnId, occurredAt)
+            ledgerDao.insertReturn(
+                SalesReturn(
+                    customerId = original.customerId,
+                    billId = original.billId,
+                    reason = reason.trim(),
+                    occurredAt = occurredAt,
+                    refundMethod = RefundMethod.NONE,
+                    voidsReturnId = returnId,
+                    actorLabel = actorLabel
+                )
+            )
         }
     }
 
@@ -345,19 +483,226 @@ class CustomerFinanceRepository(
         val sold = billItemDao.getItemsForBill(billId).groupBy { it.itemId }.mapValues { (_, items) ->
             items.sumOf { it.quantity }
         }
-        val already = ledgerDao.getReturnsForBill(billId).flatMap { ledgerDao.getLinesForReturn(it.id) }
+        val already = activeReturnLines(billId)
             .groupBy { it.itemId }
             .mapValues { (_, items) -> items.sumOf { it.quantity } }
         lines.forEach { line ->
-            val key = line.itemId
-            val allowed = (sold[key] ?: 0) - (already[key] ?: 0)
+            val allowed = (sold[line.itemId] ?: 0) - (already[line.itemId] ?: 0)
             if (line.quantity > allowed) throw FinanceException(FinanceError.RETURN_QTY_EXCEEDS_SOLD)
         }
+    }
+
+    private suspend fun activeReturnLines(billId: Long): List<SalesReturnLine> {
+        return ledgerDao.getReturnsForBill(billId)
+            .filter { it.voidedAt == null && it.voidsReturnId == null }
+            .flatMap { ledgerDao.getLinesForReturn(it.id) }
+    }
+
+    private data class PreparedReturn(
+        val billId: Long,
+        val customerId: Long?,
+        val sources: List<ReturnValuation.SourceLine>,
+        val unitCostByLine: Map<Long, Long?>,
+        val value: ReturnValuation.Result,
+        val requests: List<BillReturnLineInput>
+    )
+
+    private suspend fun prepareBillReturn(
+        billId: Long,
+        lines: List<BillReturnLineInput>,
+        walkInCustomerId: Long?
+    ): PreparedReturn {
+        val bill = billDao.getBillById(billId) ?: throw FinanceException(FinanceError.NOTHING_TO_RECORD)
+        val items = billItemDao.getItemsForBill(billId)
+        val sources = items.map {
+            ReturnValuation.SourceLine(
+                billItemId = it.id,
+                itemId = it.itemId,
+                itemName = it.itemName,
+                quantity = it.quantity,
+                finalPrice = it.finalPrice,
+                lineRoundOff = it.roundOff
+            )
+        }
+        val prior = activeReturnLines(billId).map {
+            ReturnValuation.PriorLine(it.billItemId, it.itemId, it.itemName, it.quantity)
+        }
+        val already = ReturnValuation.alreadyByBillItem(sources, prior)
+        val value = ReturnValuation.value(
+            sources,
+            already,
+            lines.map { ReturnValuation.Request(it.billItemId, it.quantity) },
+            bill.roundOff
+        )
+        val customerId = when {
+            bill.customerId != null -> bill.customerId
+            walkInCustomerId != null -> {
+                if (database.customerDao().getCustomerById(walkInCustomerId) == null) {
+                    throw FinanceException(FinanceError.CREDIT_REQUIRES_CUSTOMER)
+                }
+                walkInCustomerId
+            }
+            else -> null
+        }
+        lines.forEach { request ->
+            val source = sources.first { it.billItemId == request.billItemId }
+            if (request.restock && source.itemId == null) {
+                throw FinanceException(FinanceError.RESTOCK_NEEDS_ITEM)
+            }
+        }
+        return PreparedReturn(
+            billId = bill.id,
+            customerId = customerId,
+            sources = sources,
+            unitCostByLine = items.associate { it.id to it.unitCostPaise },
+            value = value,
+            requests = lines
+        )
+    }
+
+    private suspend fun insertPreparedReturn(
+        prepared: PreparedReturn,
+        refund: com.kex.vikrsaathi.domain.finance.ResolvedRefund,
+        reason: String,
+        note: String?,
+        occurredAt: Long,
+        actorLabel: String,
+        exchangeBillId: Long?
+    ): Long {
+        val returnId = ledgerDao.insertReturn(
+            SalesReturn(
+                customerId = prepared.customerId,
+                billId = prepared.billId,
+                reason = reason.trim(),
+                moneyRefundedPaise = refund.moneyRefundedPaise,
+                creditAdjustmentPaise = refund.creditAdjustmentPaise,
+                occurredAt = occurredAt,
+                refundMethod = refund.method,
+                note = note?.trim()?.ifEmpty { null },
+                exchangeBillId = exchangeBillId,
+                returnValuePaise = prepared.value.totalPaise,
+                actorLabel = actorLabel.ifBlank { OperatorLabels.THIS_DEVICE }
+            )
+        )
+        val requests = prepared.requests.associateBy { it.billItemId }
+        prepared.value.lines.forEach { valued ->
+            val source = prepared.sources.first { it.billItemId == valued.billItemId }
+            val request = requests.getValue(valued.billItemId)
+            insertReturnLineEffects(
+                returnId = returnId,
+                itemId = source.itemId,
+                itemName = source.itemName,
+                quantity = valued.quantity,
+                unitCost = prepared.unitCostByLine[valued.billItemId],
+                billItemId = valued.billItemId,
+                lineValuePaise = valued.valuePaise,
+                restock = request.restock,
+                occurredAt = occurredAt
+            )
+        }
+        insertStoreCreditLedger(
+            customerId = prepared.customerId,
+            creditPaise = refund.creditAdjustmentPaise,
+            moneyRefundedPaise = refund.moneyRefundedPaise,
+            reason = reason.trim(),
+            occurredAt = occurredAt,
+            returnId = returnId,
+            billId = prepared.billId
+        )
+        return returnId
+    }
+
+    private fun exchangePortions(exchange: ExchangeMoney): List<PaymentPortion> {
+        val portions = mutableListOf<PaymentPortion>()
+        if (exchange.exchangeCreditPaise > 0L) {
+            portions += PaymentPortion(PaymentMethod.EXCHANGE, exchange.exchangeCreditPaise)
+        }
+        val method = exchange.customerPayMethod
+        if (exchange.customerPaysPaise > 0L && method != null) {
+            portions += PaymentPortion(method, exchange.customerPaysPaise)
+        }
+        return portions
+    }
+
+    private suspend fun insertReturnLineEffects(
+        returnId: Long,
+        itemId: Long?,
+        itemName: String,
+        quantity: Int,
+        unitCost: Long?,
+        billItemId: Long?,
+        lineValuePaise: Long,
+        restock: Boolean,
+        occurredAt: Long
+    ) {
+        ledgerDao.insertReturnLine(
+            SalesReturnLine(
+                returnId = returnId,
+                itemId = itemId,
+                itemName = itemName,
+                quantity = quantity,
+                unitCostPaise = unitCost,
+                billItemId = billItemId,
+                restock = restock,
+                lineValuePaise = lineValuePaise
+            )
+        )
+        if (!restock || itemId == null || itemId <= 0L) return
+        if (unitCost != null) {
+            itemCostRepository.restore(
+                itemId = itemId,
+                qty = quantity,
+                unitCostPaise = unitCost,
+                sourceType = CostSourceType.SALES_RETURN,
+                sourceId = returnId,
+                receivedAt = occurredAt
+            )
+        }
+        inventoryRepository.applyMovementUnchecked(
+            itemId = itemId,
+            delta = quantity,
+            type = StockMovementType.SALES_RETURN,
+            referenceType = StockReferenceType.SALES_RETURN,
+            referenceId = returnId,
+            note = "Sales return"
+        )
+    }
+
+    private suspend fun insertStoreCreditLedger(
+        customerId: Long?,
+        creditPaise: Long,
+        moneyRefundedPaise: Long,
+        reason: String,
+        occurredAt: Long,
+        returnId: Long,
+        billId: Long?
+    ) {
+        if (creditPaise == 0L || customerId == null) return
+        ledgerDao.insert(
+            CustomerLedgerEntry(
+                customerId = customerId,
+                entryType = CustomerLedgerType.SALES_RETURN,
+                amountPaise = -creditPaise,
+                occurredAt = occurredAt,
+                reason = reason,
+                note = if (moneyRefundedPaise > 0L) {
+                    "Money refunded ${Money.paiseToRupees(moneyRefundedPaise)}"
+                } else {
+                    null
+                },
+                referenceType = FinanceReference.SALES_RETURN,
+                referenceId = returnId,
+                billId = billId
+            )
+        )
     }
 
     suspend fun reverseSalesReturnStock() {
         val returns = ledgerDao.getAllReturns().associateBy { it.id }
         ledgerDao.getAllReturnLines().forEach { line ->
+            val parent = returns[line.returnId] ?: return@forEach
+            if (parent.voidedAt != null || parent.voidsReturnId != null) return@forEach
+            if (!line.restock) return@forEach
             val itemId = line.itemId ?: return@forEach
             if (line.quantity == 0) return@forEach
             inventoryRepository.applyMovementUnchecked(
@@ -366,7 +711,7 @@ class CustomerFinanceRepository(
                 type = StockMovementType.ADJUSTMENT,
                 referenceType = StockReferenceType.SALES_RETURN,
                 referenceId = line.returnId,
-                note = "Reversed sales return ${returns[line.returnId]?.reason.orEmpty()}".trim()
+                note = "Reversed sales return ${parent.reason}".trim()
             )
         }
     }

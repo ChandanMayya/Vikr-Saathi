@@ -23,12 +23,15 @@ object BillPaymentStatus {
     const val LABEL_UPI = "UPI"
     const val LABEL_CREDIT = "CREDIT"
     const val LABEL_SPLIT = "SPLIT"
+    const val LABEL_EXCHANGE = "EXCHANGE"
 }
 
 object PaymentMethod {
     const val CASH = "CASH"
     const val UPI = "UPI"
     const val CREDIT = "CREDIT"
+    /** Return value applied to a linked replacement bill. It is not customer debt. */
+    const val EXCHANGE = "EXCHANGE"
 }
 
 object CustomerLedgerType {
@@ -79,6 +82,13 @@ enum class FinanceError {
     AMOUNT_REQUIRED,
     NOTHING_TO_RECORD,
     RETURN_QTY_EXCEEDS_SOLD,
+    RETURN_QTY_INVALID,
+    RETURN_LINE_UNKNOWN,
+    RETURN_LINE_REPEATED,
+    INVALID_SETTLEMENT,
+    RESTOCK_NEEDS_ITEM,
+    EXCHANGE_NOT_VOIDABLE,
+    ALREADY_VOIDED,
     VENDOR_REQUIRED,
     VENDOR_HAS_HISTORY,
     CUSTOMER_HAS_LEDGER,

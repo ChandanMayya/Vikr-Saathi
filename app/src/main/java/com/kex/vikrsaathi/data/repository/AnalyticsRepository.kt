@@ -2,6 +2,7 @@ package com.kex.vikrsaathi.data.repository
 
 import com.kex.vikrsaathi.data.dao.BillDao
 import com.kex.vikrsaathi.data.dao.BillDraftDao
+import com.kex.vikrsaathi.data.dao.CustomerLedgerDao
 import com.kex.vikrsaathi.data.dao.ItemDao
 import com.kex.vikrsaathi.data.entity.VendorLedgerEntry
 import com.kex.vikrsaathi.data.model.analytics.AnalyticsDashboard
@@ -17,6 +18,8 @@ import com.kex.vikrsaathi.data.model.analytics.SalesTrendPoint
 import com.kex.vikrsaathi.data.model.analytics.VendorAnalytics
 import com.kex.vikrsaathi.domain.finance.LedgerRow
 import com.kex.vikrsaathi.domain.finance.PackMath
+import com.kex.vikrsaathi.domain.finance.ReturnReporting
+import com.kex.vikrsaathi.domain.money.Money
 import com.kex.vikrsaathi.util.AnalyticsDateRange
 import com.kex.vikrsaathi.util.DayRange
 import java.util.Calendar
@@ -25,7 +28,8 @@ class AnalyticsRepository(
     private val billDao: BillDao,
     private val itemDao: ItemDao,
     private val billDraftDao: BillDraftDao,
-    private val vendorRepository: VendorRepository
+    private val vendorRepository: VendorRepository,
+    private val customerLedgerDao: CustomerLedgerDao? = null
 ) {
 
     suspend fun loadDashboard(
@@ -33,7 +37,13 @@ class AnalyticsRepository(
         vendorManagementEnabled: Boolean = false
     ): AnalyticsDashboard {
         val (start, end) = DayRange.analyticsRange(range)
-        val totalSales = billDao.getTotalSalesBetween(start, end)
+        val grossSales = billDao.getTotalSalesBetween(start, end)
+        val returnsInRange = customerLedgerDao?.getAllReturns().orEmpty()
+            .filter { it.voidedAt == null && it.voidsReturnId == null && it.occurredAt >= start && it.occurredAt < end }
+        val returnPaise = returnsInRange.sumOf {
+            ReturnReporting.merchandisePaise(it.returnValuePaise, it.moneyRefundedPaise, it.creditAdjustmentPaise)
+        }
+        val totalSales = ReturnReporting.netSalesRupees(grossSales, returnPaise)
         val billCount = billDao.getBillCountBetween(start, end)
         val avgBillValue = if (billCount > 0) totalSales / billCount else 0.0
         val billTotals = billDao.getBillTotalsBetween(start, end)
@@ -51,8 +61,11 @@ class AnalyticsRepository(
                 billCount = billCount,
                 avgBillValue = avgBillValue
             ),
-            salesTrend = buildSalesTrend(billTotals, start, end),
-            topProducts = billDao.getTopProductsByRevenueBetween(start, end),
+            salesTrend = buildSalesTrend(billTotals, start, end, returnsInRange),
+            topProducts = netTopProducts(
+                billDao.getTopProductsByRevenueBetween(start, end),
+                returnsInRange
+            ),
             topCustomers = billDao.getTopCustomersBetween(start, end),
             discountImpact = DiscountImpactSummary(
                 grossAtMrp = grossAtMrp,
@@ -144,16 +157,47 @@ class AnalyticsRepository(
         }
     }
 
+    private suspend fun netTopProducts(
+        rows: List<com.kex.vikrsaathi.data.model.analytics.TopProductRow>,
+        returnsInRange: List<com.kex.vikrsaathi.data.entity.SalesReturn>
+    ): List<com.kex.vikrsaathi.data.model.analytics.TopProductRow> {
+        if (customerLedgerDao == null || returnsInRange.isEmpty()) return rows
+        val lines = customerLedgerDao.getAllReturnLines().groupBy { it.returnId }
+        val qty = mutableMapOf<String, Int>()
+        val value = mutableMapOf<String, Long>()
+        returnsInRange.forEach { entry ->
+            lines[entry.id].orEmpty().forEach { line ->
+                qty[line.itemName] = (qty[line.itemName] ?: 0) + line.quantity
+                value[line.itemName] = (value[line.itemName] ?: 0L) + line.lineValuePaise
+            }
+        }
+        return rows.map { row ->
+            row.copy(
+                totalQuantity = (row.totalQuantity - (qty[row.itemName] ?: 0)).coerceAtLeast(0),
+                totalRevenue = row.totalRevenue - Money.paiseToRupees(value[row.itemName] ?: 0L)
+            )
+        }.filter { it.totalQuantity > 0 || it.totalRevenue > 0.0 }
+    }
+
     private fun buildSalesTrend(
         rows: List<BillTotalRow>,
         startInclusive: Long,
-        endExclusive: Long
+        endExclusive: Long,
+        returnsInRange: List<com.kex.vikrsaathi.data.entity.SalesReturn> = emptyList()
     ): List<SalesTrendPoint> {
+        val returnByDay = returnsInRange.groupBy { dayStartMillis(it.occurredAt) }.mapValues { (_, entries) ->
+            entries.sumOf {
+                ReturnReporting.merchandisePaise(it.returnValuePaise, it.moneyRefundedPaise, it.creditAdjustmentPaise)
+            }
+        }
         val grouped = rows.groupBy { dayStartMillis(it.billDate) }
             .mapValues { (day, bills) ->
                 SalesTrendPoint(
                     dayStartMillis = day,
-                    revenue = bills.sumOf { it.billTotal },
+                    revenue = ReturnReporting.netSalesRupees(
+                        bills.sumOf { it.billTotal },
+                        returnByDay[day] ?: 0L
+                    ),
                     billCount = bills.size
                 )
             }
@@ -163,7 +207,11 @@ class AnalyticsRepository(
         val endCal = Calendar.getInstance().apply { timeInMillis = endExclusive }
         while (cursor.before(endCal)) {
             val dayStart = cursor.timeInMillis
-            points += grouped[dayStart] ?: SalesTrendPoint(dayStart, 0.0, 0)
+            points += grouped[dayStart] ?: SalesTrendPoint(
+                dayStart,
+                ReturnReporting.netSalesRupees(0.0, returnByDay[dayStart] ?: 0L),
+                0
+            )
             cursor.add(Calendar.DAY_OF_MONTH, 1)
         }
         return points

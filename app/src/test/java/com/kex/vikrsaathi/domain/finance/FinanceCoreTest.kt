@@ -197,8 +197,8 @@ class FinanceCoreTest {
 
     @Test
     fun backupKeepsOldSchemasAndRemapsRelationships() {
-        assertTrue(BackupSchema.SUPPORTED.containsAll(setOf(1, 2, 3, 4)))
-        assertEquals(4, BackupSchema.CURRENT)
+        assertTrue(BackupSchema.SUPPORTED.containsAll(setOf(1, 2, 3, 4, 5)))
+        assertEquals(5, BackupSchema.CURRENT)
         assertEquals(20L, IdRemapper.resolve(5, mapOf(5L to 20L), setOf(5L)))
         assertEquals(5L, IdRemapper.resolve(5, emptyMap(), setOf(5L)))
         assertNull(IdRemapper.resolve(5, emptyMap(), emptySet()))

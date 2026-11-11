@@ -61,6 +61,13 @@ object FinanceUi {
             FinanceError.REASON_REQUIRED -> R.string.payment_error_reason
             FinanceError.NOTHING_TO_RECORD -> R.string.payment_error_nothing
             FinanceError.RETURN_QTY_EXCEEDS_SOLD -> R.string.payment_error_return_qty
+            FinanceError.RETURN_QTY_INVALID -> R.string.return_error_qty
+            FinanceError.RETURN_LINE_UNKNOWN -> R.string.return_error_line
+            FinanceError.RETURN_LINE_REPEATED -> R.string.return_error_line
+            FinanceError.INVALID_SETTLEMENT -> R.string.return_error_settlement
+            FinanceError.RESTOCK_NEEDS_ITEM -> R.string.return_error_restock
+            FinanceError.EXCHANGE_NOT_VOIDABLE -> R.string.return_error_exchange_void
+            FinanceError.ALREADY_VOIDED -> R.string.return_error_voided
             FinanceError.VENDOR_REQUIRED -> R.string.payment_error_vendor
             FinanceError.VENDOR_HAS_HISTORY -> R.string.payment_error_vendor_history
             FinanceError.CUSTOMER_HAS_LEDGER -> R.string.payment_error_customer_ledger
@@ -110,6 +117,8 @@ object FinanceUi {
         "UPI" -> context.getString(R.string.payment_upi)
         "CREDIT" -> context.getString(R.string.payment_credit)
         "SPLIT" -> context.getString(R.string.payment_split)
+        "EXCHANGE" -> context.getString(R.string.payment_exchange)
+        "STORE_CREDIT" -> context.getString(R.string.payment_store_credit)
         else -> context.getString(R.string.payment_summary_legacy)
     }
 }

@@ -20,7 +20,7 @@ object PaymentSplitValidator {
         if (methods.size != methods.toSet().size) {
             throw FinanceException(FinanceError.DUPLICATE_METHOD)
         }
-        val allowed = setOf(PaymentMethod.CASH, PaymentMethod.UPI, PaymentMethod.CREDIT)
+        val allowed = setOf(PaymentMethod.CASH, PaymentMethod.UPI, PaymentMethod.CREDIT, PaymentMethod.EXCHANGE)
         if (methods.any { it !in allowed }) throw FinanceException(FinanceError.DUPLICATE_METHOD)
         if (positive.sumOf { it.amountPaise } != totalPaise) {
             throw FinanceException(FinanceError.TOTAL_MISMATCH)
@@ -33,6 +33,7 @@ object PaymentSplitValidator {
             positive.size > 1 -> BillPaymentStatus.LABEL_SPLIT
             positive.first().method == PaymentMethod.UPI -> BillPaymentStatus.LABEL_UPI
             positive.first().method == PaymentMethod.CREDIT -> BillPaymentStatus.LABEL_CREDIT
+            positive.first().method == PaymentMethod.EXCHANGE -> BillPaymentStatus.LABEL_EXCHANGE
             else -> BillPaymentStatus.LABEL_CASH
         }
         return PaymentSplitResult(positive, label, credit)
@@ -44,6 +45,7 @@ object PaymentSplitValidator {
         return when (portions.first().method) {
             PaymentMethod.UPI -> BillPaymentStatus.LABEL_UPI
             PaymentMethod.CREDIT -> BillPaymentStatus.LABEL_CREDIT
+            PaymentMethod.EXCHANGE -> BillPaymentStatus.LABEL_EXCHANGE
             else -> BillPaymentStatus.LABEL_CASH
         }
     }

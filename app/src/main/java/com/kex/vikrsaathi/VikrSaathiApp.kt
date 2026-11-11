@@ -57,7 +57,8 @@ class VikrSaathiApp : Application() {
             billDao = database.billDao(),
             billItemDao = database.billItemDao(),
             billPaymentDao = database.billPaymentDao(),
-            inventoryRepository = inventoryRepository
+            inventoryRepository = inventoryRepository,
+            billRepository = billRepository
         )
     }
     val vendorRepository by lazy {
@@ -75,7 +76,8 @@ class VikrSaathiApp : Application() {
             database.billDao(),
             database.itemDao(),
             database.billDraftDao(),
-            vendorRepository
+            vendorRepository,
+            database.customerLedgerDao()
         )
     }
     val billDraftRepository by lazy { BillDraftRepository(database.billDraftDao()) }

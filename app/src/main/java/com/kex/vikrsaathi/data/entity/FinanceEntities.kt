@@ -1,5 +1,6 @@
 package com.kex.vikrsaathi.data.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -113,13 +114,21 @@ data class CustomerReceiptAllocation(
 )
 data class SalesReturn(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val customerId: Long,
+    /** Null for a walk-in cash or UPI refund. Store credit still requires a customer. */
+    val customerId: Long? = null,
     val billId: Long? = null,
     val reason: String,
     val moneyRefundedPaise: Long = 0,
     val creditAdjustmentPaise: Long = 0,
     val occurredAt: Long = System.currentTimeMillis(),
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "''") val refundMethod: String = "",
+    val note: String? = null,
+    val exchangeBillId: Long? = null,
+    val voidedAt: Long? = null,
+    val voidsReturnId: Long? = null,
+    @ColumnInfo(defaultValue = "0") val returnValuePaise: Long = 0,
+    @ColumnInfo(defaultValue = "'This device'") val actorLabel: String = "This device"
 )
 
 @Entity(
@@ -141,7 +150,12 @@ data class SalesReturnLine(
     val itemName: String,
     val quantity: Int,
     /** Cost copied from the original sale. Null when that sale had no recorded cost. */
-    val unitCostPaise: Long? = null
+    val unitCostPaise: Long? = null,
+    /** Source bill line. Null on older returns, which are matched by item instead. */
+    val billItemId: Long? = null,
+    @ColumnInfo(defaultValue = "1") val restock: Boolean = true,
+    /** Historical value of this returned quantity, in paise. */
+    @ColumnInfo(defaultValue = "0") val lineValuePaise: Long = 0
 )
 
 @Entity(tableName = "vendors", indices = [Index("name"), Index("archived")])

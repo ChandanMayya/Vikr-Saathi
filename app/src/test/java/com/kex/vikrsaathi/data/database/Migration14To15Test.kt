@@ -8,6 +8,7 @@ import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import com.kex.vikrsaathi.data.database.MIGRATION_15_16
+import com.kex.vikrsaathi.data.database.MIGRATION_16_17
 import com.kex.vikrsaathi.data.entity.Bill
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -124,11 +125,11 @@ class Migration14To15Test {
         downgraded.close()
 
         val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_14_15, MIGRATION_15_16)
+            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
             .allowMainThreadQueries()
             .build()
         val readable = migrated.openHelper.writableDatabase
-        assertEquals(16, readable.version)
+        assertEquals(17, readable.version)
         val table = readable.query(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'bill_versions'"
         )
