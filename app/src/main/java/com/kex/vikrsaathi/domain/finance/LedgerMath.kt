@@ -12,7 +12,8 @@ data class LedgerRow(
     val referenceId: Long? = null,
     val method: String? = null,
     val note: String? = null,
-    val reason: String? = null
+    val reason: String? = null,
+    val dueEpochDay: Long? = null
 )
 
 data class StatementLine(
@@ -29,7 +30,8 @@ data class LedgerStatement(
 data class OutstandingBill(
     val billId: Long,
     val occurredAt: Long,
-    val outstandingPaise: Long
+    val outstandingPaise: Long,
+    val dueEpochDay: Long? = null
 )
 
 data class AllocationLine(

@@ -33,6 +33,9 @@ class ResetManager(
         options: ResetOptions,
         onProgress: ResetProgressListener
     ): ResetResult = withContext(Dispatchers.IO) {
+        val notes = com.kex.vikrsaathi.data.repository.NotificationPreferences(context)
+        notes.paused = true
+        try {
         require(options.hasAnySelected()) { "No reset categories selected" }
 
         val categories = options.selectedCategoryKeys().toSet()
@@ -72,6 +75,10 @@ class ResetManager(
 
         onProgress("Reset complete", 100)
         ResetResult(historyEntryId = entryId, resetCategories = categories.toList())
+        } finally {
+            notes.paused = false
+            com.kex.vikrsaathi.notify.NotificationScheduler.reconcile(context)
+        }
     }
 
     suspend fun restoreFromHistory(

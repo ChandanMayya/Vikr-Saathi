@@ -38,6 +38,16 @@ object CivilDate {
         )
     }
 
+    fun iso(epochDay: Long): String {
+        val utc = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+        utc.timeInMillis = epochDay * DAY_MS
+        return "%04d-%02d-%02d".format(
+            utc.get(Calendar.YEAR),
+            utc.get(Calendar.MONTH) + 1,
+            utc.get(Calendar.DAY_OF_MONTH)
+        )
+    }
+
     fun format(epochDay: Long): String {
         val utc = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
         utc.timeInMillis = epochDay * DAY_MS

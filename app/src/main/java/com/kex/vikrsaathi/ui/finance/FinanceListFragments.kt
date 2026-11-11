@@ -52,7 +52,16 @@ class OutstandingCustomersFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val rows = app.customerFinanceRepository.outstandingCustomers()
             val customers = app.database.customerDao().getAllCustomersSync().associateBy { it.id }
-            val dues = rows.filter { it.balancePaise > 0L }
+            val filter = arguments?.getString("dueFilter").orEmpty()
+            val dues = rows.filter { it.balancePaise > 0L }.filter { row ->
+                when (filter) {
+                    "overdue" -> row.dueState == com.kex.vikrsaathi.domain.notify.DueState.OVERDUE
+                    "soon" -> row.dueState == com.kex.vikrsaathi.domain.notify.DueState.DUE_SOON
+                    "upcoming" -> row.dueState == com.kex.vikrsaathi.domain.notify.DueState.UPCOMING
+                    "none" -> row.dueState == com.kex.vikrsaathi.domain.notify.DueState.NONE
+                    else -> true
+                }
+            }
             val advances = rows.filter { it.balancePaise < 0L }
             val display = buildList {
                 if (dues.isNotEmpty()) add(FinanceRow(getString(R.string.dues_header), ""))
@@ -61,7 +70,7 @@ class OutstandingCustomersFragment : Fragment() {
                     add(
                         FinanceRow(
                             name,
-                            "${FinanceUi.formatBalance(row.balancePaise, symbol)} · ${FinanceUi.ageLabel(requireContext(), row.ageBucket)}",
+                            "${FinanceUi.formatBalance(row.balancePaise, symbol)} · ${dueLabel(row)} · ${FinanceUi.ageLabel(requireContext(), row.ageBucket)}",
                             row.customerId,
                             FinanceUi.balanceColorRes(row.balancePaise, customer = true)
                         )
@@ -83,6 +92,17 @@ class OutstandingCustomersFragment : Fragment() {
             if (_binding == null) return@launch
             adapter.submit(display.ifEmpty { listOf(FinanceRow(getString(R.string.outstanding_empty), "")) })
         }
+    }
+
+    private fun dueLabel(row: com.kex.vikrsaathi.data.repository.CustomerBalanceSummary): String {
+        val state = when (row.dueState) {
+            com.kex.vikrsaathi.domain.notify.DueState.OVERDUE -> getString(R.string.due_overdue)
+            com.kex.vikrsaathi.domain.notify.DueState.DUE_SOON -> getString(R.string.due_soon)
+            com.kex.vikrsaathi.domain.notify.DueState.UPCOMING -> getString(R.string.due_upcoming)
+            com.kex.vikrsaathi.domain.notify.DueState.NONE -> getString(R.string.due_none)
+        }
+        val date = row.nearestDueEpochDay?.let { com.kex.vikrsaathi.domain.inventory.CivilDate.format(it) }
+        return if (date == null) state else "$state · $date"
     }
 
     override fun onDestroyView() {

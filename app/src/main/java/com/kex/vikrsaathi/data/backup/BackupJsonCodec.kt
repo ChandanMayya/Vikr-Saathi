@@ -373,6 +373,7 @@ object BackupJsonCodec {
             put("orderManagementEnabled", settings.orderManagementEnabled)
             put("batchTrackingEnabled", settings.batchTrackingEnabled)
             put("expiryAlertDays", settings.expiryAlertDays)
+            put("notificationPreferences", settings.notificationPreferencesJson())
             put("invoicePrefix", settings.invoicePrefix)
             put("invoiceSuffix", settings.invoiceSuffix)
             put("invoiceSeparator", settings.invoiceSeparator)
@@ -435,7 +436,8 @@ object BackupJsonCodec {
             signatureImageBase64 = images?.optString("signature"),
             logoImageBase64 = images?.optString("logo"),
             batchTrackingEnabled = if (obj.has("batchTrackingEnabled")) obj.getBoolean("batchTrackingEnabled") else null,
-            expiryAlertDays = if (obj.has("expiryAlertDays")) obj.optInt("expiryAlertDays") else null
+            expiryAlertDays = if (obj.has("expiryAlertDays")) obj.optInt("expiryAlertDays") else null,
+            notificationPreferencesJson = obj.optJSONObject("notificationPreferences")?.toString()
         )
     }
 
@@ -803,7 +805,8 @@ data class SettingsBackup(
     val signatureImageBase64: String?,
     val logoImageBase64: String?,
     val batchTrackingEnabled: Boolean? = null,
-    val expiryAlertDays: Int? = null
+    val expiryAlertDays: Int? = null,
+    val notificationPreferencesJson: String? = null
 )
 
 data class CustomerBackup(

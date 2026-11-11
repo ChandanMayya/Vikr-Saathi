@@ -439,6 +439,7 @@ class PurchasingFragment : Fragment() {
                     (total?.let { " · ${FinanceUi.formatPaise(it, app().settingsRepository.currencySymbol)}" }.orEmpty())
             }
             val delivery = FinanceForm.text(this, form, getString(R.string.delivery_charges), InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL, "0")
+            val due = FinanceForm.text(this, form, getString(R.string.due_date_optional))
             ask(R.string.new_purchase_invoice, form) {
                 val item = selected ?: return@ask toast(R.string.select_master_item)
                 val chosen = PackForm.read(packFields) ?: return@ask toast(R.string.payment_error_pack)
@@ -456,6 +457,7 @@ class PurchasingFragment : Fragment() {
                             otherChargesPaise = 0L,
                             discountPaise = 0L,
                             notes = "",
+                            dueEpochDay = com.kex.vikrsaathi.domain.inventory.CivilDate.parse(due.text?.toString().orEmpty()),
                             lines = listOf(
                                 InvoiceLineInput(item.id, item.name, quantity, ratePaise, chosen.first, chosen.second)
                             )

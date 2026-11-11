@@ -17,7 +17,8 @@ import com.kex.vikrsaathi.util.ThemeMode
  */
 class SettingsRepository(context: Context) {
 
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val filesDir = File(context.filesDir, "settings_images").apply { mkdirs() }
 
     var shopName: String
@@ -155,11 +156,21 @@ class SettingsRepository(context: Context) {
         orderManagementEnabled = true
         batchTrackingEnabled = false
         expiryAlertDays = DEFAULT_EXPIRY_ALERT_DAYS
+        NotificationPreferences(context).reset()
         File(filesDir, HEADER_FILE).delete()
         File(filesDir, SIGNATURE_FILE).delete()
         File(filesDir, LOGO_FILE).delete()
         copyAssetHeaderIfNeeded(context)
     }
+
+    fun notificationPreferencesJson(): org.json.JSONObject =
+        NotificationPreferences(prefsContext()).toJson()
+
+    fun applyNotificationPreferences(json: String) {
+        NotificationPreferences(prefsContext()).applyJson(org.json.JSONObject(json))
+    }
+
+    private fun prefsContext(): Context = appContext
 
     fun resetInvoiceConfigToDefaults() {
         invoicePrefix = ""

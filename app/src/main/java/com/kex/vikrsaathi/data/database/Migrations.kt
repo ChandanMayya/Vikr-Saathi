@@ -1000,3 +1000,41 @@ val MIGRATION_17_18 = object : Migration(17, 18) {
         return false
     }
 }
+
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        if (!hasColumn(db, "bills", "dueEpochDay")) {
+            db.execSQL("ALTER TABLE bills ADD COLUMN dueEpochDay INTEGER")
+        }
+        if (!hasColumn(db, "customer_ledger_entries", "dueEpochDay")) {
+            db.execSQL("ALTER TABLE customer_ledger_entries ADD COLUMN dueEpochDay INTEGER")
+        }
+        if (!hasColumn(db, "purchase_invoices", "dueEpochDay")) {
+            db.execSQL("ALTER TABLE purchase_invoices ADD COLUMN dueEpochDay INTEGER")
+        }
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS notification_marks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                slotKey TEXT NOT NULL,
+                outcome TEXT NOT NULL,
+                createdAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_notification_marks_slotKey ON notification_marks(slotKey)"
+        )
+    }
+
+    private fun hasColumn(db: SupportSQLiteDatabase, table: String, column: String): Boolean {
+        val cursor = db.query("PRAGMA table_info($table)")
+        cursor.use {
+            val name = it.getColumnIndex("name")
+            while (it.moveToNext()) {
+                if (it.getString(name) == column) return true
+            }
+        }
+        return false
+    }
+}

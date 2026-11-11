@@ -408,7 +408,8 @@ class VendorRepository(
         discountPaise: Long,
         notes: String,
         lines: List<InvoiceLineInput>,
-        existingInvoiceId: Long? = null
+        existingInvoiceId: Long? = null,
+        dueEpochDay: Long? = null
     ): Long {
         if (invoiceNumber.isBlank() || lines.isEmpty()) throw FinanceException(FinanceError.QUOTE_LINE_REQUIRED)
         lines.forEach { line ->
@@ -444,7 +445,8 @@ class VendorRepository(
                         otherChargesPaise = otherChargesPaise,
                         discountPaise = discountPaise,
                         totalPaise = total,
-                        notes = notes.trim()
+                        notes = notes.trim(),
+                        dueEpochDay = dueEpochDay ?: existing.dueEpochDay
                     )
                 )
                 existingInvoiceId
@@ -460,7 +462,8 @@ class VendorRepository(
                         otherChargesPaise = otherChargesPaise,
                         discountPaise = discountPaise,
                         totalPaise = total,
-                        notes = notes.trim()
+                        notes = notes.trim(),
+                        dueEpochDay = dueEpochDay
                     )
                 )
             }
@@ -691,6 +694,28 @@ class VendorRepository(
 
     suspend fun purchasingAttentionCount(): Int =
         orderHubRows().count { OrderHubMath.isOpen(it.status) || it.ordersToReceive > 0 }
+
+    suspend fun ordersPastExpectedDelivery(now: Long = System.currentTimeMillis()): Int =
+        purchaseDao.getOrders().count { order ->
+            val expected = order.expectedDelivery
+            expected != null && expected < now &&
+                order.status != "RECEIVED" && order.status != "CANCELLED"
+        }
+
+    suspend fun vendorDueSnapshot(today: Long): Pair<Long, Boolean> {
+        var overdue = 0L
+        var recorded = false
+        getAll().forEach { vendor ->
+            outstandingInvoices(vendor.id).forEach { open ->
+                val due = purchaseDao.getInvoice(open.billId)?.dueEpochDay
+                if (due != null) {
+                    recorded = true
+                    if (due < today && open.outstandingPaise > 0L) overdue += open.outstandingPaise
+                }
+            }
+        }
+        return overdue to recorded
+    }
 
     suspend fun requestSummaries(): List<PurchaseRequestSummary> {
         val quotes = purchaseDao.getQuotes()

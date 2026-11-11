@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.os.bundleOf
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -39,7 +40,10 @@ class CustomerLedgerFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         installHelpMenu(HelpScreen.CUSTOMER_LEDGER)
         customerId = arguments?.getLong(ARG_CUSTOMER_ID) ?: 0L
+        binding.textDueSummary.isVisible = true
+        binding.buttonChangeDue.isVisible = true
         binding.buttonOpening.setOnClickListener { showOpening() }
+        binding.buttonChangeDue.setOnClickListener { changeDueDate() }
         binding.buttonPayment.setOnClickListener { showPayment() }
         binding.buttonReturn.setOnClickListener { showReturn() }
         binding.buttonCorrection.setOnClickListener { showCorrection() }
@@ -61,6 +65,20 @@ class CustomerLedgerFragment : Fragment() {
             binding.textPartyName.text = customer.name
             binding.textPartyBalance.text = getString(R.string.vendor_balance, FinanceUi.formatBalance(balance, symbol))
             binding.textPartyBalance.setTextColor(requireContext().getColor(FinanceUi.balanceColorRes(balance, customer = true)))
+            val slices = app.customerFinanceRepository.dueSlicesFor(customerId)
+            val nearest = slices.mapNotNull { it.dueEpochDay }.minOrNull()
+            val overdue = slices.filter { it.state == com.kex.vikrsaathi.domain.notify.DueState.OVERDUE }
+                .sumOf { it.outstandingPaise }
+            binding.textDueSummary.text = if (nearest == null) {
+                getString(R.string.due_summary_none)
+            } else {
+                getString(
+                    R.string.due_summary,
+                    com.kex.vikrsaathi.domain.inventory.CivilDate.format(nearest),
+                    FinanceUi.formatPaise(overdue, symbol)
+                )
+            }
+            binding.textDueSummary.tag = slices
             LedgerLines.show(binding.ledgerLines, statement, symbol, customer = true) { row ->
                 customerParticulars(row)
             }
@@ -78,14 +96,15 @@ class CustomerLedgerFragment : Fragment() {
     }
 
     private fun showOpening() {
-        val form = amountForm(showDirection = true, shopOwesLabel = R.string.shop_owes_customer, owesShopLabel = R.string.owes_shop)
+        val form = amountForm(showDirection = true, showDue = true, shopOwesLabel = R.string.shop_owes_customer, owesShopLabel = R.string.owes_shop)
         confirm(R.string.opening_balance_action, form) {
             val app = requireActivity().application as VikrSaathiApp
             val signed = signedAmount(form)
             viewLifecycleOwner.lifecycleScope.launch {
                 runCatching {
                     app.customerFinanceRepository.addOpeningBalance(
-                        customerId, signed, form.date.millis, noteText(form)
+                        customerId, signed, form.date.millis, noteText(form),
+                        dueEpochDay = if (signed > 0L) form.dueEpochDay() else null
                     )
                 }.onSuccess {
                     toast(R.string.opening_saved)
@@ -228,10 +247,60 @@ class CustomerLedgerFragment : Fragment() {
         }
     }
 
+    private fun changeDueDate() {
+        val slices = (binding.textDueSummary.tag as? List<*>)?.filterIsInstance<com.kex.vikrsaathi.data.repository.DueSlice>()
+            .orEmpty()
+            .filter { it.outstandingPaise > 0L }
+        if (slices.isEmpty()) {
+            toast(R.string.due_summary_none)
+            return
+        }
+        val labels = slices.map { slice ->
+            val date = slice.dueEpochDay?.let { com.kex.vikrsaathi.domain.inventory.CivilDate.iso(it) }
+                ?: getString(R.string.due_none)
+            val which = slice.billId?.let { getString(R.string.ledger_bill_ref, it) } ?: getString(R.string.opening_balance_action)
+            "$which · $date"
+        }.toTypedArray()
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.change_due_date)
+            .setItems(labels) { _, which -> editSliceDue(slices[which]) }
+            .show()
+    }
+
+    private fun editSliceDue(slice: com.kex.vikrsaathi.data.repository.DueSlice) {
+        val input = TextInputEditText(requireContext()).apply {
+            setText(slice.dueEpochDay?.let { com.kex.vikrsaathi.domain.inventory.CivilDate.iso(it) }.orEmpty())
+            hint = getString(R.string.due_date_optional)
+        }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.change_due_date)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val day = com.kex.vikrsaathi.domain.inventory.CivilDate.parse(input.text?.toString().orEmpty())
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val app = requireActivity().application as VikrSaathiApp
+                    if (slice.billId != null) app.customerFinanceRepository.setBillDueDate(slice.billId, day)
+                    else slice.entryId?.let { app.customerFinanceRepository.setOpeningDueDate(it, day) }
+                    reload()
+                }
+            }
+            .setNeutralButton(R.string.clear_due_date) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val app = requireActivity().application as VikrSaathiApp
+                    if (slice.billId != null) app.customerFinanceRepository.setBillDueDate(slice.billId, null)
+                    else slice.entryId?.let { app.customerFinanceRepository.setOpeningDueDate(it, null) }
+                    reload()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     private fun amountForm(
         showDirection: Boolean = false,
         showMethod: Boolean = false,
         showReason: Boolean = false,
+        showDue: Boolean = false,
         owesShopLabel: Int = R.string.owes_shop,
         shopOwesLabel: Int = R.string.shop_owes_customer
     ): AmountForm {
@@ -255,7 +324,12 @@ class CustomerLedgerFragment : Fragment() {
             text = getString(R.string.payment_upi)
             root.addView(this)
         } else null
-        return AmountForm(root, amount, date, note, reason, direction, method?.isChecked == true, method)
+        val due = if (showDue) {
+            FinanceForm.text(this, root, getString(R.string.due_date_optional))
+        } else {
+            null
+        }
+        return AmountForm(root, amount, date, note, reason, direction, method?.isChecked == true, method, due)
     }
 
     private class AmountForm(
@@ -266,8 +340,12 @@ class CustomerLedgerFragment : Fragment() {
         val reason: TextInputEditText?,
         val shopOwes: android.widget.CheckBox?,
         var methodUpi: Boolean,
-        val methodBox: android.widget.CheckBox?
-    )
+        val methodBox: android.widget.CheckBox?,
+        val due: TextInputEditText? = null
+    ) {
+        fun dueEpochDay(): Long? =
+            com.kex.vikrsaathi.domain.inventory.CivilDate.parse(due?.text?.toString().orEmpty())
+    }
 
     private fun signedAmount(form: AmountForm): Long {
         val amount = FinanceUi.parseAmountPaise(form.amount.text?.toString())

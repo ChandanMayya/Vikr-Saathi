@@ -269,6 +269,9 @@ class BackupManager(
         json: String,
         onProgress: BackupProgressListener
     ): BackupImportResult = withContext(Dispatchers.IO) {
+        val notes = com.kex.vikrsaathi.data.repository.NotificationPreferences(context)
+        notes.paused = true
+        try {
         validateSchema(json)
         val root = JSONObject(json)
         val includes = root.optJSONArray("includes")?.let { array ->
@@ -589,6 +592,11 @@ class BackupManager(
             settingsRestored = settingsRestored,
             errors = errors
         )
+        } finally {
+            notes.enabled = false
+            notes.paused = false
+            com.kex.vikrsaathi.notify.NotificationScheduler.reconcile(context)
+        }
     }
 
     private fun validateSchema(json: String) {
@@ -616,6 +624,7 @@ class BackupManager(
         backup.orderManagementEnabled?.let { settingsRepository.orderManagementEnabled = it }
         backup.batchTrackingEnabled?.let { settingsRepository.batchTrackingEnabled = it }
         backup.expiryAlertDays?.let { settingsRepository.expiryAlertDays = it }
+        backup.notificationPreferencesJson?.let { settingsRepository.applyNotificationPreferences(it) }
         AppThemeManager.apply(backup.themeMode)
 
         BackupJsonCodec.decodeBitmap(backup.headerImageBase64)?.let {

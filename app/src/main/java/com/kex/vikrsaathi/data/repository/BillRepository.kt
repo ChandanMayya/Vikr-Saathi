@@ -101,7 +101,9 @@ class BillRepository(
         billRoundOff: Double = 0.0,
         existingBillId: Long? = null,
         payment: BillPaymentRequest = BillPaymentRequest.LeaveUnchanged,
-        shortageAcknowledged: Boolean = false
+        shortageAcknowledged: Boolean = false,
+        dueEpochDay: Long? = null,
+        applyDueDate: Boolean = false
     ): Long {
         val subtotal = BillTotalsCalculator.lineItemsSubtotal(lineItems)
         val total = subtotal + billRoundOff
@@ -153,7 +155,8 @@ class BillRepository(
                     existing.copy(
                         customerId = customerId,
                         total = total,
-                        roundOff = billRoundOff
+                        roundOff = billRoundOff,
+                        dueEpochDay = if (applyDueDate) dueEpochDay else existing.dueEpochDay
                     )
                 )
                 billItemDao.deleteItemsForBill(existingBillId)
@@ -200,7 +203,8 @@ class BillRepository(
                     customerId = customerId,
                     total = total,
                     roundOff = billRoundOff,
-                    date = ledgerAt
+                    date = ledgerAt,
+                    dueEpochDay = if (applyDueDate) dueEpochDay else null
                 )
                 billId = billDao.insertBill(bill)
                 billItemDao.insertAll(lineItems.toPricedBillItems(billId))
@@ -798,5 +802,6 @@ internal fun CustomerLedgerEntry.toLedgerRow(): LedgerRow = LedgerRow(
     referenceId = referenceId,
     method = method,
     note = note,
-    reason = reason
+    reason = reason,
+    dueEpochDay = dueEpochDay
 )

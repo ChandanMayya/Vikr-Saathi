@@ -56,7 +56,9 @@ data class CustomerLedgerEntry(
     val referenceType: String? = null,
     val referenceId: Long? = null,
     val reversesEntryId: Long? = null,
-    val billId: Long? = null
+    val billId: Long? = null,
+    /** Optional due date for an opening balance. Bill dues live on the bill. */
+    val dueEpochDay: Long? = null
 )
 
 @Entity(
@@ -441,7 +443,8 @@ data class PurchaseInvoice(
     val otherChargesPaise: Long = 0,
     val discountPaise: Long = 0,
     val totalPaise: Long = 0,
-    val notes: String = ""
+    val notes: String = "",
+    val dueEpochDay: Long? = null
 )
 
 @Entity(

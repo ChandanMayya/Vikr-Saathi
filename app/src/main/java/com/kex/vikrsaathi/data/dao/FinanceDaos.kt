@@ -47,6 +47,9 @@ interface CustomerLedgerDao {
     @Insert
     suspend fun insert(entry: CustomerLedgerEntry): Long
 
+    @Query("UPDATE customer_ledger_entries SET dueEpochDay = :dueEpochDay WHERE id = :entryId")
+    suspend fun setDueDate(entryId: Long, dueEpochDay: Long?)
+
     @Query("SELECT * FROM customer_ledger_entries WHERE customerId = :customerId ORDER BY occurredAt ASC, id ASC")
     suspend fun getForCustomer(customerId: Long): List<CustomerLedgerEntry>
 
@@ -289,6 +292,9 @@ interface PurchaseDao {
 
     @androidx.room.Update
     suspend fun updateInvoice(invoice: PurchaseInvoice)
+
+    @Query("UPDATE purchase_invoices SET dueEpochDay = :dueEpochDay WHERE id = :invoiceId")
+    suspend fun setInvoiceDueDate(invoiceId: Long, dueEpochDay: Long?)
 
     @Insert
     suspend fun insertInvoiceLine(line: PurchaseInvoiceLine): Long

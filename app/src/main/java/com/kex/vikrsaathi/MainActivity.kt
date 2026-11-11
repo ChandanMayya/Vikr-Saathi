@@ -1,10 +1,12 @@
 package com.kex.vikrsaathi
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.os.bundleOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.isVisible
 import androidx.navigation.fragment.NavHostFragment
@@ -65,6 +67,13 @@ class MainActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
             isEnabled = true
         }
+        if (savedInstanceState == null) openFromNotification(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openFromNotification(intent)
     }
 
     override fun onStop() {
@@ -153,6 +162,43 @@ class MainActivity : AppCompatActivity() {
         lockGate.show()
     }
 
+    private fun openFromNotification(source: Intent?) {
+        val dest = source?.getStringExtra(EXTRA_NAV) ?: return
+        source.removeExtra(EXTRA_NAV)
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val nav = navHostFragment.navController
+        when (dest) {
+            "outstanding" -> nav.navigate(R.id.outstandingCustomersFragment)
+            "outstanding-overdue" -> nav.navigate(
+                R.id.outstandingCustomersFragment,
+                bundleOf("dueFilter" to "overdue")
+            )
+            "outstanding-soon" -> nav.navigate(
+                R.id.outstandingCustomersFragment,
+                bundleOf("dueFilter" to "soon")
+            )
+            "vendors" -> nav.navigate(R.id.vendorListFragment)
+            "dashboard-week" -> nav.navigate(R.id.dashboardFragment, bundleOf("openPeriod" to "WEEK"))
+            "bills-yesterday" -> {
+                val zone = java.util.TimeZone.getDefault()
+                val start = java.util.Calendar.getInstance(zone).apply {
+                    set(java.util.Calendar.HOUR_OF_DAY, 0)
+                    set(java.util.Calendar.MINUTE, 0)
+                    set(java.util.Calendar.SECOND, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                    add(java.util.Calendar.DAY_OF_YEAR, -1)
+                }.timeInMillis
+                val end = start + 86_400_000L
+                nav.navigate(R.id.billsHistoryFragment, bundleOf("rangeStart" to start, "rangeEnd" to end))
+            }
+            "stock" -> nav.navigate(R.id.stockFragment)
+            "stock-expired" -> nav.navigate(R.id.stockFragment, bundleOf("batchFilter" to "expired"))
+            "orders" -> nav.navigate(R.id.ordersFragment)
+            "backup" -> nav.navigate(R.id.backupFragment)
+        }
+    }
+
     fun navigateToDashboard() {
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
@@ -163,5 +209,6 @@ class MainActivity : AppCompatActivity() {
         private const val SPLASH_FADE_IN_MS = 500L
         private const val SPLASH_HOLD_MS = 2_000L
         private const val SPLASH_FADE_OUT_MS = 450L
+        const val EXTRA_NAV = "vikrsaathi.nav"
     }
 }

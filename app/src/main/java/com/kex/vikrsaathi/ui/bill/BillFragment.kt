@@ -916,6 +916,8 @@ class BillFragment : Fragment() {
             buyerAddress = binding.editBuyerAddress.text.toString().trim(),
             buyerPhone = binding.editBuyerPhone.text.toString().trim(),
             payment = paymentRequest(buyerName) ?: return,
+            dueEpochDay = dueEpochDay(),
+            applyDueDate = viewModel.customerBalanceEnabled && !isReadOnly,
             shortageAcknowledged = shortageAcknowledged,
             onStockShortage = { shortfalls ->
                 showStockShortage(shortfalls) {
@@ -1011,6 +1013,7 @@ class BillFragment : Fragment() {
             payment.layoutSplitCash.isVisible = split
             payment.layoutSplitUpi.isVisible = split
             payment.layoutSplitCredit.isVisible = split
+            payment.layoutDueDate.isVisible = checkedId == R.id.radioPayCredit || split
         }
         viewModel.loadedPaymentStatus.observe(viewLifecycleOwner) { status ->
             val legacy = status == com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LEGACY &&
@@ -1019,6 +1022,11 @@ class BillFragment : Fragment() {
         }
         viewModel.loadedPortions.observe(viewLifecycleOwner) { portions ->
             bindPortions(portions)
+        }
+        viewModel.loadedDueEpochDay.observe(viewLifecycleOwner) { day ->
+            payment.editDueDate.setText(
+                day?.let { com.kex.vikrsaathi.domain.inventory.CivilDate.iso(it) }.orEmpty()
+            )
         }
         viewModel.grandTotal.observe(viewLifecycleOwner) { refreshPaymentSummary() }
         if (isReadOnly) {
@@ -1077,6 +1085,13 @@ class BillFragment : Fragment() {
         } else {
             getString(R.string.payment_summary_method, label)
         }
+    }
+
+    private fun dueEpochDay(): Long? {
+        val payment = binding.billPayment
+        val credit = payment.radioPayCredit.isChecked || payment.radioPaySplit.isChecked
+        if (!credit) return null
+        return com.kex.vikrsaathi.domain.inventory.CivilDate.parse(payment.editDueDate.text?.toString().orEmpty())
     }
 
     private fun paymentRequest(buyerName: String): com.kex.vikrsaathi.domain.finance.BillPaymentRequest? {

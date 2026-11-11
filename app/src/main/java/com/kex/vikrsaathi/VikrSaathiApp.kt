@@ -129,6 +129,7 @@ class VikrSaathiApp : Application() {
         super.onCreate()
         AppThemeManager.apply(settingsRepository.themeMode)
         settingsRepository.copyAssetHeaderIfNeeded(this)
+        com.kex.vikrsaathi.notify.NotificationScheduler.reconcile(this)
         appScope.launch {
             invoiceTemplateRepository.ensureDefaultTemplateExists()
         }

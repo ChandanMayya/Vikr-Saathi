@@ -10,6 +10,10 @@
         android:name="com.kex.vikrsaathi.ui.dashboard.DashboardFragment"
         android:label="@string/app_name"
         tools:layout="@layout/fragment_dashboard">
+        <argument
+            android:name="openPeriod"
+            android:defaultValue=""
+            app:argType="string" />
         <action
             android:id="@+id/action_dashboard_to_bill"
             app:destination="@id/billFragment"
@@ -379,6 +383,13 @@
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
         <action
+            android:id="@+id/action_settings_to_notifications"
+            app:destination="@id/notificationSettingsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
             android:id="@+id/action_settings_to_accounts"
             app:destination="@id/accountsSettingsFragment"
             app:enterAnim="@anim/nav_fade_in"
@@ -386,6 +397,12 @@
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
+
+    <fragment
+        android:id="@+id/notificationSettingsFragment"
+        android:name="com.kex.vikrsaathi.ui.settings.NotificationSettingsFragment"
+        android:label="@string/notify_customizations"
+        tools:layout="@layout/fragment_notification_settings" />
 
     <fragment
         android:id="@+id/generalSettingsFragment"
@@ -539,7 +556,12 @@
         android:id="@+id/outstandingCustomersFragment"
         android:name="com.kex.vikrsaathi.ui.finance.OutstandingCustomersFragment"
         android:label="@string/outstanding_customers"
-        tools:layout="@layout/fragment_finance_list" />
+        tools:layout="@layout/fragment_finance_list">
+        <argument
+            android:name="dueFilter"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
 
     <fragment
         android:id="@+id/vendorListFragment"

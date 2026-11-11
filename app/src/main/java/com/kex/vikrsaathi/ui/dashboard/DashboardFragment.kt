@@ -80,6 +80,36 @@ class DashboardFragment : Fragment() {
             }
             viewModel.setPeriod(period)
         }
+        if (arguments?.getString("openPeriod") == "WEEK") {
+            binding.togglePeriod.check(R.id.buttonPeriodWeek)
+        }
+        viewModel.dueBoard.observe(viewLifecycleOwner) { board ->
+            val enabled = (requireActivity().application as VikrSaathiApp).settingsRepository.customerBalanceEnabled
+            binding.cardDue.isVisible = enabled
+            if (!enabled) return@observe
+            val symbol = viewModel.currencySymbol.value ?: "₹"
+            if (board.soonCount == 0 && board.overdueCount == 0) {
+                binding.textDueSummary.setText(R.string.dashboard_due_empty)
+                binding.cardDue.setOnClickListener {
+                    findNavController().navigate(R.id.action_dashboard_to_outstanding)
+                }
+            } else {
+                binding.textDueSummary.text = getString(
+                    R.string.dashboard_due_line,
+                    board.soonCount,
+                    com.kex.vikrsaathi.ui.finance.FinanceUi.formatPaise(board.soonPaise, symbol),
+                    board.overdueCount,
+                    com.kex.vikrsaathi.ui.finance.FinanceUi.formatPaise(board.overduePaise, symbol)
+                )
+                val filter = if (board.overdueCount > 0) "overdue" else "soon"
+                binding.cardDue.setOnClickListener {
+                    findNavController().navigate(
+                        R.id.action_dashboard_to_outstanding,
+                        androidx.core.os.bundleOf("dueFilter" to filter)
+                    )
+                }
+            }
+        }
         binding.cardPeriodSales.setOnClickListener { openBillsForPeriod() }
         binding.topItemsChart.onItemClick = { item -> openBillsForPeriod(item.name) }
         binding.buttonProfitInfo.setOnClickListener {

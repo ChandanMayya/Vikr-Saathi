@@ -106,6 +106,9 @@ class BillViewModel(
     private val _loadedPortions = MutableLiveData<List<PaymentPortion>>(emptyList())
     val loadedPortions: LiveData<List<PaymentPortion>> = _loadedPortions
 
+    private val _loadedDueEpochDay = MutableLiveData<Long?>(null)
+    val loadedDueEpochDay: LiveData<Long?> = _loadedDueEpochDay
+
     /**
      * Checks stock without saving or creating masters.
      * Unsaved line items are checked against their entered opening stock (blank = 0).
@@ -242,6 +245,7 @@ class BillViewModel(
             _billRoundOff.value = bill.bill.roundOff
             _loadedPaymentStatus.value = bill.bill.paymentStatus
             _loadedPortions.value = bill.payments.map { PaymentPortion(it.method, it.amountPaise) }
+            _loadedDueEpochDay.value = bill.bill.dueEpochDay
             recalculate()
         }
     }
@@ -371,6 +375,8 @@ class BillViewModel(
         buyerPhone: String,
         payment: BillPaymentRequest = BillPaymentRequest.LeaveUnchanged,
         shortageAcknowledged: Boolean = false,
+        dueEpochDay: Long? = null,
+        applyDueDate: Boolean = false,
         onStockShortage: (List<StockShortfall>) -> Unit = {},
         onError: (Throwable) -> Unit = {},
         onSaved: (Long, AutoRegisterResult) -> Unit
@@ -400,7 +406,9 @@ class BillViewModel(
                         billRoundOff = billRoundOff,
                         existingBillId = existingBillId,
                         payment = payment,
-                        shortageAcknowledged = shortageAcknowledged
+                        shortageAcknowledged = shortageAcknowledged,
+                        dueEpochDay = dueEpochDay,
+                        applyDueDate = applyDueDate
                     )
                     SaveOutcome(id, customer, customerCreated, resolvedLines, createdItemsCount)
                 }

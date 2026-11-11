@@ -25,6 +25,9 @@ interface BillDao {
     @Update
     suspend fun updateBill(bill: Bill)
 
+    @Query("UPDATE bills SET dueEpochDay = :dueEpochDay WHERE id = :billId")
+    suspend fun setDueDate(billId: Long, dueEpochDay: Long?)
+
     @Delete
     suspend fun deleteBill(bill: Bill)
 

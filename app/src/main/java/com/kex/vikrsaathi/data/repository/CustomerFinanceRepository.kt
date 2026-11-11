@@ -35,13 +35,28 @@ import com.kex.vikrsaathi.domain.finance.PaymentPortion
 import com.kex.vikrsaathi.domain.finance.RefundMethod
 import com.kex.vikrsaathi.domain.finance.ReturnSettlement
 import com.kex.vikrsaathi.domain.finance.ReturnValuation
+import com.kex.vikrsaathi.domain.inventory.CivilDate
 import com.kex.vikrsaathi.domain.money.Money
+import com.kex.vikrsaathi.domain.notify.DueDates
+import com.kex.vikrsaathi.domain.notify.DueState
 
 data class CustomerBalanceSummary(
     val customerId: Long,
     val balancePaise: Long,
     val ageBucket: AgeBucket?,
-    val anchorAt: Long?
+    val anchorAt: Long?,
+    val dueState: com.kex.vikrsaathi.domain.notify.DueState = com.kex.vikrsaathi.domain.notify.DueState.NONE,
+    val nearestDueEpochDay: Long? = null,
+    val overduePaise: Long = 0L,
+    val dueSoonPaise: Long = 0L
+)
+
+data class DueSlice(
+    val billId: Long?,
+    val entryId: Long?,
+    val outstandingPaise: Long,
+    val dueEpochDay: Long?,
+    val state: DueState
 )
 
 data class CustomerPaymentResult(
@@ -100,11 +115,25 @@ class CustomerFinanceRepository(
                 .filter { it.entryType == CustomerLedgerType.OPENING_BALANCE }
                 .minOfOrNull { it.occurredAt }
             val anchor = LedgerMath.ageingAnchor(balance, outstanding, openingAt)
+            val slices = dueSlices(balance, outstanding, entries, CivilDate.today(now))
+            val nearest = slices.mapNotNull { it.dueEpochDay }.minOrNull()
+            val overdue = slices.filter { it.state == DueState.OVERDUE }.sumOf { it.outstandingPaise }
+            val dueSoon = slices.filter { it.state == DueState.DUE_SOON }.sumOf { it.outstandingPaise }
+            val state = when {
+                slices.any { it.state == DueState.OVERDUE } -> DueState.OVERDUE
+                slices.any { it.state == DueState.DUE_SOON } -> DueState.DUE_SOON
+                slices.any { it.state == DueState.UPCOMING } -> DueState.UPCOMING
+                else -> DueState.NONE
+            }
             CustomerBalanceSummary(
                 customerId = customerId,
                 balancePaise = balance,
                 ageBucket = anchor?.let { LedgerMath.ageBucket(it, now) },
-                anchorAt = anchor
+                anchorAt = anchor,
+                dueState = state,
+                nearestDueEpochDay = nearest,
+                overduePaise = overdue,
+                dueSoonPaise = dueSoon
             )
         }.sortedByDescending { it.balancePaise }
     }
@@ -116,7 +145,8 @@ class CustomerFinanceRepository(
         customerId: Long,
         amountPaise: Long,
         occurredAt: Long,
-        note: String?
+        note: String?,
+        dueEpochDay: Long? = null
     ) {
         if (amountPaise == 0L) throw FinanceException(FinanceError.AMOUNT_REQUIRED)
         ledgerDao.insert(
@@ -126,8 +156,56 @@ class CustomerFinanceRepository(
                 amountPaise = amountPaise,
                 occurredAt = occurredAt,
                 note = note?.trim()?.ifEmpty { null },
-                referenceType = FinanceReference.OPENING
+                referenceType = FinanceReference.OPENING,
+                dueEpochDay = dueEpochDay
             )
+        )
+    }
+
+    suspend fun setBillDueDate(billId: Long, dueEpochDay: Long?) {
+        billDao.setDueDate(billId, dueEpochDay)
+    }
+
+    suspend fun setOpeningDueDate(entryId: Long, dueEpochDay: Long?) {
+        ledgerDao.setDueDate(entryId, dueEpochDay)
+    }
+
+    suspend fun dueSlicesFor(customerId: Long, today: Long = CivilDate.today()): List<DueSlice> {
+        val entries = ledgerDao.getForCustomer(customerId).map { it.toLedgerRow() }
+        return dueSlices(LedgerMath.balance(entries), outstandingBills(customerId, entries), entries, today)
+    }
+
+    private fun dueSlices(
+        balance: Long,
+        bills: List<OutstandingBill>,
+        entries: List<LedgerRow>,
+        today: Long
+    ): List<DueSlice> {
+        val reversed = entries.mapNotNull { it.reversesEntryId }.toSet()
+        val fromBills = bills.map { bill ->
+            DueSlice(
+                bill.billId,
+                null,
+                bill.outstandingPaise,
+                bill.dueEpochDay,
+                DueDates.state(bill.dueEpochDay, today, 3, 0)
+            )
+        }
+        val remainder = (balance - bills.sumOf { it.outstandingPaise }).coerceAtLeast(0L)
+        if (remainder <= 0L) return fromBills
+        val opening = entries
+            .filter {
+                it.entryType == CustomerLedgerType.OPENING_BALANCE &&
+                    it.amountPaise > 0L &&
+                    it.id !in reversed
+            }
+            .minWithOrNull(compareBy<LedgerRow> { it.dueEpochDay ?: Long.MAX_VALUE }.thenBy { it.occurredAt })
+        return fromBills + DueSlice(
+            null,
+            opening?.id,
+            remainder,
+            opening?.dueEpochDay,
+            DueDates.state(opening?.dueEpochDay, today, 3, 0)
         )
     }
 
@@ -478,7 +556,12 @@ class CustomerFinanceRepository(
             val credit = creditRows.sumOf { it.amountPaise }
             val relieved = returns[billId].orEmpty().sumOf { -it.amountPaise }
             val open = LedgerMath.billOutstanding(credit, allocated[billId] ?: 0L, relieved)
-            OutstandingBill(billId, bill?.date ?: creditRows.minOf { it.occurredAt }, open)
+            OutstandingBill(
+                billId,
+                bill?.date ?: creditRows.minOf { it.occurredAt },
+                open,
+                bill?.dueEpochDay
+            )
         }.filter { it.outstandingPaise > 0L }
     }
 

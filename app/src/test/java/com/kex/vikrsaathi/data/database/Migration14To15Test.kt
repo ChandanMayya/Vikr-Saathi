@@ -10,6 +10,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.kex.vikrsaathi.data.database.MIGRATION_15_16
 import com.kex.vikrsaathi.data.database.MIGRATION_16_17
 import com.kex.vikrsaathi.data.database.MIGRATION_17_18
+import com.kex.vikrsaathi.data.database.MIGRATION_18_19
 import com.kex.vikrsaathi.data.entity.Bill
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -126,11 +127,11 @@ class Migration14To15Test {
         downgraded.close()
 
         val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
             .allowMainThreadQueries()
             .build()
         val readable = migrated.openHelper.writableDatabase
-        assertEquals(18, readable.version)
+        assertEquals(19, readable.version)
         val table = readable.query(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'bill_versions'"
         )
@@ -142,6 +143,7 @@ class Migration14To15Test {
         assertEquals(15.0, bill?.total)
         assertEquals(0.5, bill?.roundOff)
         assertEquals(1_600_000_000_000, bill?.date)
+        assertEquals(null, bill?.dueEpochDay)
         assertEquals(0, migrated.billVersionDao().countForBill(billId))
         migrated.close()
     }

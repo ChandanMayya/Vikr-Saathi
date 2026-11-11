@@ -29,5 +29,7 @@ data class Bill(
     /** LEGACY bills have no payment rows and are not treated as customer debt. */
     val paymentStatus: String = com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LEGACY,
     /** Machine code: LEGACY, CASH, UPI, CREDIT, or SPLIT. */
-    val paymentLabel: String = com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LABEL_LEGACY
+    val paymentLabel: String = com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LABEL_LEGACY,
+    /** Optional credit due date, as a civil epoch day. Null means no due date was recorded. */
+    val dueEpochDay: Long? = null
 )

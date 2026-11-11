@@ -16,6 +16,7 @@ import com.kex.vikrsaathi.data.dao.InvoiceTemplateDao
 import com.kex.vikrsaathi.data.dao.InvoiceTemplateVersionDao
 import com.kex.vikrsaathi.data.dao.ItemCostDao
 import com.kex.vikrsaathi.data.dao.ItemDao
+import com.kex.vikrsaathi.data.dao.NotificationDao
 import com.kex.vikrsaathi.data.dao.OperatorDao
 import com.kex.vikrsaathi.data.dao.PurchaseDao
 import com.kex.vikrsaathi.data.dao.StockMovementDao
@@ -40,6 +41,7 @@ import com.kex.vikrsaathi.data.entity.InvoiceTemplateEntity
 import com.kex.vikrsaathi.data.entity.InvoiceTemplateVersionEntity
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.data.entity.ItemCostLot
+import com.kex.vikrsaathi.data.entity.NotificationMark
 import com.kex.vikrsaathi.data.entity.OperatorProfile
 import com.kex.vikrsaathi.data.entity.PurchaseInvoice
 import com.kex.vikrsaathi.data.entity.PurchaseInvoiceLine
@@ -94,9 +96,10 @@ import com.kex.vikrsaathi.data.entity.VendorQuoteLine
         ItemCostLot::class,
         InventoryBatch::class,
         InventoryBatchMovement::class,
-        BillBatchAllocation::class
+        BillBatchAllocation::class,
+        NotificationMark::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -117,6 +120,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun vendorDao(): VendorDao
     abstract fun purchaseDao(): PurchaseDao
     abstract fun batchDao(): BatchDao
+    abstract fun notificationDao(): NotificationDao
 
     companion object {
         @Volatile
@@ -146,7 +150,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_14_15,
                         MIGRATION_15_16,
                         MIGRATION_16_17,
-                        MIGRATION_17_18
+                        MIGRATION_17_18,
+                        MIGRATION_18_19
                     )
                     .build()
                     .also { INSTANCE = it }

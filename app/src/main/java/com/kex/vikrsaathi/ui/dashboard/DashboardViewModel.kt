@@ -14,7 +14,15 @@ import com.kex.vikrsaathi.data.repository.CustomerFinanceRepository
 import com.kex.vikrsaathi.data.repository.InventoryRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
 import com.kex.vikrsaathi.data.repository.VendorRepository
+import com.kex.vikrsaathi.domain.notify.DueState
 import kotlinx.coroutines.launch
+
+data class DueBoard(
+    val soonCount: Int,
+    val soonPaise: Long,
+    val overdueCount: Int,
+    val overduePaise: Long
+)
 
 data class LowStockRow(
     val itemId: Long,
@@ -54,6 +62,9 @@ class DashboardViewModel(
 
     private val _expiryAlerts = MutableLiveData<List<ExpiryAlert>>(emptyList())
     val expiryAlerts: LiveData<List<ExpiryAlert>> = _expiryAlerts
+
+    private val _dueBoard = MutableLiveData(DueBoard(0, 0L, 0, 0L))
+    val dueBoard: LiveData<DueBoard> = _dueBoard
 
     private val _customerDuesPaise = MutableLiveData(0L)
     val customerDuesPaise: LiveData<Long> = _customerDuesPaise
@@ -95,6 +106,17 @@ class DashboardViewModel(
                 vendorRepository.purchasingAttentionCount()
             } else 0
             _expiryAlerts.value = batches?.alerts().orEmpty()
+            val dues = if (settingsRepository.customerBalanceEnabled) {
+                customerFinanceRepository.outstandingCustomers()
+            } else {
+                emptyList()
+            }
+            _dueBoard.value = DueBoard(
+                soonCount = dues.count { it.dueState == DueState.DUE_SOON },
+                soonPaise = dues.sumOf { it.dueSoonPaise },
+                overdueCount = dues.count { it.dueState == DueState.OVERDUE },
+                overduePaise = dues.sumOf { it.overduePaise }
+            )
             _loading.value = false
         }
     }
