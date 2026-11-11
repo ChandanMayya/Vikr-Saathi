@@ -1,5 +1,6 @@
 package com.kex.vikrsaathi.data.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -24,7 +25,9 @@ data class Item(
     val baseUnit: String = "",
     /** Blank means this item has no purchase-unit default. */
     val purchaseUnit: String = "",
-    val unitsPerPurchase: Int = 1
+    val unitsPerPurchase: Int = 1,
+    /** When true, and the shop setting is on, sales use lots instead of the item total alone. */
+    @ColumnInfo(defaultValue = "0") val trackBatches: Boolean = false
 ) {
     /** The optional item unit. Packaging no longer stores a second base-unit name. */
     fun stockUnit(): String = baseUnit.ifBlank { remarks }

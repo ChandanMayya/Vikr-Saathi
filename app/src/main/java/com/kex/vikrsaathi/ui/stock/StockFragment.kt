@@ -16,7 +16,6 @@ import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.data.entity.StockMovement
 import com.kex.vikrsaathi.data.entity.StockMovementType
-import com.kex.vikrsaathi.databinding.DialogStockAdjustBinding
 import com.kex.vikrsaathi.databinding.FragmentStockBinding
 import com.kex.vikrsaathi.databinding.ItemStockMovementBinding
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -44,6 +43,7 @@ class StockFragment : Fragment() {
         ViewModelFactory(requireActivity().application as VikrSaathiApp)
     }
 
+    private val app get() = requireActivity().application as VikrSaathiApp
     private lateinit var adapter: StockAdapter
     private var pendingFocusId: Long = 0L
     private lateinit var listViewPrefs: ListViewPreferences
@@ -90,6 +90,21 @@ class StockFragment : Fragment() {
         applyViewMode(viewMode, persist = false)
 
         viewModel.items.observe(viewLifecycleOwner) { viewModel.onItemsChanged(it) }
+        val batchFilter = arguments?.getString("batchFilter").orEmpty()
+        if (batchFilter.isNotBlank()) {
+            val label = when (batchFilter) {
+                "expired" -> getString(R.string.batch_filter_expired)
+                "soon" -> getString(R.string.batch_filter_soon)
+                else -> getString(R.string.batch_filter_unknown)
+            }
+            binding.textBatchFilter.isVisible = true
+            binding.textBatchFilter.text = label
+            viewLifecycleOwner.lifecycleScope.launch {
+                val ids = app.batchRepository.itemIdsForFilter(batchFilter)
+                viewModel.setAllowedItemIds(ids)
+                if (ids.isEmpty()) binding.textBatchFilter.text = "$label\n${getString(R.string.batch_filter_empty)}"
+            }
+        }
         pendingFocusId = arguments?.getLong("focusItemId") ?: 0L
         val focusName = arguments?.getString("focusItemName").orEmpty()
         if (focusName.isNotBlank()) {
@@ -137,30 +152,27 @@ class StockFragment : Fragment() {
     }
 
     private fun showAdjustDialog(item: Item, prefillDelta: Int? = null) {
-        val formBinding = DialogStockAdjustBinding.inflate(layoutInflater)
-        formBinding.textAdjustCurrentStock.text = getString(R.string.current_stock, item.stockQty)
-        prefillDelta?.let { formBinding.editStockDelta.setText(it.toString()) }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.adjust_stock)
-            .setView(formBinding.root)
-            .setPositiveButton(R.string.save) { _, _ ->
-                val delta = formBinding.editStockDelta.text.toString().toIntOrNull() ?: 0
-                if (delta == 0) return@setPositiveButton
-                val note = formBinding.editStockNote.text.toString().trim()
-                viewModel.adjustStock(item.id, delta, note.ifEmpty { null }) { result ->
+        viewLifecycleOwner.lifecycleScope.launch {
+            val batches = if (item.trackBatches && app.settingsRepository.batchTrackingEnabled) {
+                app.batchRepository.batchesFor(item.id).filter { it.quantityOnHand > 0 }
+            } else {
+                emptyList()
+            }
+            if (_binding == null) return@launch
+            showBatchAdjustDialog(this@StockFragment, item, batches, prefillDelta) { request ->
+                viewModel.adjustStock(item.id, request) { result ->
                     result.onSuccess {
                         Toast.makeText(requireContext(), R.string.stock_adjusted, Toast.LENGTH_SHORT).show()
                     }.onFailure {
                         Toast.makeText(
                             requireContext(),
-                            it.message ?: getString(R.string.save_failed),
+                            com.kex.vikrsaathi.ui.finance.FinanceUi.message(requireContext(), it),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
                 }
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        }
     }
 
     private fun showMovementsDialog(item: Item) {
@@ -177,18 +189,47 @@ class StockFragment : Fragment() {
 
         viewModel.movements.observe(viewLifecycleOwner) { movements ->
             if (!dialog.isShowing) return@observe
-            container.removeAllViews()
-            if (movements.isEmpty()) {
-                val empty = android.widget.TextView(requireContext()).apply {
-                    text = getString(R.string.stock_movement_empty)
+            viewLifecycleOwner.lifecycleScope.launch {
+                val batches = app.batchRepository.batchesFor(item.id)
+                if (!dialog.isShowing) return@launch
+                container.removeAllViews()
+                batches.forEach { batch ->
+                    val expiry = batch.expiryEpochDay?.let { com.kex.vikrsaathi.domain.inventory.CivilDate.format(it) }
+                        ?: getString(R.string.expiry_unknown)
+                    container.addView(android.widget.TextView(requireContext()).apply {
+                        text = getString(
+                            R.string.batch_status_line,
+                            batch.lotNumber ?: batch.internalRef,
+                            expiry,
+                            batch.quantityOnHand,
+                            item.stockUnit(),
+                            batch.state
+                        )
+                        setPadding(0, 8, 0, 8)
+                    })
+                    if (batch.state == com.kex.vikrsaathi.domain.inventory.BatchState.QUARANTINE && batch.quantityOnHand > 0) {
+                        container.addView(com.google.android.material.button.MaterialButton(requireContext()).apply {
+                            text = getString(R.string.release_quarantine)
+                            setOnClickListener {
+                                viewLifecycleOwner.lifecycleScope.launch {
+                                    runCatching { app.batchRepository.releaseQuarantine(batch.id, null, true, null) }
+                                        .onSuccess { dialog.dismiss() }
+                                        .onFailure { Toast.makeText(requireContext(), it.message, Toast.LENGTH_SHORT).show() }
+                                }
+                            }
+                        })
+                    }
                 }
-                container.addView(empty)
-                return@observe
-            }
-            movements.forEach { movement ->
-                val row = ItemStockMovementBinding.inflate(layoutInflater, container, false)
-                bindMovement(row, movement)
-                container.addView(row.root)
+                if (movements.isEmpty() && batches.isEmpty()) {
+                    container.addView(android.widget.TextView(requireContext()).apply {
+                        text = getString(R.string.stock_movement_empty)
+                    })
+                }
+                movements.forEach { movement ->
+                    val row = ItemStockMovementBinding.inflate(layoutInflater, container, false)
+                    bindMovement(row, movement)
+                    container.addView(row.root)
+                }
             }
         }
     }

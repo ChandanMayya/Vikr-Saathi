@@ -184,6 +184,34 @@ class DashboardFragment : Fragment() {
         binding.cardStock.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_stock)
         }
+        viewModel.expiryAlerts.observe(viewLifecycleOwner) { alerts ->
+            val tracking = (requireActivity().application as VikrSaathiApp).settingsRepository.batchTrackingEnabled
+            binding.cardExpiry.isVisible = tracking
+            if (!tracking) return@observe
+            if (alerts.isEmpty()) {
+                binding.textExpirySummary.text = getString(R.string.dashboard_expiry_empty)
+                binding.cardExpiry.setOnClickListener(null)
+                return@observe
+            }
+            binding.textExpirySummary.text = alerts.take(5).joinToString("\n") { alert ->
+                val whenLabel = if (alert.expired) getString(R.string.batch_filter_expired) else getString(R.string.batch_filter_soon)
+                getString(
+                    R.string.dashboard_expiry_line,
+                    alert.itemName,
+                    alert.lotNumber ?: alert.internalRef,
+                    com.kex.vikrsaathi.domain.inventory.CivilDate.format(alert.expiryEpochDay),
+                    alert.quantity,
+                    alert.unit.ifBlank { whenLabel }
+                )
+            }
+            binding.cardExpiry.setOnClickListener {
+                val filter = if (alerts.any { it.expired }) "expired" else "soon"
+                findNavController().navigate(
+                    R.id.action_dashboard_to_stock,
+                    androidx.core.os.bundleOf("batchFilter" to filter)
+                )
+            }
+        }
         binding.cardAnalysis.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_analysis)
         }

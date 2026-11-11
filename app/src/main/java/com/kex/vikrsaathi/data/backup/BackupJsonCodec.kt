@@ -57,7 +57,10 @@ object BackupJsonCodec {
         versionsByBillId: Map<Long, List<com.kex.vikrsaathi.data.model.BillVersionDetails>> = emptyMap(),
         operators: List<com.kex.vikrsaathi.data.entity.OperatorProfile> = emptyList(),
         selectedOperatorId: Long = 0L,
-        costLots: List<com.kex.vikrsaathi.data.entity.ItemCostLot> = emptyList()
+        costLots: List<com.kex.vikrsaathi.data.entity.ItemCostLot> = emptyList(),
+        batches: List<com.kex.vikrsaathi.data.entity.InventoryBatch> = emptyList(),
+        batchMovements: List<com.kex.vikrsaathi.data.entity.InventoryBatchMovement> = emptyList(),
+        allocations: List<com.kex.vikrsaathi.data.entity.BillBatchAllocation> = emptyList()
     ): String {
         val includes = buildList {
             if (options.includeCustomers) add("customers")
@@ -65,6 +68,7 @@ object BackupJsonCodec {
                 add("items")
                 if (stockMovements.isNotEmpty()) add("stock_movements")
                 if (costLots.isNotEmpty()) add("item_cost_lots")
+                if (batches.isNotEmpty()) add("inventory_batches")
             }
             if (options.includeSales) add("sales")
             if (options.includeSettings) {
@@ -108,6 +112,11 @@ object BackupJsonCodec {
                 }
                 if (costLots.isNotEmpty()) {
                     put("itemCostLots", JSONArray().apply { costLots.forEach { put(encodeCostLot(it)) } })
+                }
+                if (batches.isNotEmpty()) {
+                    put("inventoryBatches", JSONArray().apply { batches.forEach { put(encodeBatch(it)) } })
+                    put("inventoryBatchMovements", JSONArray().apply { batchMovements.forEach { put(encodeBatchMovement(it)) } })
+                    put("billBatchAllocations", JSONArray().apply { allocations.forEach { put(encodeAllocation(it)) } })
                 }
             }
             if (options.includeSales) {
@@ -217,6 +226,96 @@ object BackupJsonCodec {
         }
     }
 
+    fun parseBatches(root: JSONObject): List<InventoryBatchBackup> {
+        val array = root.optJSONArray("inventoryBatches") ?: return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                add(
+                    InventoryBatchBackup(
+                        legacyId = obj.getLong("legacyId"),
+                        itemLegacyId = obj.getLong("itemLegacyId"),
+                        lotNumber = obj.optString("lotNumber").takeIf { it.isNotBlank() && !obj.isNull("lotNumber") },
+                        internalRef = obj.optString("internalRef", ""),
+                        expiryEpochDay = if (obj.has("expiryEpochDay") && !obj.isNull("expiryEpochDay")) obj.getLong("expiryEpochDay") else null,
+                        quantityOnHand = obj.optInt("quantityOnHand"),
+                        createdAt = obj.optLong("createdAt"),
+                        sourceType = obj.optString("sourceType"),
+                        sourceId = if (obj.has("sourceId") && !obj.isNull("sourceId")) obj.getLong("sourceId") else null,
+                        state = obj.optString("state")
+                    )
+                )
+            }
+        }
+    }
+
+    fun parseBatchMovements(root: JSONObject): List<InventoryBatchMovementBackup> {
+        val array = root.optJSONArray("inventoryBatchMovements") ?: return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                add(
+                    InventoryBatchMovementBackup(
+                        batchLegacyId = obj.getLong("batchLegacyId"),
+                        delta = obj.optInt("delta"),
+                        quantityAfter = obj.optInt("quantityAfter"),
+                        type = obj.optString("type"),
+                        referenceType = obj.optString("referenceType").takeIf { it.isNotBlank() },
+                        referenceId = if (obj.has("referenceId") && !obj.isNull("referenceId")) obj.getLong("referenceId") else null,
+                        note = obj.optString("note").takeIf { it.isNotBlank() },
+                        createdAt = obj.optLong("createdAt")
+                    )
+                )
+            }
+        }
+    }
+
+    fun parseAllocations(root: JSONObject): List<BillBatchAllocationBackup> {
+        val array = root.optJSONArray("billBatchAllocations") ?: return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                add(
+                    BillBatchAllocationBackup(
+                        billLegacyId = obj.getLong("billLegacyId"),
+                        batchLegacyId = obj.getLong("batchLegacyId"),
+                        quantity = obj.optInt("quantity")
+                    )
+                )
+            }
+        }
+    }
+
+    private fun encodeBatch(batch: com.kex.vikrsaathi.data.entity.InventoryBatch) = JSONObject().apply {
+        put("legacyId", batch.id)
+        put("itemLegacyId", batch.itemId)
+        batch.lotNumber?.let { put("lotNumber", it) }
+        put("internalRef", batch.internalRef)
+        batch.expiryEpochDay?.let { put("expiryEpochDay", it) }
+        put("quantityOnHand", batch.quantityOnHand)
+        put("createdAt", batch.createdAt)
+        put("sourceType", batch.sourceType)
+        batch.sourceId?.let { put("sourceId", it) }
+        put("state", batch.state)
+    }
+
+    private fun encodeBatchMovement(movement: com.kex.vikrsaathi.data.entity.InventoryBatchMovement) = JSONObject().apply {
+        put("batchLegacyId", movement.batchId)
+        put("delta", movement.delta)
+        put("quantityAfter", movement.quantityAfter)
+        put("type", movement.type)
+        movement.referenceType?.let { put("referenceType", it) }
+        movement.referenceId?.let { put("referenceId", it) }
+        movement.note?.let { put("note", it) }
+        put("createdAt", movement.createdAt)
+    }
+
+    private fun encodeAllocation(row: com.kex.vikrsaathi.data.entity.BillBatchAllocation) = JSONObject().apply {
+        put("billLegacyId", row.billId)
+        put("batchLegacyId", row.batchId)
+        put("quantity", row.quantity)
+    }
+
     fun selectedOperatorLegacyId(root: JSONObject): Long =
         if (root.has("selectedOperatorLegacyId")) root.optLong("selectedOperatorLegacyId") else 0L
 
@@ -272,6 +371,8 @@ object BackupJsonCodec {
             put("customerBalanceEnabled", settings.customerBalanceEnabled)
             put("vendorManagementEnabled", settings.vendorManagementEnabled)
             put("orderManagementEnabled", settings.orderManagementEnabled)
+            put("batchTrackingEnabled", settings.batchTrackingEnabled)
+            put("expiryAlertDays", settings.expiryAlertDays)
             put("invoicePrefix", settings.invoicePrefix)
             put("invoiceSuffix", settings.invoiceSuffix)
             put("invoiceSeparator", settings.invoiceSeparator)
@@ -332,7 +433,9 @@ object BackupJsonCodec {
             quoteSeparator = obj.optString("quoteSeparator", "-"),
             headerImageBase64 = images?.optString("header"),
             signatureImageBase64 = images?.optString("signature"),
-            logoImageBase64 = images?.optString("logo")
+            logoImageBase64 = images?.optString("logo"),
+            batchTrackingEnabled = if (obj.has("batchTrackingEnabled")) obj.getBoolean("batchTrackingEnabled") else null,
+            expiryAlertDays = if (obj.has("expiryAlertDays")) obj.optInt("expiryAlertDays") else null
         )
     }
 
@@ -376,6 +479,7 @@ object BackupJsonCodec {
             put("baseUnit", item.baseUnit)
             put("purchaseUnit", item.purchaseUnit)
             put("unitsPerPurchase", item.unitsPerPurchase)
+            put("trackBatches", item.trackBatches)
         }
     }
 
@@ -395,7 +499,8 @@ object BackupJsonCodec {
         },
         baseUnit = obj.optString("baseUnit", ""),
         purchaseUnit = obj.optString("purchaseUnit", ""),
-        unitsPerPurchase = obj.optInt("unitsPerPurchase", 1)
+        unitsPerPurchase = obj.optInt("unitsPerPurchase", 1),
+        trackBatches = obj.optBoolean("trackBatches", false)
     )
 
     private fun encodeStockMovement(
@@ -696,7 +801,9 @@ data class SettingsBackup(
     val quoteSeparator: String = "-",
     val headerImageBase64: String?,
     val signatureImageBase64: String?,
-    val logoImageBase64: String?
+    val logoImageBase64: String?,
+    val batchTrackingEnabled: Boolean? = null,
+    val expiryAlertDays: Int? = null
 )
 
 data class CustomerBackup(
@@ -723,7 +830,8 @@ data class ItemBackup(
     val preferredVendorLegacyId: Long? = null,
     val baseUnit: String = "",
     val purchaseUnit: String = "",
-    val unitsPerPurchase: Int = 1
+    val unitsPerPurchase: Int = 1,
+    val trackBatches: Boolean = false
 )
 
 data class StockMovementBackup(
@@ -795,6 +903,36 @@ data class OperatorBackup(
     val legacyId: Long,
     val name: String,
     val createdAt: Long
+)
+
+data class InventoryBatchBackup(
+    val legacyId: Long,
+    val itemLegacyId: Long,
+    val lotNumber: String?,
+    val internalRef: String,
+    val expiryEpochDay: Long?,
+    val quantityOnHand: Int,
+    val createdAt: Long,
+    val sourceType: String,
+    val sourceId: Long?,
+    val state: String
+)
+
+data class InventoryBatchMovementBackup(
+    val batchLegacyId: Long,
+    val delta: Int,
+    val quantityAfter: Int,
+    val type: String,
+    val referenceType: String?,
+    val referenceId: Long?,
+    val note: String?,
+    val createdAt: Long
+)
+
+data class BillBatchAllocationBackup(
+    val billLegacyId: Long,
+    val batchLegacyId: Long,
+    val quantity: Int
 )
 
 data class ItemCostLotBackup(

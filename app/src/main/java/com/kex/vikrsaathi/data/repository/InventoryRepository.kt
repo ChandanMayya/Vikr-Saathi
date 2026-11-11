@@ -16,7 +16,8 @@ data class StockShortfall(
     val itemId: Long,
     val itemName: String,
     val available: Int,
-    val required: Int
+    val required: Int,
+    val expired: Int = 0
 ) {
     val shortage: Int
         get() = (required - available).coerceAtLeast(0)
@@ -25,7 +26,8 @@ data class StockShortfall(
 class InventoryRepository(
     private val database: AppDatabase,
     private val itemDao: ItemDao,
-    private val stockMovementDao: StockMovementDao
+    private val stockMovementDao: StockMovementDao,
+    private val batches: BatchRepository? = null
 ) {
 
     suspend fun applyMovement(
@@ -83,6 +85,8 @@ class InventoryRepository(
         }
     }
 
+    suspend fun reconcileTrackedItem(itemId: Long): Int = batches?.reconcilePositiveGap(itemId) ?: 0
+
     suspend fun setOpeningStock(itemId: Long, openingQty: Int): Result<Item> {
         val qty = openingQty.coerceAtLeast(0)
         if (qty == 0) {
@@ -90,23 +94,66 @@ class InventoryRepository(
                 ?: return Result.failure(IllegalArgumentException("Item not found"))
             return Result.success(item)
         }
-        return applyMovement(
-            itemId = itemId,
-            delta = qty,
-            type = StockMovementType.OPENING,
-            referenceType = StockReferenceType.MANUAL,
-            note = "Opening stock"
-        )
+        return database.withTransaction {
+            val result = applyMovement(
+                itemId = itemId,
+                delta = qty,
+                type = StockMovementType.OPENING,
+                referenceType = StockReferenceType.MANUAL,
+                note = "Opening stock"
+            )
+            if (result.isSuccess) {
+                batches?.addIncoming(
+                    itemId = itemId,
+                    quantity = qty,
+                    sourceType = com.kex.vikrsaathi.domain.inventory.BatchSource.OPENING,
+                    movementType = StockMovementType.OPENING,
+                    referenceType = StockReferenceType.MANUAL,
+                    referenceId = null,
+                    note = "Opening stock · expiry unknown"
+                )
+            }
+            result
+        }
     }
 
-    suspend fun adjustStock(itemId: Long, delta: Int, note: String? = null): Result<Item> =
-        applyMovement(
+    suspend fun adjustStock(
+        itemId: Long,
+        delta: Int,
+        note: String? = null,
+        batchId: Long? = null,
+        lotNumber: String? = null,
+        expiryEpochDay: Long? = null,
+        expiryUnknown: Boolean = true
+    ): Result<Item> = try {
+        database.withTransaction {
+        val result = applyMovement(
             itemId = itemId,
             delta = delta,
             type = StockMovementType.ADJUSTMENT,
             referenceType = StockReferenceType.MANUAL,
             note = note?.trim()?.ifEmpty { null }
         )
+        if (result.isSuccess && delta != 0) {
+            batches?.addIncoming(
+                itemId = itemId,
+                quantity = delta,
+                sourceType = com.kex.vikrsaathi.domain.inventory.BatchSource.ADJUSTMENT,
+                movementType = StockMovementType.ADJUSTMENT,
+                referenceType = StockReferenceType.MANUAL,
+                referenceId = null,
+                note = note?.trim()?.ifEmpty { null } ?: "Stock adjustment",
+                lotNumber = lotNumber,
+                expiryEpochDay = expiryEpochDay,
+                expiryUnknown = expiryUnknown,
+                batchId = batchId
+            )
+        }
+        result
+        }
+    } catch (error: Exception) {
+        Result.failure(error)
+    }
 
     suspend fun importStock(itemId: Long, delta: Int, note: String? = null): Result<Item> {
         if (delta <= 0) {
@@ -114,13 +161,27 @@ class InventoryRepository(
                 ?: return Result.failure(IllegalArgumentException("Item not found"))
             return Result.success(item)
         }
-        return applyMovement(
-            itemId = itemId,
-            delta = delta,
-            type = StockMovementType.IMPORT,
-            referenceType = StockReferenceType.MANUAL,
-            note = note?.trim()?.ifEmpty { null } ?: "Excel import"
-        )
+        return database.withTransaction {
+            val result = applyMovement(
+                itemId = itemId,
+                delta = delta,
+                type = StockMovementType.IMPORT,
+                referenceType = StockReferenceType.MANUAL,
+                note = note?.trim()?.ifEmpty { null } ?: "Excel import"
+            )
+            if (result.isSuccess) {
+                batches?.addIncoming(
+                    itemId = itemId,
+                    quantity = delta,
+                    sourceType = com.kex.vikrsaathi.domain.inventory.BatchSource.IMPORT,
+                    movementType = StockMovementType.IMPORT,
+                    referenceType = StockReferenceType.MANUAL,
+                    referenceId = null,
+                    note = "Excel import · expiry unknown"
+                )
+            }
+            result
+        }
     }
 
     /**
@@ -141,14 +202,27 @@ class InventoryRepository(
         for ((itemId, needed) in required) {
             val item = itemDao.getItemById(itemId) ?: continue
             val alreadyOnBill = if (existingBillId != null) oldBillQuantities[itemId] ?: 0 else 0
-            val available = item.stockQty + alreadyOnBill
+            val tracked = batches?.tracks(itemId) == true
+            val allocated = if (tracked && existingBillId != null) {
+                batches?.allocatedFor(existingBillId, itemId) ?: 0
+            } else {
+                0
+            }
+            val counts = if (tracked) batches?.eligibleAndExpired(itemId) else null
+            val available = when {
+                counts == null -> item.stockQty + alreadyOnBill
+                allocated > 0 -> counts.first + allocated
+                else -> counts.first + alreadyOnBill
+            }
+            val expired = counts?.second ?: 0
             if (needed > available) {
                 shortfalls.add(
                     StockShortfall(
                         itemId = itemId,
                         itemName = item.name,
                         available = available,
-                        required = needed
+                        required = needed,
+                        expired = expired
                     )
                 )
             }

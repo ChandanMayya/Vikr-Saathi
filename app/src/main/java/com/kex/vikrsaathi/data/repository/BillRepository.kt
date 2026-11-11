@@ -54,7 +54,8 @@ class BillRepository(
     private val inventoryRepository: InventoryRepository,
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val itemCostRepository: ItemCostRepository = ItemCostRepository(database),
-    private val operatorRepository: OperatorRepository = OperatorRepository(database, settingsRepository)
+    private val operatorRepository: OperatorRepository = OperatorRepository(database, settingsRepository),
+    private val batches: BatchRepository = BatchRepository(database, settingsRepository, clock)
 ) {
 
     val allBills: LiveData<List<Bill>> = billDao.getAllBills()
@@ -88,6 +89,7 @@ class BillRepository(
             customerLedgerDao.deleteAllocationsForBill(bill.id)
             restoreKnownCosts(items, CostSourceType.SALE_REVERSAL, bill.id)
             billItemDao.deleteItemsForBill(bill.id)
+            batches.restoreBill(bill.id)
             billDao.deleteBill(bill)
             inventoryRepository.reverseBillStock(bill.id, quantities)
         }
@@ -216,6 +218,7 @@ class BillRepository(
                     payment = payment
                 )
             }
+            batches.syncBill(billId, existingBillId != null, oldQuantities)
             billId
         }
     }

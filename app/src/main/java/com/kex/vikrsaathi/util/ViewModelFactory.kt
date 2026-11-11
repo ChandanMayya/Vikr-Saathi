@@ -36,7 +36,8 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.billRepository,
                     app.inventoryRepository,
                     app.customerFinanceRepository,
-                    app.vendorRepository
+                    app.vendorRepository,
+                    app.batchRepository
                 ) as T
             modelClass.isAssignableFrom(OrdersViewModel::class.java) ->
                 OrdersViewModel(app.vendorRepository) as T

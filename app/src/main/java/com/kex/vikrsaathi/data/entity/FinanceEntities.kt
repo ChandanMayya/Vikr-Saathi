@@ -155,7 +155,9 @@ data class SalesReturnLine(
     val billItemId: Long? = null,
     @ColumnInfo(defaultValue = "1") val restock: Boolean = true,
     /** Historical value of this returned quantity, in paise. */
-    @ColumnInfo(defaultValue = "0") val lineValuePaise: Long = 0
+    @ColumnInfo(defaultValue = "0") val lineValuePaise: Long = 0,
+    /** Lot the returned units were put back on. Null when they were not restocked. */
+    val restockBatchId: Long? = null
 )
 
 @Entity(tableName = "vendors", indices = [Index("name"), Index("archived")])

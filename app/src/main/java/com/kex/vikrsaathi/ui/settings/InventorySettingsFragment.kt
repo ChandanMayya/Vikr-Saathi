@@ -6,6 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentInventorySettingsBinding
@@ -56,6 +58,13 @@ class InventorySettingsFragment : Fragment() {
         }
 
         autoSave.attach(binding.editLowStockThreshold)
+        binding.switchBatchTracking.isChecked = viewModel.batchTrackingEnabled
+        binding.editExpiryAlertDays.setText(viewModel.expiryAlertDays.toString())
+        binding.switchBatchTracking.setOnCheckedChangeListener { _, checked ->
+            viewModel.saveBatchTracking(checked)
+        }
+        autoSave.attach(binding.editExpiryAlertDays)
+        binding.buttonReviewUnassigned.setOnClickListener { reviewUnassigned() }
     }
 
     override fun onPause() {
@@ -73,6 +82,45 @@ class InventorySettingsFragment : Fragment() {
         viewModel.saveLowStockThreshold(
             binding.editLowStockThreshold.text.toString().toIntOrNull() ?: 5
         )
+        val days = binding.editExpiryAlertDays.text.toString().toIntOrNull()
+        if (days == null || days !in 1..365) {
+            binding.editExpiryAlertDays.error = getString(R.string.expiry_alert_days_help)
+            return
+        }
+        binding.editExpiryAlertDays.error = null
+        viewModel.saveExpiryAlertDays(days)
+    }
+
+    private fun reviewUnassigned() {
+        val app = requireActivity().application as VikrSaathiApp
+        viewLifecycleOwner.lifecycleScope.launch {
+            val gaps = app.batchRepository.gaps()
+            if (!isAdded) return@launch
+            val message = if (gaps.isEmpty()) {
+                getString(R.string.review_unassigned_empty)
+            } else {
+                gaps.joinToString("\n") {
+                    getString(R.string.review_unassigned_line, it.name, it.stockQty, it.batchQty, it.gap)
+                }
+            }
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.review_unassigned)
+                .setMessage(message)
+                .setPositiveButton(R.string.assign_unknown_expiry) { _, _ ->
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val assigned = gaps.filter { it.gap > 0 }.sumOf { app.batchRepository.reconcilePositiveGap(it.itemId) }
+                        if (isAdded) {
+                            android.widget.Toast.makeText(
+                                requireContext(),
+                                getString(R.string.assigned_unknown_expiry, assigned),
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
     }
 
     private fun bindInventoryMode(mode: InventoryMode) {

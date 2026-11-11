@@ -152,6 +152,13 @@
                 android:inputType="number" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/checkTrackBatches"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/track_batches_item" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonAdjustStock"
             style="@style/Widget.Material3.Button.OutlinedButton"

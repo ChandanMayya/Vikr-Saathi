@@ -64,6 +64,16 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_ORDER_MANAGEMENT, true)
         set(value) = prefs.edit().putBoolean(KEY_ORDER_MANAGEMENT, value).apply()
 
+    /** Off keeps every lot and its history. New stock movements are not given a lot until it is turned on again. */
+    var batchTrackingEnabled: Boolean
+        get() = prefs.getBoolean(KEY_BATCH_TRACKING, false)
+        set(value) = prefs.edit().putBoolean(KEY_BATCH_TRACKING, value).apply()
+
+    /** Inclusive number of calendar days, counting today, used for expiry warnings. */
+    var expiryAlertDays: Int
+        get() = prefs.getInt(KEY_EXPIRY_ALERT_DAYS, DEFAULT_EXPIRY_ALERT_DAYS).coerceIn(1, 365)
+        set(value) = prefs.edit().putInt(KEY_EXPIRY_ALERT_DAYS, value.coerceIn(1, 365)).apply()
+
     var invoicePrefix: String
         get() = prefs.getString(KEY_INVOICE_PREFIX, "") ?: ""
         set(value) = prefs.edit().putString(KEY_INVOICE_PREFIX, value).apply()
@@ -143,6 +153,8 @@ class SettingsRepository(context: Context) {
         customerBalanceEnabled = true
         vendorManagementEnabled = true
         orderManagementEnabled = true
+        batchTrackingEnabled = false
+        expiryAlertDays = DEFAULT_EXPIRY_ALERT_DAYS
         File(filesDir, HEADER_FILE).delete()
         File(filesDir, SIGNATURE_FILE).delete()
         File(filesDir, LOGO_FILE).delete()
@@ -225,6 +237,9 @@ class SettingsRepository(context: Context) {
         private const val KEY_CUSTOMER_BALANCE = "customer_balance_enabled"
         private const val KEY_VENDOR_MANAGEMENT = "vendor_management_enabled"
         private const val KEY_ORDER_MANAGEMENT = "order_management_enabled"
+        private const val KEY_BATCH_TRACKING = "batch_tracking_enabled"
+        private const val KEY_EXPIRY_ALERT_DAYS = "expiry_alert_days"
+        const val DEFAULT_EXPIRY_ALERT_DAYS = 30
         private const val KEY_INVOICE_PREFIX = "invoice_prefix"
         private const val KEY_INVOICE_SUFFIX = "invoice_suffix"
         private const val KEY_INVOICE_SEPARATOR = "invoice_separator"

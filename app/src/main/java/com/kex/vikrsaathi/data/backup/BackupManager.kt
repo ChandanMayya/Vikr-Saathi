@@ -11,6 +11,7 @@ import com.kex.vikrsaathi.data.model.template.ElementBinding
 import com.kex.vikrsaathi.data.model.template.ElementKind
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
+import com.kex.vikrsaathi.data.repository.BatchRepository
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
 import com.kex.vikrsaathi.data.repository.InventoryRepository
@@ -65,6 +66,9 @@ class BackupManager(
             val versions = if (options.includeSales) storedVersions(payload.bills) else emptyMap()
             val operators = if (options.includeSettings) database.operatorDao().getAll() else emptyList()
             val costLots = if (options.includeItems) database.itemCostDao().getAll() else emptyList()
+            val batches = if (options.includeItems) database.batchDao().allBatches() else emptyList()
+            val batchMovements = if (options.includeItems) database.batchDao().allMovements() else emptyList()
+            val allocations = if (options.includeItems) database.batchDao().allAllocations() else emptyList()
             val json = BackupJsonCodec.buildBackupJson(
                 options = options,
                 settings = settingsRepository,
@@ -78,7 +82,10 @@ class BackupManager(
                 versionsByBillId = versions,
                 operators = operators,
                 selectedOperatorId = settingsRepository.selectedOperatorId,
-                costLots = costLots
+                costLots = costLots,
+                batches = batches,
+                batchMovements = batchMovements,
+                allocations = allocations
             )
             val root = JSONObject(json)
             FinanceBackupCodec.attach(root, options, payload.finance)
@@ -283,6 +290,7 @@ class BackupManager(
         val itemIdMap = mutableMapOf<Long, Long>()
         val templateIdMap = mutableMapOf<Long, Long>()
         val billIdMap = mutableMapOf<Long, Long>()
+        val batchIdMap = mutableMapOf<Long, Long>()
         val billsAlreadyPaid = mutableSetOf<Long>()
         val presentCustomerIds = database.customerDao().getAllCustomersSync().map { it.id }.toSet()
         val presentItemIds = database.itemDao().getAllItemsSync().map { it.id }.toSet()
@@ -358,7 +366,8 @@ class BackupManager(
                             stockQty = backup.stockQty,
                             baseUnit = backup.baseUnit,
                             purchaseUnit = backup.purchaseUnit,
-                            unitsPerPurchase = backup.unitsPerPurchase
+                            unitsPerPurchase = backup.unitsPerPurchase,
+                            trackBatches = backup.trackBatches
                         )
                     )
                     itemIdMap[backup.legacyId] = id
@@ -410,6 +419,47 @@ class BackupManager(
                     )
                 } catch (e: Exception) {
                     errors.add("Cost lot: ${e.message}")
+                }
+            }
+            val batchStore = BatchRepository(database, settingsRepository)
+            BackupJsonCodec.parseBatches(root).forEach { batch ->
+                val itemId = itemIdMap[batch.itemLegacyId] ?: return@forEach
+                try {
+                    val id = batchStore.importBatch(
+                        com.kex.vikrsaathi.data.entity.InventoryBatch(
+                            itemId = itemId,
+                            lotNumber = batch.lotNumber,
+                            internalRef = batch.internalRef.ifBlank { "L-import" },
+                            expiryEpochDay = batch.expiryEpochDay,
+                            quantityOnHand = batch.quantityOnHand,
+                            createdAt = batch.createdAt,
+                            sourceType = batch.sourceType,
+                            sourceId = batch.sourceId,
+                            state = batch.state
+                        )
+                    )
+                    batchIdMap[batch.legacyId] = id
+                } catch (e: Exception) {
+                    errors.add("Batch: ${e.message}")
+                }
+            }
+            BackupJsonCodec.parseBatchMovements(root).forEach { movement ->
+                val batchId = batchIdMap[movement.batchLegacyId] ?: return@forEach
+                try {
+                    batchStore.importMovement(
+                        com.kex.vikrsaathi.data.entity.InventoryBatchMovement(
+                            batchId = batchId,
+                            delta = movement.delta,
+                            quantityAfter = movement.quantityAfter,
+                            type = movement.type,
+                            referenceType = movement.referenceType,
+                            referenceId = movement.referenceId,
+                            note = movement.note,
+                            createdAt = movement.createdAt
+                        )
+                    )
+                } catch (e: Exception) {
+                    errors.add("Batch movement: ${e.message}")
                 }
             }
         }
@@ -496,6 +546,22 @@ class BackupManager(
                     errors.add("Bill ${backup.billNumber}: ${e.message}")
                 }
             }
+            val allocationStore = BatchRepository(database, settingsRepository)
+            BackupJsonCodec.parseAllocations(root).forEach { row ->
+                val billId = billIdMap[row.billLegacyId] ?: return@forEach
+                val batchId = batchIdMap[row.batchLegacyId] ?: return@forEach
+                try {
+                    allocationStore.importAllocation(
+                        com.kex.vikrsaathi.data.entity.BillBatchAllocation(
+                            billId = billId,
+                            batchId = batchId,
+                            quantity = row.quantity
+                        )
+                    )
+                } catch (e: Exception) {
+                    errors.add("Batch allocation: ${e.message}")
+                }
+            }
         }
 
         val financeResult = FinanceBackupRestorer(database).restore(
@@ -548,6 +614,8 @@ class BackupManager(
         backup.customerBalanceEnabled?.let { settingsRepository.customerBalanceEnabled = it }
         backup.vendorManagementEnabled?.let { settingsRepository.vendorManagementEnabled = it }
         backup.orderManagementEnabled?.let { settingsRepository.orderManagementEnabled = it }
+        backup.batchTrackingEnabled?.let { settingsRepository.batchTrackingEnabled = it }
+        backup.expiryAlertDays?.let { settingsRepository.expiryAlertDays = it }
         AppThemeManager.apply(backup.themeMode)
 
         BackupJsonCodec.decodeBitmap(backup.headerImageBase64)?.let {

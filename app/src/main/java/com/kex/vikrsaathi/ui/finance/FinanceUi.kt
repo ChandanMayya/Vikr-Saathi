@@ -68,6 +68,10 @@ object FinanceUi {
             FinanceError.RESTOCK_NEEDS_ITEM -> R.string.return_error_restock
             FinanceError.EXCHANGE_NOT_VOIDABLE -> R.string.return_error_exchange_void
             FinanceError.ALREADY_VOIDED -> R.string.return_error_voided
+            FinanceError.BATCH_REQUIRED -> R.string.batch_required
+            FinanceError.BATCH_QTY_MISMATCH -> R.string.batch_qty_mismatch
+            FinanceError.BATCH_EXPIRY_REQUIRED -> R.string.batch_expiry_required
+            FinanceError.BATCH_SHORT -> R.string.batch_short
             FinanceError.VENDOR_REQUIRED -> R.string.payment_error_vendor
             FinanceError.VENDOR_HAS_HISTORY -> R.string.payment_error_vendor_history
             FinanceError.CUSTOMER_HAS_LEDGER -> R.string.payment_error_customer_ledger

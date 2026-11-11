@@ -79,7 +79,8 @@ data class ReceiptLineInput(
     val damagedQty: Int,
     val rejectedQty: Int,
     val unitName: String = "",
-    val unitsPerBundle: Int = 1
+    val unitsPerBundle: Int = 1,
+    val lots: List<ReceiptLot> = emptyList()
 )
 
 data class InvoiceLineInput(
@@ -144,7 +145,8 @@ class VendorRepository(
     private val itemDao: ItemDao,
     private val inventoryRepository: InventoryRepository,
     private val settingsRepository: SettingsRepository,
-    private val itemCostRepository: ItemCostRepository = ItemCostRepository(database)
+    private val itemCostRepository: ItemCostRepository = ItemCostRepository(database),
+    private val batches: BatchRepository = BatchRepository(database, settingsRepository)
 ) {
     suspend fun getActive(): List<Vendor> = vendorDao.getActive()
     suspend fun getAll(): List<Vendor> = vendorDao.getAll()
@@ -388,6 +390,7 @@ class VendorRepository(
                         referenceId = id,
                         note = "Goods receipt"
                     )
+                    batches.receive(itemId, acceptedBase, input.lots, id)
                 }
             }
             id
@@ -955,6 +958,7 @@ class VendorRepository(
 
     suspend fun clearVendors() {
         database.withTransaction {
+            val receiptIds = purchaseDao.getAllReceiptLines().map { it.receiptId }.distinct()
             purchaseDao.getAllReceiptLines().forEach { line ->
                 val itemId = line.itemId ?: return@forEach
                 val acceptedBase = PackMath.toBase(line.acceptedQty, line.unitsPerBundle) ?: 0
@@ -968,6 +972,7 @@ class VendorRepository(
                     note = "Vendor reset reversed goods receipt"
                 )
             }
+            receiptIds.forEach { batches.reverseReceipt(it) }
             vendorDao.deleteAllPaymentAllocations()
             vendorDao.deleteAllPayments()
             vendorDao.deleteAllLedger()

@@ -104,6 +104,9 @@ interface CustomerLedgerDao {
     @Insert
     suspend fun insertReturnLine(line: SalesReturnLine): Long
 
+    @Query("UPDATE sales_return_lines SET restockBatchId = :batchId WHERE id = :lineId")
+    suspend fun setRestockBatch(lineId: Long, batchId: Long)
+
     @Query("SELECT * FROM sales_returns")
     suspend fun getAllReturns(): List<SalesReturn>
 

@@ -3,6 +3,7 @@ package com.kex.vikrsaathi
 import android.app.Application
 import com.kex.vikrsaathi.data.database.AppDatabase
 import com.kex.vikrsaathi.data.repository.AnalyticsRepository
+import com.kex.vikrsaathi.data.repository.BatchRepository
 import com.kex.vikrsaathi.data.repository.BillDraftRepository
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
@@ -32,11 +33,13 @@ class VikrSaathiApp : Application() {
     val settingsRepository by lazy { SettingsRepository(this) }
     val customerRepository by lazy { CustomerRepository(database.customerDao()) }
     val itemRepository by lazy { ItemRepository(database.itemDao()) }
+    val batchRepository by lazy { BatchRepository(database, settingsRepository) }
     val inventoryRepository by lazy {
         InventoryRepository(
             database = database,
             itemDao = database.itemDao(),
-            stockMovementDao = database.stockMovementDao()
+            stockMovementDao = database.stockMovementDao(),
+            batches = batchRepository
         )
     }
     val billRepository by lazy {
@@ -47,7 +50,8 @@ class VikrSaathiApp : Application() {
             billPaymentDao = database.billPaymentDao(),
             customerLedgerDao = database.customerLedgerDao(),
             settingsRepository = settingsRepository,
-            inventoryRepository = inventoryRepository
+            inventoryRepository = inventoryRepository,
+            batches = batchRepository
         )
     }
     val customerFinanceRepository by lazy {
@@ -58,7 +62,8 @@ class VikrSaathiApp : Application() {
             billItemDao = database.billItemDao(),
             billPaymentDao = database.billPaymentDao(),
             inventoryRepository = inventoryRepository,
-            billRepository = billRepository
+            billRepository = billRepository,
+            batches = batchRepository
         )
     }
     val vendorRepository by lazy {
@@ -68,7 +73,8 @@ class VikrSaathiApp : Application() {
             purchaseDao = database.purchaseDao(),
             itemDao = database.itemDao(),
             inventoryRepository = inventoryRepository,
-            settingsRepository = settingsRepository
+            settingsRepository = settingsRepository,
+            batches = batchRepository
         )
     }
     val analyticsRepository by lazy {

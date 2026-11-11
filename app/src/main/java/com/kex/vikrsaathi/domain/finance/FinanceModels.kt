@@ -100,7 +100,11 @@ enum class FinanceError {
     AWARD_EXCEEDS,
     REQUEST_NOT_EDITABLE,
     INVALID_QUOTE,
-    INVALID_PACK
+    INVALID_PACK,
+    BATCH_REQUIRED,
+    BATCH_QTY_MISMATCH,
+    BATCH_EXPIRY_REQUIRED,
+    BATCH_SHORT
 }
 
 class FinanceException(val code: FinanceError) : IllegalArgumentException(code.name)

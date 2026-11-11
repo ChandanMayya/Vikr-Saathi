@@ -58,7 +58,8 @@ data class ReturnLineInput(
 data class BillReturnLineInput(
     val billItemId: Long,
     val quantity: Int,
-    val restock: Boolean
+    val restock: Boolean,
+    val restockBatchId: Long? = null
 )
 
 data class PostedReturn(
@@ -75,7 +76,8 @@ class CustomerFinanceRepository(
     private val billPaymentDao: BillPaymentDao,
     private val inventoryRepository: InventoryRepository,
     private val itemCostRepository: ItemCostRepository = ItemCostRepository(database),
-    private val billRepository: BillRepository? = null
+    private val billRepository: BillRepository? = null,
+    private val batches: BatchRepository? = null
 ) {
 
     suspend fun hasLedger(customerId: Long): Boolean = ledgerDao.countForCustomer(customerId) > 0
@@ -349,6 +351,7 @@ class CustomerFinanceRepository(
             val lines = ledgerDao.getLinesForReturn(returnId)
             lines.filter { it.restock }.forEach { line ->
                 val itemId = line.itemId ?: return@forEach
+                batches?.reverseRestock(line.restockBatchId, line.quantity, returnId, itemId)
                 inventoryRepository.applyMovementUnchecked(
                     itemId = itemId,
                     delta = -line.quantity,
@@ -597,7 +600,8 @@ class CustomerFinanceRepository(
                 billItemId = valued.billItemId,
                 lineValuePaise = valued.valuePaise,
                 restock = request.restock,
-                occurredAt = occurredAt
+                occurredAt = occurredAt,
+                restockBatchId = request.restockBatchId
             )
         }
         insertStoreCreditLedger(
@@ -633,9 +637,10 @@ class CustomerFinanceRepository(
         billItemId: Long?,
         lineValuePaise: Long,
         restock: Boolean,
-        occurredAt: Long
+        occurredAt: Long,
+        restockBatchId: Long? = null
     ) {
-        ledgerDao.insertReturnLine(
+        val lineId = ledgerDao.insertReturnLine(
             SalesReturnLine(
                 returnId = returnId,
                 itemId = itemId,
@@ -666,6 +671,8 @@ class CustomerFinanceRepository(
             referenceId = returnId,
             note = "Sales return"
         )
+        val placed = batches?.placeReturn(itemId, quantity, returnId, restockBatchId) ?: 0L
+        if (placed != 0L) ledgerDao.setRestockBatch(lineId, placed)
     }
 
     private suspend fun insertStoreCreditLedger(
@@ -705,6 +712,7 @@ class CustomerFinanceRepository(
             if (!line.restock) return@forEach
             val itemId = line.itemId ?: return@forEach
             if (line.quantity == 0) return@forEach
+            batches?.reverseRestock(line.restockBatchId, line.quantity, line.returnId, itemId)
             inventoryRepository.applyMovementUnchecked(
                 itemId = itemId,
                 delta = -line.quantity,

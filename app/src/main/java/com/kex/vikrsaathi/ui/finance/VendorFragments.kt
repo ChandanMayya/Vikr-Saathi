@@ -361,6 +361,12 @@ class PurchasingFragment : Fragment() {
             receivedField = received
             damagedField = damaged
             rejectedField = rejected
+            val lotNumber = FinanceForm.text(this@PurchasingFragment, form, getString(R.string.batch_number_optional))
+            val expiry = FinanceForm.text(this@PurchasingFragment, form, getString(R.string.expiry_date))
+            val expiryUnknown = com.google.android.material.checkbox.MaterialCheckBox(requireContext()).apply {
+                text = getString(R.string.expiry_unknown)
+            }
+            form.addView(expiryUnknown)
             val packFields = PackForm.add(this@PurchasingFragment, form)
             pack = packFields
             PackForm.watch(packFields, listOf(received, damaged, rejected)) { refreshPack() }
@@ -388,7 +394,17 @@ class PurchasingFragment : Fragment() {
                                     damagedQty = damaged.text.toString().toIntOrNull() ?: 0,
                                     rejectedQty = rejected.text.toString().toIntOrNull() ?: 0,
                                     unitName = unitName,
-                                    unitsPerBundle = factor
+                                    unitsPerBundle = factor,
+                                    lots = directReceiptLots(
+                                        item = item,
+                                        received = received.text.toString().toIntOrNull() ?: 0,
+                                        damaged = damaged.text.toString().toIntOrNull() ?: 0,
+                                        rejected = rejected.text.toString().toIntOrNull() ?: 0,
+                                        factor = factor,
+                                        lotNumber = lotNumber.text.toString(),
+                                        expiryText = expiry.text.toString(),
+                                        expiryUnknown = expiryUnknown.isChecked
+                                    )
                                 )
                             )
                         )
@@ -488,6 +504,36 @@ class PurchasingFragment : Fragment() {
         const val ARG_START = "startAction"
         const val START_RECEIPT = "receipt"
         const val START_ORDER = "order"
+    }
+
+    private fun directReceiptLots(
+        item: com.kex.vikrsaathi.data.entity.Item,
+        received: Int,
+        damaged: Int,
+        rejected: Int,
+        factor: Int,
+        lotNumber: String,
+        expiryText: String,
+        expiryUnknown: Boolean
+    ): List<com.kex.vikrsaathi.data.repository.ReceiptLot> {
+        if (!item.trackBatches || !app().settingsRepository.batchTrackingEnabled) return emptyList()
+        val accepted = (received - damaged - rejected).coerceAtLeast(0)
+        val base = com.kex.vikrsaathi.domain.finance.PackMath.toBase(accepted, factor) ?: return emptyList()
+        if (base <= 0) return emptyList()
+        val expiry = if (expiryUnknown) null else com.kex.vikrsaathi.domain.inventory.CivilDate.parse(expiryText)
+        if (!expiryUnknown && expiry == null) {
+            throw com.kex.vikrsaathi.domain.finance.FinanceException(
+                com.kex.vikrsaathi.domain.finance.FinanceError.BATCH_EXPIRY_REQUIRED
+            )
+        }
+        return listOf(
+            com.kex.vikrsaathi.data.repository.ReceiptLot(
+                quantity = base,
+                lotNumber = lotNumber.trim().ifEmpty { null },
+                expiryEpochDay = expiry,
+                expiryUnknown = expiryUnknown
+            )
+        )
     }
 }
 

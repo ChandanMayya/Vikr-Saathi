@@ -917,3 +917,86 @@ val MIGRATION_16_17 = object : Migration(16, 17) {
         )
     }
 }
+
+val MIGRATION_17_18 = object : Migration(17, 18) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        if (!hasColumn(db, "items", "trackBatches")) {
+            db.execSQL("ALTER TABLE items ADD COLUMN trackBatches INTEGER NOT NULL DEFAULT 0")
+        }
+        if (!hasColumn(db, "sales_return_lines", "restockBatchId")) {
+            db.execSQL("ALTER TABLE sales_return_lines ADD COLUMN restockBatchId INTEGER")
+        }
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS inventory_batches (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                itemId INTEGER NOT NULL,
+                lotNumber TEXT,
+                internalRef TEXT NOT NULL,
+                expiryEpochDay INTEGER,
+                quantityOnHand INTEGER NOT NULL,
+                createdAt INTEGER NOT NULL,
+                sourceType TEXT NOT NULL,
+                sourceId INTEGER,
+                state TEXT NOT NULL,
+                FOREIGN KEY(itemId) REFERENCES items(id) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_inventory_batches_itemId ON inventory_batches(itemId)")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_inventory_batches_sourceType_sourceId ON inventory_batches(sourceType, sourceId)"
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS inventory_batch_movements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                batchId INTEGER NOT NULL,
+                delta INTEGER NOT NULL,
+                quantityAfter INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                referenceType TEXT,
+                referenceId INTEGER,
+                note TEXT,
+                createdAt INTEGER NOT NULL,
+                FOREIGN KEY(batchId) REFERENCES inventory_batches(id) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_inventory_batch_movements_batchId ON inventory_batch_movements(batchId)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_inventory_batch_movements_referenceType_referenceId ON inventory_batch_movements(referenceType, referenceId)"
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS bill_batch_allocations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                billId INTEGER NOT NULL,
+                billItemId INTEGER,
+                batchId INTEGER NOT NULL,
+                quantity INTEGER NOT NULL,
+                FOREIGN KEY(billId) REFERENCES bills(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY(batchId) REFERENCES inventory_batches(id) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_bill_batch_allocations_billId ON bill_batch_allocations(billId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_bill_batch_allocations_batchId ON bill_batch_allocations(batchId)")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_bill_batch_allocations_billItemId ON bill_batch_allocations(billItemId)"
+        )
+    }
+
+    private fun hasColumn(db: SupportSQLiteDatabase, table: String, column: String): Boolean {
+        val cursor = db.query("PRAGMA table_info($table)")
+        cursor.use {
+            val name = it.getColumnIndex("name")
+            while (it.moveToNext()) {
+                if (it.getString(name) == column) return true
+            }
+        }
+        return false
+    }
+}

@@ -161,7 +161,10 @@ class GoodsReceiptFragment : Fragment() {
         card.editReceived.setText(remainingPackages.toString())
         card.editDamaged.setText("0")
         card.editRejected.setText("0")
+        val tracked = item?.trackBatches == true && app().settingsRepository.batchTrackingEnabled
+        card.groupLots.isVisible = tracked
         val draft = ReceiptCard(line, card, baseUnit)
+        card.buttonSplitLots.setOnClickListener { askSplit(draft) }
         val watcher = object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -204,6 +207,75 @@ class GoodsReceiptFragment : Fragment() {
         card.binding.textAcceptedMath.text = getString(R.string.receipt_accepted_math, received, damaged, rejected)
     }
 
+    private fun lotsFor(card: ReceiptCard, acceptedBase: Int): List<com.kex.vikrsaathi.data.repository.ReceiptLot>? {
+        if (!card.binding.groupLots.isVisible || acceptedBase <= 0) return emptyList()
+        card.splitLots?.let { lots ->
+            if (lots.sumOf { it.quantity } != acceptedBase) {
+                toast(R.string.batch_qty_mismatch)
+                return null
+            }
+            return lots
+        }
+        val unknown = card.binding.checkLotExpiryUnknown.isChecked
+        val expiry = if (unknown) {
+            null
+        } else {
+            com.kex.vikrsaathi.domain.inventory.CivilDate.parse(card.binding.editLotExpiry.text.toString())
+        }
+        if (!unknown && expiry == null) {
+            toast(R.string.batch_expiry_required)
+            return null
+        }
+        return listOf(
+            com.kex.vikrsaathi.data.repository.ReceiptLot(
+                quantity = acceptedBase,
+                lotNumber = card.binding.editLotNumber.text.toString().trim().ifEmpty { null },
+                expiryEpochDay = expiry,
+                expiryUnknown = unknown
+            )
+        )
+    }
+
+    private fun askSplit(card: ReceiptCard) {
+        val form = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 0)
+        }
+        val first = android.widget.EditText(requireContext()).apply { hint = getString(R.string.lot_qty) }
+        val second = android.widget.EditText(requireContext()).apply { hint = getString(R.string.lot_qty) }
+        form.addView(first)
+        form.addView(second)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.split_lots)
+            .setView(form)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val a = first.text.toString().toIntOrNull() ?: 0
+                val b = second.text.toString().toIntOrNull() ?: 0
+                if (a <= 0 || b <= 0) {
+                    toast(R.string.batch_qty_mismatch)
+                    return@setPositiveButton
+                }
+                val unknown = card.binding.checkLotExpiryUnknown.isChecked
+                val expiry = if (unknown) {
+                    null
+                } else {
+                    com.kex.vikrsaathi.domain.inventory.CivilDate.parse(card.binding.editLotExpiry.text.toString())
+                }
+                if (!unknown && expiry == null) {
+                    toast(R.string.batch_expiry_required)
+                    return@setPositiveButton
+                }
+                val lot = card.binding.editLotNumber.text.toString().trim().ifEmpty { null }
+                card.splitLots = listOf(
+                    com.kex.vikrsaathi.data.repository.ReceiptLot(a, lot, expiry, unknown),
+                    com.kex.vikrsaathi.data.repository.ReceiptLot(b, null, expiry, unknown)
+                )
+                card.binding.textSplitLots.text = "$a + $b"
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     private fun save() {
         if (saving) return
         val loaded = order ?: return
@@ -228,6 +300,9 @@ class GoodsReceiptFragment : Fragment() {
             val damaged = qty(card.binding.editDamaged)
             val rejected = qty(card.binding.editRejected)
             if (received == 0 && damaged == 0 && rejected == 0) return@mapNotNull null
+            val accepted = (received - damaged - rejected).coerceAtLeast(0)
+            val acceptedBase = com.kex.vikrsaathi.domain.finance.PackMath.toBase(accepted, card.line.unitsPerBundle) ?: 0
+            val lots = lotsFor(card, acceptedBase) ?: return
             ReceiptLineInput(
                 orderLineId = card.line.id,
                 itemId = card.line.itemId,
@@ -237,7 +312,8 @@ class GoodsReceiptFragment : Fragment() {
                 damagedQty = damaged,
                 rejectedQty = rejected,
                 unitName = card.line.unitName,
-                unitsPerBundle = card.line.unitsPerBundle
+                unitsPerBundle = card.line.unitsPerBundle,
+                lots = lots
             )
         }
         if (inputs.isEmpty()) {
@@ -351,5 +427,6 @@ class GoodsReceiptFragment : Fragment() {
 private class ReceiptCard(
     val line: PurchaseOrderLine,
     val binding: ItemReceiptLineBinding,
-    val baseUnit: String
+    val baseUnit: String,
+    var splitLots: List<com.kex.vikrsaathi.data.repository.ReceiptLot>? = null
 )

@@ -13,7 +13,7 @@ import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.databinding.DialogItemFormBinding
-import com.kex.vikrsaathi.databinding.DialogStockAdjustBinding
+import com.kex.vikrsaathi.ui.stock.showBatchAdjustDialog
 import com.kex.vikrsaathi.databinding.FragmentItemsBinding
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.lifecycle.lifecycleScope
@@ -157,6 +157,18 @@ class ItemFragment : Fragment() {
             formBinding.buttonAdjustStock.setOnClickListener {
                 showAdjustStockDialog(existing)
             }
+            formBinding.checkTrackBatches.isChecked = it.trackBatches
+            formBinding.checkTrackBatches.setOnCheckedChangeListener { _, checked ->
+                if (checked && !it.trackBatches && it.stockQty > 0) {
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setMessage(getString(R.string.track_batches_confirm, it.stockQty))
+                        .setNegativeButton(R.string.cancel) { _, _ ->
+                            formBinding.checkTrackBatches.isChecked = false
+                        }
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                }
+            }
         } ?: run {
             formBinding.editItemDiscount.setText(viewModel.defaultDiscount.toString())
             formBinding.layoutOpeningStock.visibility = View.VISIBLE
@@ -208,6 +220,7 @@ class ItemFragment : Fragment() {
                     sellingPrice = formBinding.editItemSellingPrice.text.toString().toDoubleOrNull(),
                     remarks = unit,
                     stockQty = existing?.stockQty ?: 0,
+                    trackBatches = formBinding.checkTrackBatches.isChecked,
                     preferredVendorId = if (vendors == null) existing?.preferredVendorId else selectedVendorId,
                     baseUnit = unit,
                     purchaseUnit = purchaseUnit,
@@ -228,29 +241,27 @@ class ItemFragment : Fragment() {
     }
 
     private fun showAdjustStockDialog(item: Item) {
-        val formBinding = DialogStockAdjustBinding.inflate(layoutInflater)
-        formBinding.textAdjustCurrentStock.text = getString(R.string.current_stock, item.stockQty)
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.adjust_stock)
-            .setView(formBinding.root)
-            .setPositiveButton(R.string.save) { _, _ ->
-                val delta = formBinding.editStockDelta.text.toString().toIntOrNull() ?: 0
-                if (delta == 0) return@setPositiveButton
-                val note = formBinding.editStockNote.text.toString().trim()
-                viewModel.adjustStock(item.id, delta, note.ifEmpty { null }) { result ->
+        viewLifecycleOwner.lifecycleScope.launch {
+            val app = requireActivity().application as VikrSaathiApp
+            val batches = if (item.trackBatches && app.settingsRepository.batchTrackingEnabled) {
+                app.batchRepository.batchesFor(item.id).filter { it.quantityOnHand > 0 }
+            } else {
+                emptyList()
+            }
+            showBatchAdjustDialog(this@ItemFragment, item, batches, null) { request ->
+                viewModel.adjustStock(item.id, request) { result ->
                     result.onSuccess {
                         Toast.makeText(requireContext(), R.string.stock_adjusted, Toast.LENGTH_SHORT).show()
                     }.onFailure {
                         Toast.makeText(
                             requireContext(),
-                            it.message ?: getString(R.string.save_failed),
+                            com.kex.vikrsaathi.ui.finance.FinanceUi.message(requireContext(), it),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
                 }
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        }
     }
 
     private fun confirmDelete(item: Item) {

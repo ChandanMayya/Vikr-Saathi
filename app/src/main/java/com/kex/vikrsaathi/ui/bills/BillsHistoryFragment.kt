@@ -453,7 +453,8 @@ class BillsHistoryFragment : Fragment() {
 
     private fun showDuplicateShortage(billId: Long, shortfalls: List<StockShortfall>) {
         val details = shortfalls.joinToString("\n") {
-            getString(R.string.stock_shortfall_line, it.itemName, it.available, it.required)
+            val line = getString(R.string.stock_shortfall_line, it.itemName, it.available, it.required)
+            if (it.expired > 0) line + "\n" + getString(R.string.stock_shortfall_expired, it.expired) else line
         }
         when (viewModel.inventoryMode) {
             InventoryMode.BLOCK -> {

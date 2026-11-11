@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.kex.vikrsaathi.data.dao.BatchDao
 import com.kex.vikrsaathi.data.dao.BillDao
 import com.kex.vikrsaathi.data.dao.BillDraftDao
 import com.kex.vikrsaathi.data.dao.BillItemDao
@@ -20,6 +21,7 @@ import com.kex.vikrsaathi.data.dao.PurchaseDao
 import com.kex.vikrsaathi.data.dao.StockMovementDao
 import com.kex.vikrsaathi.data.dao.VendorDao
 import com.kex.vikrsaathi.data.entity.Bill
+import com.kex.vikrsaathi.data.entity.BillBatchAllocation
 import com.kex.vikrsaathi.data.entity.BillDraftEntity
 import com.kex.vikrsaathi.data.entity.BillItem
 import com.kex.vikrsaathi.data.entity.BillPayment
@@ -32,6 +34,8 @@ import com.kex.vikrsaathi.data.entity.CustomerReceipt
 import com.kex.vikrsaathi.data.entity.CustomerReceiptAllocation
 import com.kex.vikrsaathi.data.entity.GoodsReceipt
 import com.kex.vikrsaathi.data.entity.GoodsReceiptLine
+import com.kex.vikrsaathi.data.entity.InventoryBatch
+import com.kex.vikrsaathi.data.entity.InventoryBatchMovement
 import com.kex.vikrsaathi.data.entity.InvoiceTemplateEntity
 import com.kex.vikrsaathi.data.entity.InvoiceTemplateVersionEntity
 import com.kex.vikrsaathi.data.entity.Item
@@ -87,9 +91,12 @@ import com.kex.vikrsaathi.data.entity.VendorQuoteLine
         BillVersionItem::class,
         BillVersionPayment::class,
         OperatorProfile::class,
-        ItemCostLot::class
+        ItemCostLot::class,
+        InventoryBatch::class,
+        InventoryBatchMovement::class,
+        BillBatchAllocation::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -109,6 +116,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun customerLedgerDao(): CustomerLedgerDao
     abstract fun vendorDao(): VendorDao
     abstract fun purchaseDao(): PurchaseDao
+    abstract fun batchDao(): BatchDao
 
     companion object {
         @Volatile
@@ -137,7 +145,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_13_14,
                         MIGRATION_14_15,
                         MIGRATION_15_16,
-                        MIGRATION_16_17
+                        MIGRATION_16_17,
+                        MIGRATION_17_18
                     )
                     .build()
                     .also { INSTANCE = it }

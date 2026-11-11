@@ -66,9 +66,26 @@ class StockViewModel(
         applyFilter()
     }
 
-    fun adjustStock(itemId: Long, delta: Int, note: String?, onResult: (Result<Item>) -> Unit) {
+    private var allowedIds: Set<Long>? = null
+
+    fun setAllowedItemIds(ids: Set<Long>?) {
+        allowedIds = ids
+        applyFilter()
+    }
+
+    fun adjustStock(itemId: Long, request: BatchAdjustRequest, onResult: (Result<Item>) -> Unit) {
         viewModelScope.launch {
-            onResult(inventoryRepository.adjustStock(itemId, delta, note))
+            onResult(
+                inventoryRepository.adjustStock(
+                    itemId = itemId,
+                    delta = request.delta,
+                    note = request.note,
+                    batchId = request.batchId,
+                    lotNumber = request.lotNumber,
+                    expiryEpochDay = request.expiryEpochDay,
+                    expiryUnknown = request.expiryUnknown
+                )
+            )
         }
     }
 
@@ -85,7 +102,8 @@ class StockViewModel(
                 item.name.contains(query, ignoreCase = true) ||
                 item.barcode?.contains(query, ignoreCase = true) == true
             val matchesStock = !lowStockOnly || item.stockQty <= threshold
-            matchesQuery && matchesStock
+            val matchesBatch = allowedIds?.contains(item.id) != false
+            matchesQuery && matchesStock && matchesBatch
         }
     }
 }

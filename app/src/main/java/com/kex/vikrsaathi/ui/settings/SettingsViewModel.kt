@@ -66,6 +66,20 @@ class SettingsViewModel(
         _lowStockThreshold.value = repository.lowStockThreshold
     }
 
+    fun saveBatchTracking(enabled: Boolean) {
+        repository.batchTrackingEnabled = enabled
+    }
+
+    fun saveExpiryAlertDays(days: Int) {
+        repository.expiryAlertDays = days
+    }
+
+    val batchTrackingEnabled: Boolean
+        get() = repository.batchTrackingEnabled
+
+    val expiryAlertDays: Int
+        get() = repository.expiryAlertDays
+
     fun saveInvoiceConfig(
         prefix: String,
         suffix: String,

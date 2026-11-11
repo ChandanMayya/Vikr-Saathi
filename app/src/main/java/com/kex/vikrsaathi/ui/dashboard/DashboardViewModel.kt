@@ -7,7 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.data.model.DashboardPeriodStats
 import com.kex.vikrsaathi.domain.dashboard.DashboardPeriod
+import com.kex.vikrsaathi.data.repository.BatchRepository
 import com.kex.vikrsaathi.data.repository.BillRepository
+import com.kex.vikrsaathi.data.repository.ExpiryAlert
 import com.kex.vikrsaathi.data.repository.CustomerFinanceRepository
 import com.kex.vikrsaathi.data.repository.InventoryRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
@@ -30,7 +32,8 @@ class DashboardViewModel(
     private val billRepository: BillRepository,
     private val inventoryRepository: InventoryRepository,
     private val customerFinanceRepository: CustomerFinanceRepository,
-    private val vendorRepository: VendorRepository
+    private val vendorRepository: VendorRepository,
+    private val batches: BatchRepository? = null
 ) : ViewModel() {
 
     private val _shopName = MutableLiveData<String>()
@@ -48,6 +51,9 @@ class DashboardViewModel(
 
     private val _lowStock = MutableLiveData(LowStockSummary(0, emptyList()))
     val lowStock: LiveData<LowStockSummary> = _lowStock
+
+    private val _expiryAlerts = MutableLiveData<List<ExpiryAlert>>(emptyList())
+    val expiryAlerts: LiveData<List<ExpiryAlert>> = _expiryAlerts
 
     private val _customerDuesPaise = MutableLiveData(0L)
     val customerDuesPaise: LiveData<Long> = _customerDuesPaise
@@ -88,6 +94,7 @@ class DashboardViewModel(
             _orderAttentionCount.value = if (settingsRepository.orderManagementEnabled) {
                 vendorRepository.purchasingAttentionCount()
             } else 0
+            _expiryAlerts.value = batches?.alerts().orEmpty()
             _loading.value = false
         }
     }

@@ -273,6 +273,10 @@
             android:name="focusItemName"
             android:defaultValue=""
             app:argType="string" />
+        <argument
+            android:name="batchFilter"
+            android:defaultValue=""
+            app:argType="string" />
         <action
             android:id="@+id/action_stock_to_inventory_import"
             app:destination="@id/inventoryImportFragment"

@@ -47,6 +47,9 @@ class ItemViewModel(
                     repository.update(
                         sanitized.copy(stockQty = existing?.stockQty ?: sanitized.stockQty)
                     )
+                    if (sanitized.trackBatches && existing?.trackBatches != true) {
+                        inventoryRepository.reconcileTrackedItem(sanitized.id)
+                    }
                     sanitized.id
                 }
                 onResult(Result.success(id))
@@ -56,9 +59,23 @@ class ItemViewModel(
         }
     }
 
-    fun adjustStock(itemId: Long, delta: Int, note: String?, onResult: (Result<Item>) -> Unit) {
+    fun adjustStock(
+        itemId: Long,
+        request: com.kex.vikrsaathi.ui.stock.BatchAdjustRequest,
+        onResult: (Result<Item>) -> Unit
+    ) {
         viewModelScope.launch {
-            onResult(inventoryRepository.adjustStock(itemId, delta, note))
+            onResult(
+                inventoryRepository.adjustStock(
+                    itemId = itemId,
+                    delta = request.delta,
+                    note = request.note,
+                    batchId = request.batchId,
+                    lotNumber = request.lotNumber,
+                    expiryEpochDay = request.expiryEpochDay,
+                    expiryUnknown = request.expiryUnknown
+                )
+            )
         }
     }
 
