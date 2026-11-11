@@ -23,6 +23,8 @@ splashscreen = "1.0.1"
 blurview = "version-3.2.0"
 securityCrypto = "1.1.0-alpha06"
 biometric = "1.1.0"
+androidxTestCore = "1.6.1"
+robolectric = "4.14.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -51,6 +53,8 @@ androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscree
 blurview = { group = "com.github.Dimezis", name = "BlurView", version.ref = "blurview" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

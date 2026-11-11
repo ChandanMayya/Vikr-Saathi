@@ -2,7 +2,8 @@ package com.kex.vikrsaathi.data.model
 
 data class DashboardTopItem(
     val name: String,
-    val quantity: Int
+    val quantity: Int,
+    val itemId: Long? = null
 )
 
 data class DashboardTodayStats(

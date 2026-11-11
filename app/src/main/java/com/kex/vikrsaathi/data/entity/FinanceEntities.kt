@@ -139,7 +139,9 @@ data class SalesReturnLine(
     val returnId: Long,
     val itemId: Long? = null,
     val itemName: String,
-    val quantity: Int
+    val quantity: Int,
+    /** Cost copied from the original sale. Null when that sale had no recorded cost. */
+    val unitCostPaise: Long? = null
 )
 
 @Entity(tableName = "vendors", indices = [Index("name"), Index("archived")])

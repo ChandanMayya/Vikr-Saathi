@@ -143,7 +143,8 @@ class VendorRepository(
     private val purchaseDao: PurchaseDao,
     private val itemDao: ItemDao,
     private val inventoryRepository: InventoryRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val itemCostRepository: ItemCostRepository = ItemCostRepository(database)
 ) {
     suspend fun getActive(): List<Vendor> = vendorDao.getActive()
     suspend fun getAll(): List<Vendor> = vendorDao.getAll()
@@ -417,6 +418,11 @@ class VendorRepository(
             lineTotals, deliveryChargesPaise, otherChargesPaise, discountPaise
         )
         return database.withTransaction {
+            val oldLines = if (existingInvoiceId != null) {
+                purchaseDao.getInvoiceLines(existingInvoiceId)
+            } else {
+                emptyList()
+            }
             if (existingInvoiceId != null) {
                 reverseInvoiceLedger(existingInvoiceId, ReversalReason.INVOICE_EDITED)
                 purchaseDao.deleteInvoiceLines(existingInvoiceId)
@@ -455,8 +461,8 @@ class VendorRepository(
                     )
                 )
             }
-            lines.forEach { line ->
-                purchaseDao.insertInvoiceLine(
+            val savedLines = lines.map { line ->
+                val lineId = purchaseDao.insertInvoiceLine(
                     PurchaseInvoiceLine(
                         invoiceId = invoiceId,
                         itemId = line.itemId,
@@ -469,7 +475,19 @@ class VendorRepository(
                         unitsPerBundle = line.unitsPerBundle
                     )
                 )
+                PurchaseInvoiceLine(
+                    id = lineId,
+                    invoiceId = invoiceId,
+                    itemId = line.itemId,
+                    itemName = line.itemName.trim(),
+                    quantity = line.quantity,
+                    ratePaise = line.ratePaise,
+                    unitName = line.unitName.trim(),
+                    unitsPerBundle = line.unitsPerBundle,
+                    lineTotalPaise = PackMath.lineTotalPaise(line.quantity, line.ratePaise) ?: 0L
+                )
             }
+            itemCostRepository.replacePurchaseInvoice(oldLines, savedLines, invoiceDate)
             if (total != 0L) {
                 vendorDao.insertLedger(
                     VendorLedgerEntry(

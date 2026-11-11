@@ -11,9 +11,12 @@ import com.kex.vikrsaathi.data.entity.Bill
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
+import com.kex.vikrsaathi.data.repository.InsufficientStockException
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.data.repository.StockShortfall
+import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.BillsFilterHelper
 import com.kex.vikrsaathi.util.SalesImportResult
 import com.kex.vikrsaathi.util.SalesReportExcelExporter
@@ -48,18 +51,40 @@ class BillsHistoryViewModel(
         SalesReportImporter(repository, customerRepository, itemRepository)
     }
 
+    val inventoryMode: InventoryMode
+        get() = settingsRepository.inventoryMode
+
     fun search(query: String) {
         _searchQuery.value = query
     }
 
-    fun deleteBill(bill: Bill) {
-        viewModelScope.launch { repository.deleteBill(bill) }
+    fun deleteBill(bill: Bill, onError: (Throwable) -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                repository.deleteBill(bill)
+            } catch (error: Exception) {
+                onError(error)
+            }
+        }
     }
 
-    fun duplicateBill(billId: Long, onDuplicated: (Long) -> Unit) {
+    fun duplicateBill(
+        billId: Long,
+        shortageAcknowledged: Boolean = false,
+        onResult: (DuplicateBillOutcome) -> Unit
+    ) {
         viewModelScope.launch {
-            val newId = repository.duplicateBill(billId)
-            if (newId != null) onDuplicated(newId)
+            try {
+                val newId = repository.duplicateBill(billId, shortageAcknowledged)
+                onResult(
+                    if (newId == null) DuplicateBillOutcome.Missing
+                    else DuplicateBillOutcome.Created(newId)
+                )
+            } catch (error: InsufficientStockException) {
+                onResult(DuplicateBillOutcome.Shortage(error.shortfalls))
+            } catch (error: Exception) {
+                onResult(DuplicateBillOutcome.Failed(error))
+            }
         }
     }
 
@@ -156,4 +181,11 @@ class BillsHistoryViewModel(
             }
         }
     }
+}
+
+sealed class DuplicateBillOutcome {
+    data class Created(val billId: Long) : DuplicateBillOutcome()
+    data class Shortage(val shortfalls: List<StockShortfall>) : DuplicateBillOutcome()
+    data object Missing : DuplicateBillOutcome()
+    data class Failed(val error: Throwable) : DuplicateBillOutcome()
 }

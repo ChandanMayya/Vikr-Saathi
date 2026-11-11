@@ -4,15 +4,21 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.os.bundleOf
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentDashboardBinding
+import com.kex.vikrsaathi.domain.dashboard.DashboardPeriod
+import com.kex.vikrsaathi.domain.dashboard.DashboardPeriods
+import com.kex.vikrsaathi.domain.dashboard.GrossProfitCalculator
+import com.kex.vikrsaathi.domain.money.Money
 import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.util.ViewModelFactory
 import com.kex.vikrsaathi.ui.help.HelpScreen
@@ -58,21 +64,59 @@ class DashboardFragment : Fragment() {
             binding.dashboardGrid.isVisible = !loading
         }
 
-        viewModel.todayStats.observe(viewLifecycleOwner) { stats ->
-            val symbol = viewModel.currencySymbol.value.orEmpty().ifBlank { "₹" }
-            binding.textTodaySalesAmount.text =
-                PriceCalculator.formatAmount(stats.totalSales, symbol)
-            binding.textTodayBillCount.text = if (stats.billCount > 0) {
-                getString(R.string.dashboard_bills_today, stats.billCount)
-            } else {
-                getString(R.string.dashboard_bills_today_none)
+        binding.togglePeriod.check(
+            when (viewModel.selectedPeriod) {
+                DashboardPeriod.WEEK -> R.id.buttonPeriodWeek
+                DashboardPeriod.MONTH -> R.id.buttonPeriodMonth
+                DashboardPeriod.TODAY -> R.id.buttonPeriodToday
             }
+        )
+        binding.togglePeriod.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val period = when (checkedId) {
+                R.id.buttonPeriodWeek -> DashboardPeriod.WEEK
+                R.id.buttonPeriodMonth -> DashboardPeriod.MONTH
+                else -> DashboardPeriod.TODAY
+            }
+            viewModel.setPeriod(period)
+        }
+        binding.cardPeriodSales.setOnClickListener { openBillsForPeriod() }
+        binding.topItemsChart.onItemClick = { item -> openBillsForPeriod(item.name) }
+        binding.buttonProfitInfo.setOnClickListener {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.dashboard_gross_profit)
+                .setMessage(R.string.dashboard_profit_help)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+        }
+        lowStockAdapter.onClick = { row ->
+            findNavController().navigate(
+                R.id.action_dashboard_to_stock,
+                bundleOf("focusItemId" to row.itemId, "focusItemName" to row.name)
+            )
+        }
+
+        viewModel.periodStats.observe(viewLifecycleOwner) { stats ->
+            if (stats == null) return@observe
+            val symbol = viewModel.currencySymbol.value.orEmpty().ifBlank { "₹" }
+            binding.textPeriodRange.text = DashboardPeriods.formatRange(stats.window)
+            binding.textTodaySalesAmount.text = PriceCalculator.formatAmount(stats.totalSales, symbol)
+            binding.textTodayBillCount.text = resources.getQuantityString(
+                R.plurals.dashboard_bill_count,
+                stats.billCount,
+                stats.billCount
+            )
+            val average = if (stats.billCount == 0) 0.0 else stats.totalSales / stats.billCount
+            binding.textAverageBill.text = getString(
+                R.string.dashboard_avg_bill,
+                PriceCalculator.formatAmount(average, symbol)
+            )
+            renderComparison(stats, symbol)
+            renderProfit(stats, symbol)
             val hasTopItems = stats.topItems.isNotEmpty()
             binding.topItemsChart.isVisible = hasTopItems
             binding.textTopItemsEmpty.isVisible = !hasTopItems
-            if (hasTopItems) {
-                binding.topItemsChart.setItems(stats.topItems)
-            }
+            if (hasTopItems) binding.topItemsChart.setItems(stats.topItems)
         }
 
         viewModel.customerDuesPaise.observe(viewLifecycleOwner) { paise ->
@@ -201,6 +245,95 @@ class DashboardFragment : Fragment() {
                 width = toolIcon
                 height = toolIcon
             }
+        }
+    }
+
+    private fun openBillsForPeriod(itemName: String = "") {
+        val stats = viewModel.periodStats.value ?: return
+        findNavController().navigate(
+            R.id.action_dashboard_to_bills_history,
+            bundleOf(
+                "rangeStart" to stats.window.startInclusive,
+                "rangeEnd" to stats.window.endExclusive,
+                "itemName" to itemName
+            )
+        )
+    }
+
+    private fun renderComparison(
+        stats: com.kex.vikrsaathi.data.model.DashboardPeriodStats,
+        symbol: String
+    ) {
+        val comparison = stats.comparison
+        val versus = when (stats.period) {
+            DashboardPeriod.TODAY -> getString(R.string.dashboard_vs_yesterday)
+            DashboardPeriod.WEEK -> getString(R.string.dashboard_vs_previous_week)
+            DashboardPeriod.MONTH -> getString(R.string.dashboard_vs_previous_period)
+        }
+        val text: String
+        val color: Int
+        when {
+            comparison.previousSales == 0.0 && comparison.currentSales == 0.0 -> {
+                text = getString(R.string.dashboard_no_sales_either, versus)
+                color = R.color.text_secondary_dark
+            }
+            comparison.salesPercent == null -> {
+                text = getString(R.string.dashboard_no_prior_sales, versus)
+                color = R.color.text_secondary_dark
+            }
+            else -> {
+                val arrow = when {
+                    comparison.salesDelta > 0.0 -> "↑"
+                    comparison.salesDelta < 0.0 -> "↓"
+                    else -> "→"
+                }
+                val percent = kotlin.math.abs(comparison.salesPercent)
+                val percentText = if (percent % 1.0 < 0.05 || percent % 1.0 > 0.95) {
+                    String.format(java.util.Locale.getDefault(), "%.0f%%", percent)
+                } else {
+                    String.format(java.util.Locale.getDefault(), "%.1f%%", percent)
+                }
+                text = getString(
+                    R.string.dashboard_comparison,
+                    arrow,
+                    PriceCalculator.formatAmount(kotlin.math.abs(comparison.salesDelta), symbol),
+                    percentText,
+                    versus
+                )
+                color = when {
+                    comparison.salesDelta > 0.0 -> R.color.balance_receivable
+                    comparison.salesDelta < 0.0 -> R.color.balance_payable
+                    else -> R.color.text_secondary_dark
+                }
+            }
+        }
+        binding.textSalesComparison.text = text
+        binding.textSalesComparison.setTextColor(requireContext().getColor(color))
+    }
+
+    private fun renderProfit(
+        stats: com.kex.vikrsaathi.data.model.DashboardPeriodStats,
+        symbol: String
+    ) {
+        val profit = stats.profit
+        if (profit.coverage != GrossProfitCalculator.Coverage.COMPLETE || profit.profitPaise == null) {
+            binding.textGrossProfit.text = getString(R.string.dashboard_cost_incomplete)
+            binding.textProfitDetail.text = getString(
+                R.string.dashboard_cost_incomplete_detail,
+                profit.uncoveredUnits
+            )
+            return
+        }
+        val rupees = Money.paiseToRupees(profit.profitPaise)
+        binding.textGrossProfit.text = PriceCalculator.formatAmount(rupees, symbol)
+        val margin = profit.marginPercent
+        binding.textProfitDetail.text = if (margin == null) {
+            getString(R.string.dashboard_profit_no_margin)
+        } else {
+            getString(
+                R.string.dashboard_profit_margin,
+                String.format(java.util.Locale.getDefault(), "%.1f", margin)
+            )
         }
     }
 

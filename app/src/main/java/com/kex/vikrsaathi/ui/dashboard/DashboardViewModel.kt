@@ -5,7 +5,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kex.vikrsaathi.data.entity.Item
-import com.kex.vikrsaathi.data.model.DashboardTodayStats
+import com.kex.vikrsaathi.data.model.DashboardPeriodStats
+import com.kex.vikrsaathi.domain.dashboard.DashboardPeriod
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.CustomerFinanceRepository
 import com.kex.vikrsaathi.data.repository.InventoryRepository
@@ -14,6 +15,7 @@ import com.kex.vikrsaathi.data.repository.VendorRepository
 import kotlinx.coroutines.launch
 
 data class LowStockRow(
+    val itemId: Long,
     val name: String,
     val stockQty: Int
 )
@@ -37,8 +39,12 @@ class DashboardViewModel(
     private val _currencySymbol = MutableLiveData("₹")
     val currencySymbol: LiveData<String> = _currencySymbol
 
-    private val _todayStats = MutableLiveData(DashboardTodayStats.EMPTY)
-    val todayStats: LiveData<DashboardTodayStats> = _todayStats
+    private var period: DashboardPeriod = DashboardPeriod.TODAY
+
+    private val _periodStats = MutableLiveData<DashboardPeriodStats?>(null)
+    val periodStats: LiveData<DashboardPeriodStats?> = _periodStats
+
+    val selectedPeriod: DashboardPeriod get() = period
 
     private val _lowStock = MutableLiveData(LowStockSummary(0, emptyList()))
     val lowStock: LiveData<LowStockSummary> = _lowStock
@@ -55,17 +61,23 @@ class DashboardViewModel(
     private val _loading = MutableLiveData(false)
     val loading: LiveData<Boolean> = _loading
 
+    fun setPeriod(value: DashboardPeriod) {
+        if (period == value && _periodStats.value != null) return
+        period = value
+        refresh()
+    }
+
     fun refresh() {
         viewModelScope.launch {
             _loading.value = true
             _shopName.value = settingsRepository.shopName
             _currencySymbol.value = settingsRepository.currencySymbol
-            _todayStats.value = billRepository.getDashboardTodayStats()
+            _periodStats.value = billRepository.getDashboardPeriodStats(period)
             val threshold = settingsRepository.lowStockThreshold
             val lowItems: List<Item> = inventoryRepository.getLowStockItems(threshold)
             _lowStock.value = LowStockSummary(
                 count = lowItems.size,
-                items = lowItems.take(5).map { LowStockRow(it.name, it.stockQty) }
+                items = lowItems.take(5).map { LowStockRow(it.id, it.name, it.stockQty) }
             )
             _customerDuesPaise.value = if (settingsRepository.customerBalanceEnabled) {
                 customerFinanceRepository.totalReceivablePaise()

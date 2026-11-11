@@ -44,6 +44,11 @@ class SettingsRepository(context: Context) {
         get() = prefs.getInt(KEY_LOW_STOCK_THRESHOLD, DEFAULT_LOW_STOCK_THRESHOLD).coerceAtLeast(0)
         set(value) = prefs.edit().putInt(KEY_LOW_STOCK_THRESHOLD, value.coerceAtLeast(0)).apply()
 
+    /** 0 means no operator is selected. Bill edits then record "This device". */
+    var selectedOperatorId: Long
+        get() = prefs.getLong(KEY_OPERATOR_ID, 0L)
+        set(value) = prefs.edit().putLong(KEY_OPERATOR_ID, value).apply()
+
     /** When false, payment and ledger screens are hidden. Stored rows are kept. */
     var customerBalanceEnabled: Boolean
         get() = prefs.getBoolean(KEY_CUSTOMER_BALANCE, true)
@@ -134,6 +139,7 @@ class SettingsRepository(context: Context) {
         defaultDiscount = 0.0
         inventoryMode = InventoryMode.WARN
         lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD
+        selectedOperatorId = 0L
         customerBalanceEnabled = true
         vendorManagementEnabled = true
         orderManagementEnabled = true
@@ -215,6 +221,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_INVENTORY_MODE = "inventory_mode"
         private const val KEY_LOW_STOCK_THRESHOLD = "low_stock_threshold"
+        private const val KEY_OPERATOR_ID = "selected_operator_id"
         private const val KEY_CUSTOMER_BALANCE = "customer_balance_enabled"
         private const val KEY_VENDOR_MANAGEMENT = "vendor_management_enabled"
         private const val KEY_ORDER_MANAGEMENT = "order_management_enabled"

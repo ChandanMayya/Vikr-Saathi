@@ -13,8 +13,11 @@ data class BackupSaveResult(
     val fileName: String,
     val displayPath: String,
     private val contentUri: Uri?,
-    private val legacyFile: File?
+    private val legacyFile: File?,
+    val sizeBytes: Long = 0L
 ) {
+    val contentUriString: String? get() = contentUri?.toString()
+    val legacyPath: String? get() = legacyFile?.absolutePath
     fun shareUri(context: Context): Uri? {
         contentUri?.let { return it }
         val file = legacyFile ?: return null

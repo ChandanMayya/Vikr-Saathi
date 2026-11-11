@@ -10,6 +10,8 @@ import com.kex.vikrsaathi.databinding.ItemDashboardLowStockBinding
 class LowStockAdapter :
     ListAdapter<LowStockRow, LowStockAdapter.ViewHolder>(DiffCallback()) {
 
+    var onClick: ((LowStockRow) -> Unit)? = null
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemDashboardLowStockBinding.inflate(
             LayoutInflater.from(parent.context),
@@ -23,18 +25,19 @@ class LowStockAdapter :
         holder.bind(getItem(position))
     }
 
-    class ViewHolder(
+    inner class ViewHolder(
         private val binding: ItemDashboardLowStockBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(row: LowStockRow) {
             binding.textLowStockItemName.text = row.name
             binding.textLowStockItemQty.text = row.stockQty.toString()
+            binding.root.setOnClickListener { onClick?.invoke(row) }
         }
     }
 
     private class DiffCallback : DiffUtil.ItemCallback<LowStockRow>() {
         override fun areItemsTheSame(oldItem: LowStockRow, newItem: LowStockRow): Boolean =
-            oldItem.name == newItem.name && oldItem.stockQty == newItem.stockQty
+            oldItem.itemId == newItem.itemId
 
         override fun areContentsTheSame(oldItem: LowStockRow, newItem: LowStockRow): Boolean =
             oldItem == newItem

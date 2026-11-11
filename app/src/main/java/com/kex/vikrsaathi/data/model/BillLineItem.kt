@@ -19,7 +19,8 @@ data class BillLineItem(
     val openingStock: Int? = null,
     val barcode: String? = null,
     /** Stable row identity. Unsaved catalog items have no [itemId] yet. */
-    val lineKey: String = ""
+    val lineKey: String = "",
+    val unitCostPaise: Long? = null
 ) {
     val unitPriceAfterDiscount: Double
         get() = PriceCalculator.priceAfterDiscount(mrp, discount)

@@ -10,6 +10,9 @@ import com.kex.vikrsaathi.data.database.AppDatabase
 import com.kex.vikrsaathi.data.entity.Bill
 import com.kex.vikrsaathi.data.entity.BillItem
 import com.kex.vikrsaathi.data.entity.BillPayment
+import com.kex.vikrsaathi.data.entity.BillVersion
+import com.kex.vikrsaathi.data.entity.BillVersionItem
+import com.kex.vikrsaathi.data.entity.BillVersionPayment
 import com.kex.vikrsaathi.data.entity.CustomerLedgerEntry
 import com.kex.vikrsaathi.domain.finance.BillLedgerPlanner
 import com.kex.vikrsaathi.domain.finance.BillPaymentRequest
@@ -24,11 +27,20 @@ import com.kex.vikrsaathi.domain.finance.PaymentSplitValidator
 import com.kex.vikrsaathi.domain.finance.ReversalReason
 import com.kex.vikrsaathi.domain.money.Money
 import com.kex.vikrsaathi.data.model.BillLineItem
+import com.kex.vikrsaathi.data.model.BillVersionDetails
 import com.kex.vikrsaathi.data.model.BillWithDetails
-import com.kex.vikrsaathi.data.model.DashboardTodayStats
+import com.kex.vikrsaathi.data.model.DashboardPeriodStats
 import com.kex.vikrsaathi.data.model.DashboardTopItem
+import com.kex.vikrsaathi.domain.bill.BillVersionDiffer
+import com.kex.vikrsaathi.domain.bill.OperatorLabels
+import com.kex.vikrsaathi.domain.dashboard.DashboardPeriod
+import com.kex.vikrsaathi.domain.dashboard.DashboardPeriods
+import com.kex.vikrsaathi.domain.dashboard.GrossProfitCalculator
+import com.kex.vikrsaathi.domain.dashboard.PeriodComparison
+import com.kex.vikrsaathi.data.entity.CostSourceType
 import com.kex.vikrsaathi.domain.inventory.StockDeltaCalculator
-import com.kex.vikrsaathi.util.DayRange
+import com.kex.vikrsaathi.domain.inventory.StockPolicy
+import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.InvoiceNumberFormatter
 
 class BillRepository(
@@ -38,7 +50,10 @@ class BillRepository(
     private val billPaymentDao: BillPaymentDao,
     private val customerLedgerDao: CustomerLedgerDao,
     private val settingsRepository: SettingsRepository,
-    private val inventoryRepository: InventoryRepository
+    private val inventoryRepository: InventoryRepository,
+    private val clock: () -> Long = { System.currentTimeMillis() },
+    private val itemCostRepository: ItemCostRepository = ItemCostRepository(database),
+    private val operatorRepository: OperatorRepository = OperatorRepository(database, settingsRepository)
 ) {
 
     val allBills: LiveData<List<Bill>> = billDao.getAllBills()
@@ -53,6 +68,9 @@ class BillRepository(
 
     suspend fun deleteBill(bill: Bill) {
         database.withTransaction {
+            if (database.billVersionDao().countForBill(bill.id) > 0) {
+                throw BillHistoryRetainedException(bill.id)
+            }
             val items = billItemDao.getItemsForBill(bill.id)
             val quantities = StockDeltaCalculator.aggregateQuantities(
                 items.map { it.itemId to it.quantity }
@@ -67,6 +85,7 @@ class BillRepository(
             )
             insertPlan(plan, bill.date)
             customerLedgerDao.deleteAllocationsForBill(bill.id)
+            restoreKnownCosts(items, CostSourceType.SALE_REVERSAL, bill.id)
             billItemDao.deleteItemsForBill(bill.id)
             billDao.deleteBill(bill)
             inventoryRepository.reverseBillStock(bill.id, quantities)
@@ -78,7 +97,8 @@ class BillRepository(
         lineItems: List<BillLineItem>,
         billRoundOff: Double = 0.0,
         existingBillId: Long? = null,
-        payment: BillPaymentRequest = BillPaymentRequest.LeaveUnchanged
+        payment: BillPaymentRequest = BillPaymentRequest.LeaveUnchanged,
+        shortageAcknowledged: Boolean = false
     ): Long {
         val subtotal = BillTotalsCalculator.lineItemsSubtotal(lineItems)
         val total = subtotal + billRoundOff
@@ -86,30 +106,90 @@ class BillRepository(
             val billId: Long
             val oldQuantities: Map<Long, Int>
             val previousCustomerId: Long?
-            val billDate: Long
+            val ledgerAt: Long
 
             if (existingBillId != null) {
                 val existing = billDao.getBillById(existingBillId)
-                    ?: return@withTransaction saveBill(customerId, lineItems, billRoundOff, null, payment)
+                    ?: return@withTransaction saveBill(
+                        customerId,
+                        lineItems,
+                        billRoundOff,
+                        null,
+                        payment,
+                        shortageAcknowledged
+                    )
+                val priorItems = billItemDao.getItemsForBill(existingBillId)
+                val priorPayments = billPaymentDao.getForBill(existingBillId)
                 oldQuantities = StockDeltaCalculator.aggregateQuantities(
-                    billItemDao.getItemsForBill(existingBillId).map { it.itemId to it.quantity }
+                    priorItems.map { it.itemId to it.quantity }
                 )
+                enforceStock(lineItems, existingBillId, oldQuantities, shortageAcknowledged)
+                val priorCount = database.billVersionDao().countForBill(existingBillId)
+                val previousState = if (priorCount == 0) {
+                    stateOf(existing, priorItems, priorPayments)
+                } else {
+                    val latest = database.billVersionDao().getVersionsForBill(existingBillId).first()
+                    stateOfVersion(latest)
+                }
+                if (priorCount == 0) {
+                    insertVersionSnapshot(
+                        bill = existing,
+                        items = priorItems,
+                        payments = priorPayments,
+                        versionNumber = 1,
+                        createdAt = existing.date,
+                        changeSummary = BillVersionDiffer.ORIGINAL_SALE,
+                        actorLabel = OperatorLabels.THIS_DEVICE
+                    )
+                }
+                restoreKnownCosts(priorItems, CostSourceType.SALE_REVERSAL, existingBillId)
                 previousCustomerId = existing.customerId
-                billDate = System.currentTimeMillis()
+                ledgerAt = clock()
                 billId = existingBillId
                 billDao.updateBill(
                     existing.copy(
                         customerId = customerId,
                         total = total,
-                        roundOff = billRoundOff,
-                        date = billDate
+                        roundOff = billRoundOff
                     )
                 )
                 billItemDao.deleteItemsForBill(existingBillId)
+                billItemDao.insertAll(lineItems.toPricedBillItems(billId))
+                inventoryRepository.applyBillStockChanges(
+                    billId = billId,
+                    oldQuantities = oldQuantities,
+                    newLineItems = lineItems
+                )
+                applyPayment(
+                    billId = billId,
+                    customerId = customerId,
+                    previousCustomerId = previousCustomerId,
+                    total = total,
+                    billDate = ledgerAt,
+                    payment = payment
+                )
+                val stored = billDao.getBillById(billId) ?: existing
+                val newItems = billItemDao.getItemsForBill(billId)
+                val newPayments = billPaymentDao.getForBill(billId)
+                val summary = BillVersionDiffer.summarize(
+                    before = previousState,
+                    after = stateOf(stored, newItems, newPayments),
+                    currencySymbol = settingsRepository.currencySymbol
+                )
+                insertVersionSnapshot(
+                    bill = stored,
+                    items = newItems,
+                    payments = newPayments,
+                    versionNumber = database.billVersionDao().maxVersionNumber(billId) + 1,
+                    createdAt = ledgerAt,
+                    changeSummary = summary,
+                    actorLabel = operatorRepository.actorLabel()
+                )
             } else {
                 oldQuantities = emptyMap()
                 previousCustomerId = null
-                billDate = System.currentTimeMillis()
+                enforceStock(lineItems, null, oldQuantities, shortageAcknowledged)
+                ledgerAt = clock()
                 val (billNumber, counter) = generateNextInvoiceNumber()
                 val bill = Bill(
                     billNumber = billNumber,
@@ -117,41 +197,119 @@ class BillRepository(
                     customerId = customerId,
                     total = total,
                     roundOff = billRoundOff,
-                    date = billDate
+                    date = ledgerAt
                 )
                 billId = billDao.insertBill(bill)
-            }
-
-            billItemDao.insertAll(lineItems.map { line ->
-                BillItem(
+                billItemDao.insertAll(lineItems.toPricedBillItems(billId))
+                inventoryRepository.applyBillStockChanges(
                     billId = billId,
-                    itemId = line.itemId,
-                    itemName = line.name,
-                    quantity = line.quantity,
-                    mrp = line.mrp,
-                    discount = line.discount,
-                    finalPrice = line.unitPriceAfterDiscount,
-                    roundOff = line.roundOff
+                    oldQuantities = oldQuantities,
+                    newLineItems = lineItems
                 )
-            })
-            inventoryRepository.applyBillStockChanges(
-                billId = billId,
-                oldQuantities = oldQuantities,
-                newLineItems = lineItems
-            )
-            applyPayment(
-                billId = billId,
-                customerId = customerId,
-                previousCustomerId = previousCustomerId,
-                total = total,
-                billDate = billDate,
-                payment = payment
-            )
+                applyPayment(
+                    billId = billId,
+                    customerId = customerId,
+                    previousCustomerId = previousCustomerId,
+                    total = total,
+                    billDate = ledgerAt,
+                    payment = payment
+                )
+            }
             billId
         }
     }
 
-    suspend fun duplicateBill(billId: Long): Long? {
+    /**
+     * Stores the untouched bill as v1 before later edits mutate the customer or lines.
+     * A bill that already has snapshots is left unchanged.
+     */
+    suspend fun preserveLegacyVersionIfNeeded(billId: Long) {
+        database.withTransaction {
+            if (database.billVersionDao().countForBill(billId) > 0) return@withTransaction
+            val existing = billDao.getBillById(billId) ?: return@withTransaction
+            insertVersionSnapshot(
+                bill = existing,
+                items = billItemDao.getItemsForBill(billId),
+                payments = billPaymentDao.getForBill(billId),
+                versionNumber = 1,
+                createdAt = existing.date,
+                changeSummary = BillVersionDiffer.ORIGINAL_SALE,
+                actorLabel = OperatorLabels.THIS_DEVICE
+            )
+        }
+    }
+
+    suspend fun displayedVersionCount(billId: Long): Int {
+        val stored = database.billVersionDao().countForBill(billId)
+        if (stored > 0) return stored
+        return if (billDao.getBillById(billId) != null) 1 else 0
+    }
+
+    /**
+     * Newest version first. A bill that has never been edited is shown as one current
+     * version taken from the live bill. That row is not written until the first edit.
+     */
+    suspend fun getVersionHistory(billId: Long): List<BillVersionDetails> {
+        val stored = database.billVersionDao().getVersionsForBill(billId)
+        if (stored.isNotEmpty()) {
+            val currentNumber = stored.maxOf { it.versionNumber }
+            return stored.map { version ->
+                BillVersionDetails(
+                    version = version,
+                    items = database.billVersionDao().getItems(version.id),
+                    payments = database.billVersionDao().getPayments(version.id),
+                    isCurrent = version.versionNumber == currentNumber
+                )
+            }
+        }
+        val live = billDao.getBillWithDetails(billId) ?: return emptyList()
+        val customer = live.customer
+        val synthetic = BillVersion(
+            billId = billId,
+            billNumber = live.bill.billNumber,
+            versionNumber = 1,
+            createdAt = live.bill.date,
+            saleDate = live.bill.date,
+            customerId = live.bill.customerId,
+            customerName = customer?.name?.trim()?.takeIf { it.isNotEmpty() } ?: BillVersionDiffer.WALK_IN,
+            customerPhone = customer?.phone?.trim().orEmpty(),
+            customerAddress = customer?.formattedAddress().orEmpty(),
+            total = live.bill.total,
+            roundOff = live.bill.roundOff,
+            paymentStatus = live.bill.paymentStatus,
+            paymentLabel = live.bill.paymentLabel,
+            changeSummary = BillVersionDiffer.ORIGINAL_SALE,
+            actorLabel = OperatorLabels.THIS_DEVICE
+        )
+        return listOf(
+            BillVersionDetails(
+                version = synthetic,
+                items = live.items.map { item ->
+                    BillVersionItem(
+                        versionId = 0,
+                        itemId = item.itemId,
+                        itemName = item.itemName,
+                        quantity = item.quantity,
+                        mrp = item.mrp,
+                        discount = item.discount,
+                        finalPrice = item.finalPrice,
+                        roundOff = item.roundOff,
+                        unitCostPaise = item.unitCostPaise
+                    )
+                },
+                payments = live.payments.map { payment ->
+                    BillVersionPayment(
+                        versionId = 0,
+                        method = payment.method,
+                        amountPaise = payment.amountPaise
+                    )
+                },
+                isCurrent = true
+            )
+        )
+    }
+
+    suspend fun duplicateBill(billId: Long, shortageAcknowledged: Boolean = false): Long? {
         val source = billDao.getBillWithDetails(billId) ?: return null
         val duplicatedLines = source.items.map { item ->
             BillLineItem(
@@ -175,24 +333,65 @@ class BillRepository(
             customerId = source.bill.customerId,
             lineItems = duplicatedLines,
             billRoundOff = source.bill.roundOff,
-            payment = request
+            payment = request,
+            shortageAcknowledged = shortageAcknowledged
         )
     }
 
     suspend fun billNumberExists(billNumber: String): Boolean =
         billDao.countByBillNumber(billNumber) > 0
 
-    suspend fun getDashboardTodayStats(): DashboardTodayStats {
-        val (start, end) = DayRange.todayMillis()
-        val total = billDao.getTotalSalesBetween(start, end)
-        val billCount = billDao.getBillCountBetween(start, end)
-        val topItems = billDao.getTopSoldItemsBetween(start, end).map { row ->
-            DashboardTopItem(name = row.itemName, quantity = row.totalQuantity)
+    suspend fun getDashboardPeriodStats(
+        period: DashboardPeriod,
+        nowMillis: Long = clock()
+    ): DashboardPeriodStats {
+        val zone = java.util.TimeZone.getDefault()
+        val window = DashboardPeriods.current(period, nowMillis, zone)
+        val previous = DashboardPeriods.previous(window, zone)
+        val total = billDao.getTotalSalesBetween(window.startInclusive, window.endExclusive)
+        val billCount = billDao.getBillCountBetween(window.startInclusive, window.endExclusive)
+        val previousTotal = billDao.getTotalSalesBetween(previous.startInclusive, previous.endExclusive)
+        val previousCount = billDao.getBillCountBetween(previous.startInclusive, previous.endExclusive)
+        val topItems = billDao.getTopSoldItemsBetween(window.startInclusive, window.endExclusive).map { row ->
+            DashboardTopItem(name = row.itemName, quantity = row.totalQuantity, itemId = row.itemId)
         }
-        return DashboardTodayStats(
+        val bills = billDao.getAllBillsWithDetailsSync().filter { details ->
+            details.bill.date >= window.startInclusive && details.bill.date < window.endExclusive
+        }
+        val returnLines = database.customerLedgerDao().getAllReturnLines().groupBy { it.returnId }
+        val returns = database.customerLedgerDao().getAllReturns()
+            .filter { it.occurredAt >= window.startInclusive && it.occurredAt < window.endExclusive }
+            .map { entry ->
+                GrossProfitCalculator.ReturnSlice(
+                    refundPaise = entry.moneyRefundedPaise + entry.creditAdjustmentPaise,
+                    lines = returnLines[entry.id].orEmpty().map { line ->
+                        GrossProfitCalculator.SaleSlice(
+                            revenuePaise = 0L,
+                            quantity = line.quantity,
+                            unitCostPaise = line.unitCostPaise
+                        )
+                    }
+                )
+            }
+        val sales = bills.flatMap { details ->
+            details.items.map { item ->
+                GrossProfitCalculator.SaleSlice(
+                    revenuePaise = Money.rupeesToPaise(item.finalPrice * item.quantity + item.roundOff),
+                    quantity = item.quantity,
+                    unitCostPaise = item.unitCostPaise
+                )
+            }
+        }
+        val roundOff = bills.sumOf { Money.rupeesToPaise(it.bill.roundOff) }
+        return DashboardPeriodStats(
+            period = period,
+            window = window,
+            previousWindow = previous,
             totalSales = total,
             billCount = billCount,
-            topItems = topItems
+            comparison = PeriodComparison.of(total, previousTotal, billCount, previousCount),
+            topItems = topItems,
+            profit = GrossProfitCalculator.calculate(sales, roundOff, returns)
         )
     }
 
@@ -232,7 +431,8 @@ class BillRepository(
                 mrp = line.mrp,
                 discount = line.discount,
                 finalPrice = line.unitPriceAfterDiscount,
-                roundOff = line.roundOff
+                roundOff = line.roundOff,
+                unitCostPaise = line.unitCostPaise
             )
         })
         payments.forEach { portion ->
@@ -246,6 +446,27 @@ class BillRepository(
             settingsRepository.invoiceCounter = maxOf(settingsRepository.invoiceCounter, dbMax + 1)
         }
         return billId
+    }
+
+    suspend fun importVersionHistory(billId: Long, versions: List<BillVersionDetails>) {
+        if (versions.isEmpty()) return
+        database.withTransaction {
+            versions.sortedBy { it.version.versionNumber }.forEach { details ->
+                val versionId = database.billVersionDao().insertVersion(
+                    details.version.copy(id = 0, billId = billId)
+                )
+                if (details.items.isNotEmpty()) {
+                    database.billVersionDao().insertItems(
+                        details.items.map { it.copy(id = 0, versionId = versionId) }
+                    )
+                }
+                if (details.payments.isNotEmpty()) {
+                    database.billVersionDao().insertPayments(
+                        details.payments.map { it.copy(id = 0, versionId = versionId) }
+                    )
+                }
+            }
+        }
     }
 
     private suspend fun applyPayment(
@@ -342,6 +563,171 @@ class BillRepository(
             )
         }
     }
+
+    private suspend fun enforceStock(
+        lineItems: List<BillLineItem>,
+        existingBillId: Long?,
+        oldQuantities: Map<Long, Int>,
+        shortageAcknowledged: Boolean
+    ) {
+        if (settingsRepository.inventoryMode == InventoryMode.OFF) return
+        val shortfalls = inventoryRepository.findShortfalls(
+            lineItems = lineItems,
+            existingBillId = existingBillId,
+            oldBillQuantities = oldQuantities
+        )
+        if (StockPolicy.blocksSave(
+                settingsRepository.inventoryMode,
+                shortfalls.isNotEmpty(),
+                shortageAcknowledged
+            )
+        ) {
+            throw InsufficientStockException(shortfalls)
+        }
+    }
+
+    private suspend fun insertVersionSnapshot(
+        bill: Bill,
+        items: List<BillItem>,
+        payments: List<BillPayment>,
+        versionNumber: Int,
+        createdAt: Long,
+        changeSummary: String,
+        actorLabel: String
+    ) {
+        val customer = bill.customerId?.let { database.customerDao().getCustomerById(it) }
+        val versionId = database.billVersionDao().insertVersion(
+            BillVersion(
+                billId = bill.id,
+                billNumber = bill.billNumber,
+                versionNumber = versionNumber,
+                createdAt = createdAt,
+                saleDate = bill.date,
+                customerId = bill.customerId,
+                customerName = customer?.name?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: BillVersionDiffer.WALK_IN,
+                customerPhone = customer?.phone?.trim().orEmpty(),
+                customerAddress = customer?.formattedAddress().orEmpty(),
+                total = bill.total,
+                roundOff = bill.roundOff,
+                paymentStatus = bill.paymentStatus,
+                paymentLabel = bill.paymentLabel,
+                changeSummary = changeSummary,
+                actorLabel = actorLabel
+            )
+        )
+        if (items.isNotEmpty()) {
+            database.billVersionDao().insertItems(
+                items.map { item ->
+                    BillVersionItem(
+                        versionId = versionId,
+                        itemId = item.itemId,
+                        itemName = item.itemName,
+                        quantity = item.quantity,
+                        mrp = item.mrp,
+                        discount = item.discount,
+                        finalPrice = item.finalPrice,
+                        roundOff = item.roundOff,
+                        unitCostPaise = item.unitCostPaise
+                    )
+                }
+            )
+        }
+        if (payments.isNotEmpty()) {
+            database.billVersionDao().insertPayments(
+                payments.map { payment ->
+                    BillVersionPayment(
+                        versionId = versionId,
+                        method = payment.method,
+                        amountPaise = payment.amountPaise
+                    )
+                }
+            )
+        }
+    }
+
+    private suspend fun stateOf(
+        bill: Bill,
+        items: List<BillItem>,
+        payments: List<BillPayment>
+    ): BillVersionDiffer.State {
+        val customer = bill.customerId?.let { database.customerDao().getCustomerById(it) }
+        return BillVersionDiffer.State(
+            customerName = customer?.name?.trim()?.takeIf { it.isNotEmpty() } ?: BillVersionDiffer.WALK_IN,
+            customerPhone = customer?.phone?.trim().orEmpty(),
+            customerAddress = customer?.formattedAddress().orEmpty(),
+            roundOff = bill.roundOff,
+            lines = items.map { it.toLineSnap() },
+            payments = payments.map { BillVersionDiffer.PaymentSnap(it.method, it.amountPaise) }
+        )
+    }
+
+    private suspend fun stateOfVersion(version: BillVersion): BillVersionDiffer.State {
+        val items = database.billVersionDao().getItems(version.id)
+        val payments = database.billVersionDao().getPayments(version.id)
+        return BillVersionDiffer.State(
+            customerName = version.customerName,
+            customerPhone = version.customerPhone,
+            customerAddress = version.customerAddress,
+            roundOff = version.roundOff,
+            lines = items.map { item ->
+                BillVersionDiffer.LineSnap(
+                    itemId = item.itemId,
+                    name = item.itemName,
+                    quantity = item.quantity,
+                    mrp = item.mrp,
+                    discount = item.discount,
+                    finalPrice = item.finalPrice,
+                    roundOff = item.roundOff
+                )
+            },
+            payments = payments.map { BillVersionDiffer.PaymentSnap(it.method, it.amountPaise) }
+        )
+    }
+
+    private fun List<BillLineItem>.toBillItems(billId: Long): List<BillItem> = map { line ->
+        BillItem(
+            billId = billId,
+            itemId = line.itemId,
+            itemName = line.name,
+            quantity = line.quantity,
+            mrp = line.mrp,
+            discount = line.discount,
+            finalPrice = line.unitPriceAfterDiscount,
+            roundOff = line.roundOff,
+            unitCostPaise = line.unitCostPaise
+        )
+    }
+
+    private suspend fun List<BillLineItem>.toPricedBillItems(billId: Long): List<BillItem> {
+        return map { line ->
+            val cost = line.itemId?.let { itemId ->
+                itemCostRepository.consume(itemId, line.quantity)
+            }
+            line.copy(unitCostPaise = cost).let { priced ->
+                listOf(priced).toBillItems(billId).single()
+            }
+        }
+    }
+
+    private suspend fun restoreKnownCosts(items: List<BillItem>, sourceType: String, sourceId: Long) {
+        val at = clock()
+        items.forEach { item ->
+            val itemId = item.itemId ?: return@forEach
+            val cost = item.unitCostPaise ?: return@forEach
+            itemCostRepository.restore(itemId, item.quantity, cost, sourceType, sourceId, at)
+        }
+    }
+
+    private fun BillItem.toLineSnap() = BillVersionDiffer.LineSnap(
+        itemId = itemId,
+        name = itemName,
+        quantity = quantity,
+        mrp = mrp,
+        discount = discount,
+        finalPrice = finalPrice,
+        roundOff = roundOff
+    )
 
     private suspend fun generateNextInvoiceNumber(): Pair<String, Int> {
         val dbMax = billDao.getMaxInvoiceCounter() ?: 0

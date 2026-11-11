@@ -5,16 +5,26 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
 import com.kex.vikrsaathi.data.backup.BackupExportOptions
 import com.kex.vikrsaathi.data.backup.BackupImportResult
 import com.kex.vikrsaathi.data.backup.BackupManager
 import com.kex.vikrsaathi.data.backup.BackupManifest
+import com.kex.vikrsaathi.data.backup.ManualBackupFiles
+import com.kex.vikrsaathi.data.backup.ManualBackupRecord
+import com.kex.vikrsaathi.data.backup.ManualBackupStatus
+import com.kex.vikrsaathi.data.backup.ManualBackupStore
 import com.kex.vikrsaathi.util.BackupSaveResult
 import kotlinx.coroutines.launch
 
 class BackupViewModel(
-    private val backupManager: BackupManager
+    private val backupManager: BackupManager,
+    private val manualBackupStore: ManualBackupStore,
+    private val appContext: Context
 ) : ViewModel() {
+
+    private val _manualBackup = MutableLiveData<ManualBackupStatus>(ManualBackupStatus.None)
+    val manualBackup: LiveData<ManualBackupStatus> = _manualBackup
 
     private val _isWorking = MutableLiveData(false)
     val isWorking: LiveData<Boolean> = _isWorking
@@ -38,6 +48,14 @@ class BackupViewModel(
     val errorMessage: LiveData<String?> = _errorMessage
 
     private var pendingImportJson: String? = null
+
+    init {
+        refreshManualBackup()
+    }
+
+    fun refreshManualBackup() {
+        _manualBackup.value = ManualBackupFiles.status(appContext, manualBackupStore)
+    }
 
     fun clearExportResult() {
         _exportComplete.value = null
@@ -70,6 +88,18 @@ class BackupViewModel(
                     _progressMessage.postValue(message)
                     _progressPercent.postValue(percent)
                 }
+                manualBackupStore.save(
+                    ManualBackupRecord(
+                        exportedAt = System.currentTimeMillis(),
+                        fileName = result.fileName,
+                        displayPath = result.displayPath,
+                        categories = ManualBackupFiles.categories(options),
+                        sizeBytes = result.sizeBytes,
+                        contentUri = result.contentUriString,
+                        legacyPath = result.legacyPath
+                    )
+                )
+                _manualBackup.postValue(ManualBackupFiles.status(appContext, manualBackupStore))
                 _exportComplete.value = result
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: "Export failed"

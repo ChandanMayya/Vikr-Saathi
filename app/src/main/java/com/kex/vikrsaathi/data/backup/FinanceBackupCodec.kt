@@ -168,7 +168,12 @@ object FinanceBackupCodec {
             returnId = obj.getLong("returnLegacyId"),
             itemId = obj.optLong("itemLegacyId").takeIf { obj.has("itemLegacyId") && !obj.isNull("itemLegacyId") },
             itemName = obj.optString("itemName"),
-            quantity = obj.optInt("quantity")
+            quantity = obj.optInt("quantity"),
+            unitCostPaise = if (obj.has("unitCostPaise") && !obj.isNull("unitCostPaise")) {
+                obj.getLong("unitCostPaise")
+            } else {
+                null
+            }
         )
     }
 
@@ -448,6 +453,7 @@ object FinanceBackupCodec {
                 it.itemId?.let { id -> put("itemLegacyId", id) }
                 put("itemName", it.itemName)
                 put("quantity", it.quantity)
+                it.unitCostPaise?.let { cost -> put("unitCostPaise", cost) }
             })
         }
     }

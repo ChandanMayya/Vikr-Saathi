@@ -113,6 +113,10 @@ class ResetManager(
             if (ResetOptions.CATEGORY_SALES in sections) {
                 onProgress("Deleting sales records…", 48)
                 customerFinanceRepository.clearBillLinkedFinanceForSalesReset()
+                // Version rows restrict bill deletes. A sales reset removes them on purpose.
+                database.billVersionDao().deleteAllPayments()
+                database.billVersionDao().deleteAllItems()
+                database.billVersionDao().deleteAllVersions()
                 database.billDao().deleteAll()
             }
             if (ResetOptions.CATEGORY_CUSTOMER_BALANCES in sections) {
@@ -143,6 +147,7 @@ class ResetManager(
             if (ResetOptions.CATEGORY_SETTINGS in sections) {
                 onProgress("Resetting shop settings & branding…", 82)
                 settingsRepository.resetShopBrandingToDefaults(context)
+                database.operatorDao().deleteAll()
             }
         }
         if (ResetOptions.CATEGORY_INVOICE_CONFIG in sections) {

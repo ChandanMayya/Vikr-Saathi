@@ -4,7 +4,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import com.kex.vikrsaathi.data.repository.OperatorRepository
+import kotlinx.coroutines.launch
 import androidx.fragment.app.viewModels
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
@@ -83,6 +87,30 @@ class GeneralSettingsFragment : Fragment() {
             binding.editCurrencySymbol,
             binding.editDefaultDiscount
         )
+        val operators = OperatorRepository(
+            (requireActivity().application as VikrSaathiApp).database,
+            (requireActivity().application as VikrSaathiApp).settingsRepository
+        )
+        viewLifecycleOwner.lifecycleScope.launch {
+            val label = operators.actorLabel()
+            if (_binding != null) {
+                binding.textOperatorStatus.text = getString(R.string.operator_current, label)
+                if (label != com.kex.vikrsaathi.domain.bill.OperatorLabels.THIS_DEVICE &&
+                    binding.editOperatorName.text.isNullOrEmpty()
+                ) {
+                    binding.editOperatorName.setText(label)
+                }
+            }
+        }
+        binding.buttonSaveOperator.setOnClickListener {
+            val name = binding.editOperatorName.text?.toString().orEmpty()
+            viewLifecycleOwner.lifecycleScope.launch {
+                val label = operators.saveAndSelect(name)
+                if (_binding == null) return@launch
+                binding.textOperatorStatus.text = getString(R.string.operator_current, label)
+                Toast.makeText(requireContext(), R.string.operator_saved, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onPause() {

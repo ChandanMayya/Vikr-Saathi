@@ -1,19 +1,25 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ cloud backup and device-to-device transfer.
+
+  Cloud backup matches backup_rules.xml: shop database and app-lock secrets stay
+  off Google backup. VikrSaathi cannot report the last successful system backup.
+
+  Device transfer includes the shop database so the shop can move with the phone.
+  The PIN hash, recovery secret, and the manual-backup file pointer are excluded.
+  The new device should set its own app PIN. A manual JSON backup is still the
+  copy the user can open, share, and restore on purpose.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="vikr_saathi_app_lock.xml" />
+        <exclude domain="sharedpref" path="vikr_saathi_manual_backup.xml" />
+        <exclude domain="database" path="vikr_saathi.db" />
+        <exclude domain="database" path="vikr_saathi.db-shm" />
+        <exclude domain="database" path="vikr_saathi.db-wal" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="vikr_saathi_app_lock.xml" />
+        <exclude domain="sharedpref" path="vikr_saathi_manual_backup.xml" />
     </device-transfer>
-    -->
 </data-extraction-rules>

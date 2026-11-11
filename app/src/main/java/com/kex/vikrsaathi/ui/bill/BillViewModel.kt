@@ -16,6 +16,7 @@ import com.kex.vikrsaathi.data.repository.BillTotalsCalculator
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.BillDraftRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
+import com.kex.vikrsaathi.data.repository.InsufficientStockException
 import com.kex.vikrsaathi.data.repository.InventoryRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
@@ -77,6 +78,9 @@ class BillViewModel(
     val totalInWords: LiveData<String> = _totalInWords
 
     private var editingBillId: Long? = null
+
+    private val _versionCount = MutableLiveData(0)
+    val versionCount: LiveData<Int> = _versionCount
 
     val currencySymbol: String
         get() = settingsRepository.currencySymbol
@@ -212,6 +216,13 @@ class BillViewModel(
     }
 
     fun canHoldCurrentBill(): Boolean = _lineItems.value.orEmpty().isNotEmpty()
+
+    fun refreshVersionCount(billId: Long) {
+        if (billId <= 0L) return
+        viewModelScope.launch {
+            _versionCount.value = billRepository.displayedVersionCount(billId)
+        }
+    }
 
     fun loadBill(billId: Long) {
         viewModelScope.launch {
@@ -359,6 +370,8 @@ class BillViewModel(
         buyerAddress: String,
         buyerPhone: String,
         payment: BillPaymentRequest = BillPaymentRequest.LeaveUnchanged,
+        shortageAcknowledged: Boolean = false,
+        onStockShortage: (List<StockShortfall>) -> Unit = {},
         onError: (Throwable) -> Unit = {},
         onSaved: (Long, AutoRegisterResult) -> Unit
     ) {
@@ -371,6 +384,9 @@ class BillViewModel(
             // Room runs this block off the main thread: no LiveData writes inside.
             val outcome = try {
                 database.withTransaction {
+                    if (existingBillId != null) {
+                        billRepository.preserveLegacyVersionIfNeeded(existingBillId)
+                    }
                     val (customer, customerCreated) = resolveOrCreateCustomer(
                         existingSelected = selectedCustomer,
                         buyerName = buyerName,
@@ -383,10 +399,14 @@ class BillViewModel(
                         lineItems = resolvedLines,
                         billRoundOff = billRoundOff,
                         existingBillId = existingBillId,
-                        payment = payment
+                        payment = payment,
+                        shortageAcknowledged = shortageAcknowledged
                     )
                     SaveOutcome(id, customer, customerCreated, resolvedLines, createdItemsCount)
                 }
+            } catch (e: InsufficientStockException) {
+                onStockShortage(e.shortfalls)
+                return@launch
             } catch (e: Exception) {
                 onError(e)
                 return@launch
@@ -397,6 +417,7 @@ class BillViewModel(
                 recalculate()
             }
             editingBillId = outcome.billId
+            _versionCount.value = billRepository.displayedVersionCount(outcome.billId)
             onSaved(
                 outcome.billId,
                 AutoRegisterResult(

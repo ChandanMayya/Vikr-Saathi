@@ -14,6 +14,7 @@ import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
 import com.kex.vikrsaathi.data.repository.InventoryRepository
+import com.kex.vikrsaathi.data.repository.ItemCostRepository
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
@@ -51,6 +52,7 @@ class BackupManager(
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val fileName = "vikr_saathi_backup_$timestamp.json"
         val result = BackupStorageHelper.saveBackupJson(context, fileName, json)
+            .copy(sizeBytes = json.toByteArray(Charsets.UTF_8).size.toLong())
         onProgress("Backup complete", 100)
         result
     }
@@ -60,6 +62,9 @@ class BackupManager(
         onProgress: BackupProgressListener = { _, _ -> }
     ): String = withContext(Dispatchers.IO) {
         collectBackupPayload(options, onProgress).let { payload ->
+            val versions = if (options.includeSales) storedVersions(payload.bills) else emptyMap()
+            val operators = if (options.includeSettings) database.operatorDao().getAll() else emptyList()
+            val costLots = if (options.includeItems) database.itemCostDao().getAll() else emptyList()
             val json = BackupJsonCodec.buildBackupJson(
                 options = options,
                 settings = settingsRepository,
@@ -69,7 +74,11 @@ class BackupManager(
                 templates = payload.templates,
                 templateVersions = payload.templateVersions,
                 templateImages = payload.templateImages,
-                stockMovements = payload.stockMovements
+                stockMovements = payload.stockMovements,
+                versionsByBillId = versions,
+                operators = operators,
+                selectedOperatorId = settingsRepository.selectedOperatorId,
+                costLots = costLots
             )
             val root = JSONObject(json)
             FinanceBackupCodec.attach(root, options, payload.finance)
@@ -291,6 +300,7 @@ class BackupManager(
                     settingsRestored = true
                 }
             }
+            importOperators(root)
         }
 
         if ("invoice_config" in includes) {
@@ -384,6 +394,24 @@ class BackupManager(
                     errors.add("Stock movement: ${e.message}")
                 }
             }
+            BackupJsonCodec.parseCostLots(root).forEach { lot ->
+                val itemId = itemIdMap[lot.itemLegacyId] ?: return@forEach
+                try {
+                    ItemCostRepository(database).importLot(
+                        com.kex.vikrsaathi.data.entity.ItemCostLot(
+                            itemId = itemId,
+                            sourceType = lot.sourceType,
+                            sourceId = lot.sourceId,
+                            qtyReceived = lot.qtyReceived,
+                            qtyRemaining = lot.qtyRemaining,
+                            unitCostPaise = lot.unitCostPaise,
+                            receivedAt = lot.receivedAt
+                        )
+                    )
+                } catch (e: Exception) {
+                    errors.add("Cost lot: ${e.message}")
+                }
+            }
         }
 
         if ("templates" in includes) {
@@ -461,6 +489,7 @@ class BackupManager(
                         billsImported++
                         billIdMap[backup.legacyId] = imported
                         if (backup.payments.isNotEmpty()) billsAlreadyPaid += backup.legacyId
+                        importBillVersions(imported, backup, customerIdMap, itemIdMap)
                     }
                 } catch (e: Exception) {
                     billsSkipped++
@@ -615,5 +644,93 @@ class BackupManager(
             version = version,
             updatedAt = updatedAt
         )
+    }
+
+    private suspend fun storedVersions(
+        bills: List<com.kex.vikrsaathi.data.model.BillWithDetails>
+    ): Map<Long, List<com.kex.vikrsaathi.data.model.BillVersionDetails>> {
+        return bills.associate { details ->
+            val stored = database.billVersionDao().getVersionsForBill(details.bill.id)
+            details.bill.id to stored.map { version ->
+                com.kex.vikrsaathi.data.model.BillVersionDetails(
+                    version = version,
+                    items = database.billVersionDao().getItems(version.id),
+                    payments = database.billVersionDao().getPayments(version.id),
+                    isCurrent = false
+                )
+            }
+        }
+    }
+
+    private suspend fun importOperators(root: org.json.JSONObject) {
+        val idMap = mutableMapOf<Long, Long>()
+        BackupJsonCodec.parseOperators(root).forEach { backup ->
+            if (backup.name.isBlank()) return@forEach
+            val id = database.operatorDao().insert(
+                com.kex.vikrsaathi.data.entity.OperatorProfile(
+                    name = backup.name.trim(),
+                    createdAt = backup.createdAt
+                )
+            )
+            idMap[backup.legacyId] = id
+        }
+        val selected = BackupJsonCodec.selectedOperatorLegacyId(root)
+        if (selected > 0L) {
+            settingsRepository.selectedOperatorId = idMap[selected] ?: 0L
+        }
+    }
+
+    private suspend fun importBillVersions(
+        billId: Long,
+        backup: BillBackup,
+        customerIdMap: Map<Long, Long>,
+        itemIdMap: Map<Long, Long>
+    ) {
+        if (backup.versions.isEmpty()) return
+        val details = backup.versions.map { version ->
+            com.kex.vikrsaathi.data.model.BillVersionDetails(
+                version = com.kex.vikrsaathi.data.entity.BillVersion(
+                    billId = billId,
+                    billNumber = backup.billNumber,
+                    versionNumber = version.versionNumber,
+                    createdAt = version.createdAt,
+                    saleDate = version.saleDate,
+                    customerId = version.customerLegacyId?.let { customerIdMap[it] },
+                    customerName = version.customerName,
+                    customerPhone = version.customerPhone,
+                    customerAddress = version.customerAddress,
+                    total = version.total,
+                    roundOff = version.roundOff,
+                    paymentStatus = version.paymentStatus,
+                    paymentLabel = version.paymentLabel,
+                    changeSummary = version.changeSummary,
+                    actorLabel = version.actorLabel.ifBlank {
+                        com.kex.vikrsaathi.domain.bill.OperatorLabels.THIS_DEVICE
+                    }
+                ),
+                items = version.items.map { item ->
+                    com.kex.vikrsaathi.data.entity.BillVersionItem(
+                        versionId = 0,
+                        itemId = item.itemLegacyId?.let { itemIdMap[it] },
+                        itemName = item.itemName,
+                        quantity = item.quantity,
+                        mrp = item.mrp,
+                        discount = item.discount,
+                        finalPrice = item.finalPrice,
+                        roundOff = item.roundOff,
+                        unitCostPaise = item.unitCostPaise
+                    )
+                },
+                payments = version.payments.map { payment ->
+                    com.kex.vikrsaathi.data.entity.BillVersionPayment(
+                        versionId = 0,
+                        method = payment.method,
+                        amountPaise = payment.amountPaise
+                    )
+                },
+                isCurrent = false
+            )
+        }
+        billRepository.importVersionHistory(billId, details)
     }
 }

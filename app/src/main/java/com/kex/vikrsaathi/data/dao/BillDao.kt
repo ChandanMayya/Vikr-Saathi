@@ -91,11 +91,11 @@ interface BillDao {
 
     @Query(
         """
-        SELECT bi.itemName AS itemName, SUM(bi.quantity) AS totalQuantity
+        SELECT bi.itemId AS itemId, bi.itemName AS itemName, SUM(bi.quantity) AS totalQuantity
         FROM bill_items bi
         INNER JOIN bills b ON b.id = bi.billId
         WHERE b.date >= :startOfDay AND b.date < :endOfDay
-        GROUP BY bi.itemName
+        GROUP BY bi.itemId, bi.itemName
         ORDER BY totalQuantity DESC
         LIMIT 5
         """

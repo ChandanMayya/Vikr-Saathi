@@ -9,6 +9,7 @@ import com.kex.vikrsaathi.data.database.AppDatabase
 import com.kex.vikrsaathi.data.entity.CustomerLedgerEntry
 import com.kex.vikrsaathi.data.entity.CustomerReceipt
 import com.kex.vikrsaathi.data.entity.CustomerReceiptAllocation
+import com.kex.vikrsaathi.data.entity.CostSourceType
 import com.kex.vikrsaathi.data.entity.SalesReturn
 import com.kex.vikrsaathi.data.entity.SalesReturnLine
 import com.kex.vikrsaathi.data.entity.StockMovementType
@@ -52,7 +53,8 @@ class CustomerFinanceRepository(
     private val billDao: BillDao,
     private val billItemDao: BillItemDao,
     private val billPaymentDao: BillPaymentDao,
-    private val inventoryRepository: InventoryRepository
+    private val inventoryRepository: InventoryRepository,
+    private val itemCostRepository: ItemCostRepository = ItemCostRepository(database)
 ) {
 
     suspend fun hasLedger(customerId: Long): Boolean = ledgerDao.countForCustomer(customerId) > 0
@@ -188,15 +190,36 @@ class CustomerFinanceRepository(
                     occurredAt = occurredAt
                 )
             )
+            val billItems = billId?.let { billItemDao.getItemsForBill(it) }.orEmpty()
             stockLines.forEach { line ->
+                val matches = billItems.filter { it.itemId != null && it.itemId == line.itemId && it.quantity > 0 }
+                val unitCost = if (matches.isNotEmpty() && matches.all { it.unitCostPaise != null }) {
+                    val qty = matches.sumOf { it.quantity }
+                    val total = matches.sumOf { it.quantity * (it.unitCostPaise ?: 0L) }
+                    if (qty > 0) total / qty else null
+                } else {
+                    null
+                }
                 ledgerDao.insertReturnLine(
                     SalesReturnLine(
                         returnId = returnId,
                         itemId = line.itemId,
                         itemName = line.itemName,
-                        quantity = line.quantity
+                        quantity = line.quantity,
+                        unitCostPaise = unitCost
                     )
                 )
+                val itemIdForCost = line.itemId
+                if (itemIdForCost != null && unitCost != null) {
+                    itemCostRepository.restore(
+                        itemId = itemIdForCost,
+                        qty = line.quantity,
+                        unitCostPaise = unitCost,
+                        sourceType = CostSourceType.SALES_RETURN,
+                        sourceId = returnId,
+                        receivedAt = occurredAt
+                    )
+                }
                 val itemId = line.itemId
                 if (itemId != null && itemId > 0L) {
                     inventoryRepository.applyMovementUnchecked(

@@ -6,6 +6,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.util.TypedValue
+import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.kex.vikrsaathi.R
@@ -19,6 +20,7 @@ class TopItemsBarChartView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private var items: List<DashboardTopItem> = emptyList()
+    var onItemClick: ((DashboardTopItem) -> Unit)? = null
 
     private val barColors = intArrayOf(
         R.color.orange_700,
@@ -56,10 +58,22 @@ class TopItemsBarChartView @JvmOverloads constructor(
     private val labelColumnFraction = 0.38f
     private val qtyColumnWidthPx = (40f * resources.displayMetrics.density)
 
+    init {
+        isClickable = true
+    }
+
     fun setItems(newItems: List<DashboardTopItem>) {
         items = newItems
         requestLayout()
         invalidate()
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_UP && items.isNotEmpty()) {
+            val index = ((event.y - verticalPaddingPx) / rowHeightPx).toInt()
+            if (index in items.indices) onItemClick?.invoke(items[index])
+        }
+        return true
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

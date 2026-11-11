@@ -10,7 +10,10 @@ data class SalesReportFilter(
     val dateTo: Long? = null,
     val counterRangeEnabled: Boolean = false,
     val counterFrom: Int? = null,
-    val counterTo: Int? = null
+    val counterTo: Int? = null,
+    val forcedFrom: Long? = null,
+    val forcedToInclusive: Long? = null,
+    val itemName: String = ""
 )
 
 object BillsFilterHelper {
@@ -26,6 +29,19 @@ object BillsFilterHelper {
                         it.customer?.name?.contains(query, ignoreCase = true) == true
                 }
             }
+        }
+
+        val itemName = filter.itemName.trim()
+        if (itemName.isNotEmpty()) {
+            filtered = filtered.filter { bill ->
+                bill.items.any { it.itemName.equals(itemName, ignoreCase = true) }
+            }
+        }
+        filter.forcedFrom?.let { from ->
+            filtered = filtered.filter { it.bill.date >= from }
+        }
+        filter.forcedToInclusive?.let { to ->
+            filtered = filtered.filter { it.bill.date <= to }
         }
 
         if (filter.dateRangeEnabled) {

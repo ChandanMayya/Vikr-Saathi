@@ -53,16 +53,24 @@ object BackupJsonCodec {
         templates: List<InvoiceTemplateEntity>,
         templateVersions: List<InvoiceTemplateVersionEntity>,
         templateImages: List<TemplateImageBackup>,
-        stockMovements: List<com.kex.vikrsaathi.data.entity.StockMovement> = emptyList()
+        stockMovements: List<com.kex.vikrsaathi.data.entity.StockMovement> = emptyList(),
+        versionsByBillId: Map<Long, List<com.kex.vikrsaathi.data.model.BillVersionDetails>> = emptyMap(),
+        operators: List<com.kex.vikrsaathi.data.entity.OperatorProfile> = emptyList(),
+        selectedOperatorId: Long = 0L,
+        costLots: List<com.kex.vikrsaathi.data.entity.ItemCostLot> = emptyList()
     ): String {
         val includes = buildList {
             if (options.includeCustomers) add("customers")
             if (options.includeItems) {
                 add("items")
                 if (stockMovements.isNotEmpty()) add("stock_movements")
+                if (costLots.isNotEmpty()) add("item_cost_lots")
             }
             if (options.includeSales) add("sales")
-            if (options.includeSettings) add("settings")
+            if (options.includeSettings) {
+                add("settings")
+                if (operators.isNotEmpty()) add("operators")
+            }
             if (options.includeInvoiceConfig) add("invoice_config")
             if (options.includeTemplates) add("templates")
         }
@@ -75,6 +83,18 @@ object BackupJsonCodec {
             if (options.includeSettings || options.includeInvoiceConfig) {
                 put("settings", encodeSettings(settings))
             }
+            if (options.includeSettings && operators.isNotEmpty()) {
+                put("operators", JSONArray().apply {
+                    operators.forEach { operator ->
+                        put(JSONObject().apply {
+                            put("legacyId", operator.id)
+                            put("name", operator.name)
+                            put("createdAt", operator.createdAt)
+                        })
+                    }
+                })
+                put("selectedOperatorLegacyId", selectedOperatorId)
+            }
             if (options.includeCustomers) {
                 put("customers", JSONArray().apply { customers.forEach { put(encodeCustomer(it)) } })
             }
@@ -86,9 +106,14 @@ object BackupJsonCodec {
                         JSONArray().apply { stockMovements.forEach { put(encodeStockMovement(it)) } }
                     )
                 }
+                if (costLots.isNotEmpty()) {
+                    put("itemCostLots", JSONArray().apply { costLots.forEach { put(encodeCostLot(it)) } })
+                }
             }
             if (options.includeSales) {
-                put("bills", JSONArray().apply { bills.forEach { put(encodeBill(it)) } })
+                put("bills", JSONArray().apply {
+                    bills.forEach { put(encodeBill(it, versionsByBillId[it.bill.id].orEmpty())) }
+                })
             }
             if (options.includeTemplates) {
                 put("invoiceTemplates", JSONArray().apply {
@@ -155,6 +180,45 @@ object BackupJsonCodec {
             }
         }
     }
+
+    fun parseOperators(root: JSONObject): List<OperatorBackup> {
+        val array = root.optJSONArray("operators") ?: return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                add(
+                    OperatorBackup(
+                        legacyId = obj.optLong("legacyId"),
+                        name = obj.optString("name"),
+                        createdAt = obj.optLong("createdAt")
+                    )
+                )
+            }
+        }
+    }
+
+    fun parseCostLots(root: JSONObject): List<ItemCostLotBackup> {
+        val array = root.optJSONArray("itemCostLots") ?: return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                add(
+                    ItemCostLotBackup(
+                        itemLegacyId = obj.getLong("itemLegacyId"),
+                        sourceType = obj.optString("sourceType"),
+                        sourceId = obj.optLong("sourceId"),
+                        qtyReceived = obj.optInt("qtyReceived"),
+                        qtyRemaining = obj.optInt("qtyRemaining"),
+                        unitCostPaise = obj.optLong("unitCostPaise"),
+                        receivedAt = obj.optLong("receivedAt")
+                    )
+                )
+            }
+        }
+    }
+
+    fun selectedOperatorLegacyId(root: JSONObject): Long =
+        if (root.has("selectedOperatorLegacyId")) root.optLong("selectedOperatorLegacyId") else 0L
 
     fun parseBills(root: JSONObject): List<BillBackup> {
         val array = root.optJSONArray("bills") ?: return emptyList()
@@ -364,7 +428,10 @@ object BackupJsonCodec {
         createdAt = obj.optLong("createdAt", System.currentTimeMillis())
     )
 
-    private fun encodeBill(details: BillWithDetails): JSONObject {
+    private fun encodeBill(
+        details: BillWithDetails,
+        versions: List<com.kex.vikrsaathi.data.model.BillVersionDetails>
+    ): JSONObject {
         return JSONObject().apply {
             put("legacyId", details.bill.id)
             put("billNumber", details.bill.billNumber)
@@ -386,6 +453,62 @@ object BackupJsonCodec {
             put("items", JSONArray().apply {
                 details.items.forEach { item -> put(encodeBillItem(item)) }
             })
+            if (versions.isNotEmpty()) {
+                put("versions", JSONArray().apply { versions.forEach { put(encodeVersion(it)) } })
+            }
+        }
+    }
+
+    private fun encodeVersion(details: com.kex.vikrsaathi.data.model.BillVersionDetails): JSONObject {
+        val version = details.version
+        return JSONObject().apply {
+            put("versionNumber", version.versionNumber)
+            put("createdAt", version.createdAt)
+            put("saleDate", version.saleDate)
+            put("actorLabel", version.actorLabel)
+            version.customerId?.let { put("customerLegacyId", it) }
+            put("customerName", version.customerName)
+            put("customerPhone", version.customerPhone)
+            put("customerAddress", version.customerAddress)
+            put("total", version.total)
+            put("roundOff", version.roundOff)
+            put("paymentStatus", version.paymentStatus)
+            put("paymentLabel", version.paymentLabel)
+            put("changeSummary", version.changeSummary)
+            put("items", JSONArray().apply {
+                details.items.forEach { item ->
+                    put(JSONObject().apply {
+                        item.itemId?.let { put("itemLegacyId", it) }
+                        put("itemName", item.itemName)
+                        put("quantity", item.quantity)
+                        put("mrp", item.mrp)
+                        put("discount", item.discount)
+                        put("finalPrice", item.finalPrice)
+                        put("roundOff", item.roundOff)
+                        item.unitCostPaise?.let { put("unitCostPaise", it) }
+                    })
+                }
+            })
+            put("payments", JSONArray().apply {
+                details.payments.forEach { payment ->
+                    put(JSONObject().apply {
+                        put("method", payment.method)
+                        put("amountPaise", payment.amountPaise)
+                    })
+                }
+            })
+        }
+    }
+
+    private fun encodeCostLot(lot: com.kex.vikrsaathi.data.entity.ItemCostLot): JSONObject {
+        return JSONObject().apply {
+            put("itemLegacyId", lot.itemId)
+            put("sourceType", lot.sourceType)
+            put("sourceId", lot.sourceId)
+            put("qtyReceived", lot.qtyReceived)
+            put("qtyRemaining", lot.qtyRemaining)
+            put("unitCostPaise", lot.unitCostPaise)
+            put("receivedAt", lot.receivedAt)
         }
     }
 
@@ -398,6 +521,7 @@ object BackupJsonCodec {
             put("discount", item.discount)
             put("finalPrice", item.finalPrice)
             put("roundOff", item.roundOff)
+            item.unitCostPaise?.let { put("unitCostPaise", it) }
         }
     }
 
@@ -414,7 +538,12 @@ object BackupJsonCodec {
                     mrp = itemObj.getDouble("mrp"),
                     discount = itemObj.getDouble("discount"),
                     finalPrice = itemObj.getDouble("finalPrice"),
-                    roundOff = itemObj.optDouble("roundOff", 0.0)
+                    roundOff = itemObj.optDouble("roundOff", 0.0),
+                    unitCostPaise = if (itemObj.has("unitCostPaise") && !itemObj.isNull("unitCostPaise")) {
+                        itemObj.getLong("unitCostPaise")
+                    } else {
+                        null
+                    }
                 )
             )
         }
@@ -429,8 +558,56 @@ object BackupJsonCodec {
             items = items,
             paymentStatus = obj.optString("paymentStatus", com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LEGACY),
             paymentLabel = obj.optString("paymentLabel", com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LABEL_LEGACY),
-            payments = decodePortions(obj.optJSONArray("payments"))
+            payments = decodePortions(obj.optJSONArray("payments")),
+            versions = decodeVersions(obj.optJSONArray("versions"))
         )
+    }
+
+    private fun decodeVersions(array: JSONArray?): List<BillVersionBackup> {
+        if (array == null) return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val items = mutableListOf<BillLineItemBackup>()
+                val itemArray = obj.optJSONArray("items") ?: JSONArray()
+                for (n in 0 until itemArray.length()) {
+                    val itemObj = itemArray.getJSONObject(n)
+                    items += BillLineItemBackup(
+                        itemLegacyId = itemObj.optLong("itemLegacyId").takeIf { itemObj.has("itemLegacyId") },
+                        itemName = itemObj.optString("itemName"),
+                        quantity = itemObj.optInt("quantity"),
+                        mrp = itemObj.optDouble("mrp"),
+                        discount = itemObj.optDouble("discount"),
+                        finalPrice = itemObj.optDouble("finalPrice"),
+                        roundOff = itemObj.optDouble("roundOff", 0.0),
+                        unitCostPaise = if (itemObj.has("unitCostPaise") && !itemObj.isNull("unitCostPaise")) {
+                            itemObj.getLong("unitCostPaise")
+                        } else {
+                            null
+                        }
+                    )
+                }
+                add(
+                    BillVersionBackup(
+                        versionNumber = obj.optInt("versionNumber"),
+                        createdAt = obj.optLong("createdAt"),
+                        saleDate = obj.optLong("saleDate"),
+                        actorLabel = obj.optString("actorLabel", com.kex.vikrsaathi.domain.bill.OperatorLabels.THIS_DEVICE),
+                        customerLegacyId = obj.optLong("customerLegacyId").takeIf { obj.has("customerLegacyId") },
+                        customerName = obj.optString("customerName"),
+                        customerPhone = obj.optString("customerPhone"),
+                        customerAddress = obj.optString("customerAddress"),
+                        total = obj.optDouble("total"),
+                        roundOff = obj.optDouble("roundOff"),
+                        paymentStatus = obj.optString("paymentStatus"),
+                        paymentLabel = obj.optString("paymentLabel"),
+                        changeSummary = obj.optString("changeSummary"),
+                        items = items,
+                        payments = decodePortions(obj.optJSONArray("payments"))
+                    )
+                )
+            }
+        }
     }
 
     private fun decodePortions(array: org.json.JSONArray?): List<com.kex.vikrsaathi.domain.finance.PaymentPortion> {
@@ -571,7 +748,8 @@ data class BillBackup(
     val items: List<BillLineItemBackup>,
     val paymentStatus: String = com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LEGACY,
     val paymentLabel: String = com.kex.vikrsaathi.domain.finance.BillPaymentStatus.LABEL_LEGACY,
-    val payments: List<com.kex.vikrsaathi.domain.finance.PaymentPortion> = emptyList()
+    val payments: List<com.kex.vikrsaathi.domain.finance.PaymentPortion> = emptyList(),
+    val versions: List<BillVersionBackup> = emptyList()
 )
 
 data class BillLineItemBackup(
@@ -581,7 +759,8 @@ data class BillLineItemBackup(
     val mrp: Double,
     val discount: Double,
     val finalPrice: Double,
-    val roundOff: Double = 0.0
+    val roundOff: Double = 0.0,
+    val unitCostPaise: Long? = null
 ) {
     fun toLineItem(mappedItemId: Long?): BillLineItem = BillLineItem(
         itemId = mappedItemId,
@@ -589,9 +768,44 @@ data class BillLineItemBackup(
         mrp = mrp,
         discount = discount,
         quantity = quantity,
-        roundOff = roundOff
+        roundOff = roundOff,
+        unitCostPaise = unitCostPaise
     )
 }
+
+data class BillVersionBackup(
+    val versionNumber: Int,
+    val createdAt: Long,
+    val saleDate: Long,
+    val actorLabel: String,
+    val customerLegacyId: Long?,
+    val customerName: String,
+    val customerPhone: String,
+    val customerAddress: String,
+    val total: Double,
+    val roundOff: Double,
+    val paymentStatus: String,
+    val paymentLabel: String,
+    val changeSummary: String,
+    val items: List<BillLineItemBackup>,
+    val payments: List<com.kex.vikrsaathi.domain.finance.PaymentPortion>
+)
+
+data class OperatorBackup(
+    val legacyId: Long,
+    val name: String,
+    val createdAt: Long
+)
+
+data class ItemCostLotBackup(
+    val itemLegacyId: Long,
+    val sourceType: String,
+    val sourceId: Long,
+    val qtyReceived: Int,
+    val qtyRemaining: Int,
+    val unitCostPaise: Long,
+    val receivedAt: Long
+)
 
 data class TemplateBackup(
     val legacyId: Long,

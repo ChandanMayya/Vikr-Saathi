@@ -707,3 +707,108 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
         db.execSQL("ALTER TABLE vendor_quotes ADD COLUMN quoteNumber TEXT NOT NULL DEFAULT ''")
     }
 }
+
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS bill_versions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                billId INTEGER NOT NULL,
+                billNumber TEXT NOT NULL,
+                versionNumber INTEGER NOT NULL,
+                createdAt INTEGER NOT NULL,
+                saleDate INTEGER NOT NULL,
+                customerId INTEGER,
+                customerName TEXT NOT NULL,
+                customerPhone TEXT NOT NULL,
+                customerAddress TEXT NOT NULL,
+                total REAL NOT NULL,
+                roundOff REAL NOT NULL,
+                paymentStatus TEXT NOT NULL,
+                paymentLabel TEXT NOT NULL,
+                changeSummary TEXT NOT NULL,
+                FOREIGN KEY(billId) REFERENCES bills(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_bill_versions_billId ON bill_versions(billId)"
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_bill_versions_billId_versionNumber ON bill_versions(billId, versionNumber)"
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS bill_version_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                versionId INTEGER NOT NULL,
+                itemId INTEGER,
+                itemName TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                mrp REAL NOT NULL,
+                discount REAL NOT NULL,
+                finalPrice REAL NOT NULL,
+                roundOff REAL NOT NULL,
+                FOREIGN KEY(versionId) REFERENCES bill_versions(id) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_bill_version_items_versionId ON bill_version_items(versionId)"
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS bill_version_payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                versionId INTEGER NOT NULL,
+                method TEXT NOT NULL,
+                amountPaise INTEGER NOT NULL,
+                FOREIGN KEY(versionId) REFERENCES bill_versions(id) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_bill_version_payments_versionId ON bill_version_payments(versionId)"
+        )
+    }
+}
+
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE bill_versions ADD COLUMN actorLabel TEXT NOT NULL DEFAULT 'This device'"
+        )
+        db.execSQL("ALTER TABLE bill_items ADD COLUMN unitCostPaise INTEGER")
+        db.execSQL("ALTER TABLE bill_version_items ADD COLUMN unitCostPaise INTEGER")
+        db.execSQL("ALTER TABLE sales_return_lines ADD COLUMN unitCostPaise INTEGER")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS operators (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                createdAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS item_cost_lots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                itemId INTEGER NOT NULL,
+                sourceType TEXT NOT NULL,
+                sourceId INTEGER NOT NULL,
+                qtyReceived INTEGER NOT NULL,
+                qtyRemaining INTEGER NOT NULL,
+                unitCostPaise INTEGER NOT NULL,
+                receivedAt INTEGER NOT NULL,
+                FOREIGN KEY(itemId) REFERENCES items(id) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_item_cost_lots_itemId ON item_cost_lots(itemId)")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_item_cost_lots_sourceType_sourceId ON item_cost_lots(sourceType, sourceId)"
+        )
+    }
+}

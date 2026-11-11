@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.ui.analysis.AnalysisViewModel
 import com.kex.vikrsaathi.ui.bill.BillPreviewViewModel
+import com.kex.vikrsaathi.ui.bill.BillVersionsViewModel
 import com.kex.vikrsaathi.ui.bill.BillViewModel
 import com.kex.vikrsaathi.ui.bill.HeldBillsViewModel
 import com.kex.vikrsaathi.ui.bills.BillsHistoryViewModel
@@ -56,6 +57,11 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.settingsRepository,
                     app.vendorRepository
                 ) as T
+            modelClass.isAssignableFrom(BillVersionsViewModel::class.java) ->
+                BillVersionsViewModel(
+                    app.billRepository,
+                    app.settingsRepository
+                ) as T
             modelClass.isAssignableFrom(BillViewModel::class.java) ->
                 BillViewModel(
                     app.database,
@@ -105,7 +111,11 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.inventoryRepository
                 ) as T
             modelClass.isAssignableFrom(BackupViewModel::class.java) ->
-                BackupViewModel(app.backupManager) as T
+                BackupViewModel(
+                    app.backupManager,
+                    com.kex.vikrsaathi.data.backup.ManualBackupStore(app),
+                    app.applicationContext
+                ) as T
             modelClass.isAssignableFrom(ResetViewModel::class.java) ->
                 ResetViewModel(app.resetManager) as T
             else -> throw IllegalArgumentException("Unknown ViewModel: ${modelClass.name}")

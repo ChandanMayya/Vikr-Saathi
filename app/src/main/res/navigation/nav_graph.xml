@@ -128,6 +128,23 @@
             app:popExitAnim="@anim/nav_fade_pop_out"
             app:popUpTo="@id/billFragment"
             app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_bill_to_versions"
+            app:destination="@id/billVersionsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/billVersionsFragment"
+        android:name="com.kex.vikrsaathi.ui.bill.BillVersionsFragment"
+        android:label="@string/bill_versions"
+        tools:layout="@layout/fragment_bill_versions">
+        <argument
+            android:name="billId"
+            app:argType="long" />
     </fragment>
 
     <fragment
@@ -188,6 +205,14 @@
         android:name="com.kex.vikrsaathi.ui.stock.StockFragment"
         android:label="@string/inventory"
         tools:layout="@layout/fragment_stock">
+        <argument
+            android:name="focusItemId"
+            android:defaultValue="0"
+            app:argType="long" />
+        <argument
+            android:name="focusItemName"
+            android:defaultValue=""
+            app:argType="string" />
         <action
             android:id="@+id/action_stock_to_inventory_import"
             app:destination="@id/inventoryImportFragment"
@@ -208,6 +233,18 @@
         android:name="com.kex.vikrsaathi.ui.bills.BillsHistoryFragment"
         android:label="@string/bills_history"
         tools:layout="@layout/fragment_bills_history">
+        <argument
+            android:name="rangeStart"
+            android:defaultValue="0"
+            app:argType="long" />
+        <argument
+            android:name="rangeEnd"
+            android:defaultValue="0"
+            app:argType="long" />
+        <argument
+            android:name="itemName"
+            android:defaultValue=""
+            app:argType="string" />
         <action
             android:id="@+id/action_bills_history_to_bill"
             app:destination="@id/billFragment"

@@ -33,5 +33,7 @@ data class BillItem(
     val mrp: Double,
     val discount: Double,
     val finalPrice: Double,
-    val roundOff: Double = 0.0
+    val roundOff: Double = 0.0,
+    /** Purchase-invoice cost captured when this line was saved. Null means the cost was not known. */
+    val unitCostPaise: Long? = null
 )

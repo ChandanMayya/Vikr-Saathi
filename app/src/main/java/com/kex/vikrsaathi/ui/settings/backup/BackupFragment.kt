@@ -1,5 +1,6 @@
 package com.kex.vikrsaathi.ui.settings.backup
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.Manifest
@@ -14,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -22,6 +24,8 @@ import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.backup.BackupExportOptions
 import com.kex.vikrsaathi.data.backup.BackupManifest
+import com.kex.vikrsaathi.data.backup.ManualBackupRecord
+import com.kex.vikrsaathi.data.backup.ManualBackupStatus
 import com.kex.vikrsaathi.databinding.FragmentBackupBinding
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
@@ -85,10 +89,12 @@ class BackupFragment : Fragment() {
         installHelpMenu(HelpScreen.BACKUP)
 
         binding.buttonExportBackup.setOnClickListener { showExportOptions() }
+        binding.buttonViewBackupFile.setOnClickListener { openLastBackup() }
         binding.buttonImportBackup.setOnClickListener {
             importPicker.launch(arrayOf("application/json", "text/plain"))
         }
 
+        viewModel.manualBackup.observe(viewLifecycleOwner, ::renderManualBackup)
         viewModel.isWorking.observe(viewLifecycleOwner) { working ->
             binding.buttonExportBackup.isEnabled = working != true
             binding.buttonImportBackup.isEnabled = working != true
@@ -155,6 +161,89 @@ class BackupFragment : Fragment() {
             if (message.isNullOrBlank()) return@observe
             Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
             viewModel.clearError()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshManualBackup()
+    }
+
+    private var openableBackup: ManualBackupRecord? = null
+
+    private fun renderManualBackup(status: ManualBackupStatus) {
+        when (status) {
+            ManualBackupStatus.None -> {
+                openableBackup = null
+                binding.cardBackupEmpty.isVisible = true
+                binding.cardLastBackup.isVisible = false
+            }
+            is ManualBackupStatus.Available -> {
+                openableBackup = status.record
+                binding.cardBackupEmpty.isVisible = false
+                binding.cardLastBackup.isVisible = true
+                bindRecord(status.record, available = true)
+            }
+            is ManualBackupStatus.Missing -> {
+                openableBackup = null
+                binding.cardBackupEmpty.isVisible = false
+                binding.cardLastBackup.isVisible = true
+                bindRecord(status.record, available = false)
+            }
+        }
+    }
+
+    private fun bindRecord(record: ManualBackupRecord, available: Boolean) {
+        val whenText = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+            .format(Date(record.exportedAt))
+        binding.textLastBackupWhen.text = whenText
+        binding.textLastBackupType.text = backupTypeLabel(record)
+        binding.textLastBackupPath.text = record.displayPath.ifBlank { record.fileName }
+        binding.textLastBackupMissing.isVisible = !available
+        binding.buttonViewBackupFile.isVisible = available
+    }
+
+    private fun backupTypeLabel(record: ManualBackupRecord): String {
+        val full = setOf("sales", "customers", "items", "vendors", "templates", "settings")
+        val size = formatSize(record.sizeBytes)
+        val kind = if (full.all { it in record.categories }) {
+            getString(R.string.backup_type_full)
+        } else {
+            record.categories.joinToString(", ") { categoryLabel(it) }
+        }
+        return if (size.isBlank()) kind else getString(R.string.backup_type_with_size, kind, size)
+    }
+
+    private fun categoryLabel(key: String): String = when (key) {
+        "sales" -> getString(R.string.backup_short_sales)
+        "customers" -> getString(R.string.backup_short_customers)
+        "items" -> getString(R.string.backup_short_items)
+        "vendors" -> getString(R.string.backup_short_vendors)
+        "templates" -> getString(R.string.backup_short_templates)
+        "settings" -> getString(R.string.backup_short_settings)
+        else -> key
+    }
+
+    private fun formatSize(bytes: Long): String {
+        if (bytes <= 0L) return ""
+        val kb = bytes / 1024.0
+        return if (kb < 1024) String.format(java.util.Locale.getDefault(), "%.0f KB", kb)
+        else String.format(java.util.Locale.getDefault(), "%.1f MB", kb / 1024.0)
+    }
+
+    private fun openLastBackup() {
+        val record = openableBackup ?: return
+        val uri = record.toSaveResult().shareUri(requireContext()) ?: run {
+            viewModel.refreshManualBackup()
+            return
+        }
+        val intent = Intent(Intent.ACTION_VIEW)
+            .setDataAndType(uri, "application/json")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            startActivity(Intent.createChooser(intent, getString(R.string.backup_view_file)))
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(requireContext(), R.string.backup_no_app_for_file, Toast.LENGTH_LONG).show()
         }
     }
 

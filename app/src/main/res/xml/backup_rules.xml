@@ -1,13 +1,23 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android Auto Backup (API 30 and lower) and the rules shared with data_extraction_rules.
+
+  VikrSaathi manual JSON export is the shop backup the user creates and can see.
+  This file is the separate Android platform backup. The app does not learn when
+  that platform backup last succeeded.
+
+  Cloud backup excludes:
+  - vikr_saathi_app_lock: PIN hash, PIN salt, recovery hash, and recovery salt
+  - vikr_saathi.db: customers, sales, payments, stock, and other shop records
+  - vikr_saathi_manual_backup: a pointer to a file that exists only on this device
+
+  Everything else (theme and non-secret preferences) may be included.
+  A user moves shop data by exporting a VikrSaathi JSON backup.
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="sharedpref" path="vikr_saathi_app_lock.xml" />
+    <exclude domain="sharedpref" path="vikr_saathi_manual_backup.xml" />
+    <exclude domain="database" path="vikr_saathi.db" />
+    <exclude domain="database" path="vikr_saathi.db-shm" />
+    <exclude domain="database" path="vikr_saathi.db-wal" />
 </full-backup-content>

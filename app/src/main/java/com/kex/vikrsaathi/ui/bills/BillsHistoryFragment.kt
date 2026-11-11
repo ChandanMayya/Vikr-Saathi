@@ -24,6 +24,8 @@ import com.google.android.material.datepicker.MaterialDatePicker
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.model.BillWithDetails
+import com.kex.vikrsaathi.data.repository.BillHistoryRetainedException
+import com.kex.vikrsaathi.data.repository.StockShortfall
 import com.kex.vikrsaathi.databinding.FragmentBillsHistoryBinding
 import com.kex.vikrsaathi.ui.bill.BillFragment
 import androidx.recyclerview.widget.GridLayoutManager
@@ -32,6 +34,7 @@ import com.kex.vikrsaathi.util.BillsFilterHelper
 import com.kex.vikrsaathi.util.BillsHistoryPreferences
 import com.kex.vikrsaathi.util.BillsSortHelper
 import com.kex.vikrsaathi.util.FileShareHelper
+import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.PdfPrintHelper
 import com.kex.vikrsaathi.util.ListViewMode
 import com.kex.vikrsaathi.util.ListViewPreferences
@@ -62,6 +65,9 @@ class BillsHistoryFragment : Fragment() {
     private var allBills: List<BillWithDetails> = emptyList()
     private var dateFrom: Long? = null
     private var dateTo: Long? = null
+    private var forcedFrom: Long? = null
+    private var forcedToInclusive: Long? = null
+    private var forcedItemName: String = ""
     private var suppressDrawerListeners = false
     private val dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault())
 
@@ -93,12 +99,7 @@ class BillsHistoryFragment : Fragment() {
                 )
             },
             onDuplicate = { bill ->
-                viewModel.duplicateBill(bill.bill.id) { newId ->
-                    findNavController().navigate(
-                        R.id.action_bills_history_to_bill,
-                        bundleOf(BillFragment.ARG_BILL_ID to newId)
-                    )
-                }
+                duplicateBill(bill.bill.id)
             },
             onPrint = { bill -> printBill(bill) },
             onDelete = { bill -> confirmDelete(bill) }
@@ -107,6 +108,13 @@ class BillsHistoryFragment : Fragment() {
         applyViewMode(viewMode, persist = false)
 
         setupToolbarMenu()
+        val rangeStart = arguments?.getLong("rangeStart") ?: 0L
+        val rangeEnd = arguments?.getLong("rangeEnd") ?: 0L
+        if (rangeStart > 0L && rangeEnd > rangeStart) {
+            forcedFrom = rangeStart
+            forcedToInclusive = rangeEnd - 1L
+        }
+        forcedItemName = arguments?.getString("itemName").orEmpty()
         installHelpMenu(HelpScreen.BILLS_HISTORY)
         setupDrawer()
         applyFilterVisibility()
@@ -330,7 +338,10 @@ class BillsHistoryFragment : Fragment() {
             dateTo = dateTo,
             counterRangeEnabled = preferences.counterRangeFilterEnabled,
             counterFrom = binding.editCounterFrom.text?.toString()?.trim()?.toIntOrNull(),
-            counterTo = binding.editCounterTo.text?.toString()?.trim()?.toIntOrNull()
+            counterTo = binding.editCounterTo.text?.toString()?.trim()?.toIntOrNull(),
+            forcedFrom = forcedFrom,
+            forcedToInclusive = forcedToInclusive,
+            itemName = forcedItemName
         )
     }
 
@@ -415,12 +426,71 @@ class BillsHistoryFragment : Fragment() {
         }
     }
 
+    private fun duplicateBill(billId: Long, shortageAcknowledged: Boolean = false) {
+        viewModel.duplicateBill(billId, shortageAcknowledged) { outcome ->
+            if (!isAdded) return@duplicateBill
+            when (outcome) {
+                is DuplicateBillOutcome.Created -> {
+                    findNavController().navigate(
+                        R.id.action_bills_history_to_bill,
+                        bundleOf(BillFragment.ARG_BILL_ID to outcome.billId)
+                    )
+                }
+                DuplicateBillOutcome.Missing -> {
+                    Toast.makeText(requireContext(), R.string.bill_not_found, Toast.LENGTH_SHORT).show()
+                }
+                is DuplicateBillOutcome.Shortage -> showDuplicateShortage(billId, outcome.shortfalls)
+                is DuplicateBillOutcome.Failed -> {
+                    Toast.makeText(
+                        requireContext(),
+                        com.kex.vikrsaathi.ui.finance.FinanceUi.message(requireContext(), outcome.error),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun showDuplicateShortage(billId: Long, shortfalls: List<StockShortfall>) {
+        val details = shortfalls.joinToString("\n") {
+            getString(R.string.stock_shortfall_line, it.itemName, it.available, it.required)
+        }
+        when (viewModel.inventoryMode) {
+            InventoryMode.BLOCK -> {
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.insufficient_stock_title)
+                    .setMessage(getString(R.string.insufficient_stock_block_message) + "\n\n" + details)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+            InventoryMode.WARN -> {
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.insufficient_stock_title)
+                    .setMessage(getString(R.string.insufficient_stock_warn_message) + "\n\n" + details)
+                    .setPositiveButton(R.string.yes) { _, _ ->
+                        duplicateBill(billId, shortageAcknowledged = true)
+                    }
+                    .setNegativeButton(R.string.no, null)
+                    .show()
+            }
+            InventoryMode.OFF -> duplicateBill(billId, shortageAcknowledged = true)
+        }
+    }
+
     private fun confirmDelete(bill: BillWithDetails) {
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.delete_bill)
             .setMessage(R.string.delete_bill_confirm)
             .setPositiveButton(R.string.delete) { _, _ ->
-                viewModel.deleteBill(bill.bill)
+                viewModel.deleteBill(bill.bill) { error ->
+                    if (!isAdded) return@deleteBill
+                    val message = if (error is BillHistoryRetainedException) {
+                        getString(R.string.bill_history_retained)
+                    } else {
+                        error.message ?: getString(R.string.payment_error_generic)
+                    }
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+                }
             }
             .setNegativeButton(R.string.cancel, null)
             .show()

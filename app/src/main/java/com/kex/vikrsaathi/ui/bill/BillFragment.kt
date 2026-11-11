@@ -22,6 +22,7 @@ import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
@@ -31,6 +32,7 @@ import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Customer
 import com.kex.vikrsaathi.data.entity.Item
+import com.kex.vikrsaathi.data.repository.StockShortfall
 import com.kex.vikrsaathi.databinding.FragmentBillBinding
 import com.kex.vikrsaathi.ui.scanner.BarcodeScannerActivity
 import com.kex.vikrsaathi.ui.scanner.BarcodeScanBus
@@ -123,6 +125,14 @@ class BillFragment : Fragment() {
         setupNewItemSection()
         setupDrawer()
         setupToolbarMenu()
+        setFragmentResultListener(BillVersionsFragment.REQUEST_KEY) { _, bundle ->
+            if (!bundle.getBoolean(BillVersionsFragment.EXTRA_ENABLE_EDIT)) return@setFragmentResultListener
+            isReadOnly = false
+            applyReadOnlyState()
+            requireActivity().invalidateOptionsMenu()
+        }
+        val openedBillId = arguments?.getLong(ARG_BILL_ID, -1L) ?: -1L
+        if (openedBillId > 0L) viewModel.refreshVersionCount(openedBillId)
         installHelpMenu {
             if (isReadOnly) HelpScreen.BILL_VIEW else HelpScreen.NEW_BILL
         }
@@ -269,7 +279,7 @@ class BillFragment : Fragment() {
         requireActivity().addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                 when {
-                    isReadOnly -> menuInflater.inflate(R.menu.menu_bill_view, menu)
+                    isReadOnly || savedBillId() > 0L -> menuInflater.inflate(R.menu.menu_bill_view, menu)
                     isNewBillDrawerEnabled() -> menuInflater.inflate(R.menu.menu_bill_edit, menu)
                 }
             }
@@ -414,13 +424,36 @@ class BillFragment : Fragment() {
             applyReadOnlyState()
             requireActivity().invalidateOptionsMenu()
         }
+        binding.billDrawer.rowVersions.setOnClickListener {
+            val billId = savedBillId()
+            if (billId <= 0L) return@setOnClickListener
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            findNavController().navigate(
+                R.id.action_bill_to_versions,
+                bundleOf(BillVersionsFragment.ARG_BILL_ID to billId)
+            )
+        }
+        viewModel.versionCount.observe(viewLifecycleOwner) { count ->
+            if (count > 0) binding.billDrawer.textVersionCount.text = count.toString()
+        }
         binding.drawerLayout.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
+            override fun onDrawerOpened(drawerView: View) {
+                val billId = savedBillId()
+                if (billId > 0L) viewModel.refreshVersionCount(billId)
+            }
+
             override fun onDrawerClosed(drawerView: View) {
                 if (drawerView.id == binding.billDrawer.root.id && isReadOnly) {
                     requireActivity().invalidateOptionsMenu()
                 }
             }
         })
+    }
+
+    private fun savedBillId(): Long {
+        val argumentId = arguments?.getLong(ARG_BILL_ID, -1L) ?: -1L
+        if (argumentId > 0L) return argumentId
+        return viewModel.currentBillId ?: -1L
     }
 
     private fun applyReadOnlyState() {
@@ -450,6 +483,8 @@ class BillFragment : Fragment() {
             if (isReadOnly) View.VISIBLE else View.GONE
         binding.billDrawer.layoutViewBillOptions.visibility =
             if (isReadOnly) View.VISIBLE else View.GONE
+        binding.billDrawer.rowVersions.visibility =
+            if (savedBillId() > 0L) View.VISIBLE else View.GONE
     }
 
     private fun updateTitle() {
@@ -805,7 +840,7 @@ class BillFragment : Fragment() {
     }
 
     private fun checkStockAndSave(buyerName: String) {
-        if (viewModel.inventoryMode == com.kex.vikrsaathi.util.InventoryMode.OFF) {
+        if (viewModel.inventoryMode == InventoryMode.OFF) {
             proceedSaveBill(buyerName)
             return
         }
@@ -816,47 +851,55 @@ class BillFragment : Fragment() {
                 proceedSaveBill(buyerName)
                 return@prepareSaveBill
             }
-            val details = shortfalls.joinToString("\n") {
-                getString(
-                    R.string.stock_shortfall_line,
-                    it.itemName,
-                    it.available,
-                    it.required
-                )
-            }
-            when (viewModel.inventoryMode) {
-                com.kex.vikrsaathi.util.InventoryMode.BLOCK -> {
-                    MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(R.string.insufficient_stock_title)
-                        .setMessage(
-                            getString(R.string.insufficient_stock_block_message) + "\n\n" + details
-                        )
-                        .setPositiveButton(android.R.string.ok, null)
-                        .show()
-                }
-                com.kex.vikrsaathi.util.InventoryMode.WARN -> {
-                    MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(R.string.insufficient_stock_title)
-                        .setMessage(
-                            getString(R.string.insufficient_stock_warn_message) + "\n\n" + details
-                        )
-                        .setPositiveButton(R.string.yes) { _, _ -> proceedSaveBill(buyerName) }
-                        .setNegativeButton(R.string.no, null)
-                        .show()
-                }
-                com.kex.vikrsaathi.util.InventoryMode.OFF -> proceedSaveBill(buyerName)
+            showStockShortage(shortfalls) {
+                proceedSaveBill(buyerName, shortageAcknowledged = true)
             }
         }
     }
 
-    private fun proceedSaveBill(buyerName: String) {
+    private fun showStockShortage(
+        shortfalls: List<StockShortfall>,
+        onContinue: (() -> Unit)? = null
+    ) {
+        if (_binding == null) return
+        val details = shortfalls.joinToString("\n") {
+            getString(R.string.stock_shortfall_line, it.itemName, it.available, it.required)
+        }
+        when (viewModel.inventoryMode) {
+            InventoryMode.BLOCK -> {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.insufficient_stock_title)
+                    .setMessage(getString(R.string.insufficient_stock_block_message) + "\n\n" + details)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+            InventoryMode.WARN -> {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.insufficient_stock_title)
+                    .setMessage(getString(R.string.insufficient_stock_warn_message) + "\n\n" + details)
+                    .setPositiveButton(R.string.yes) { _, _ -> onContinue?.invoke() }
+                    .setNegativeButton(R.string.no, null)
+                    .show()
+            }
+            InventoryMode.OFF -> onContinue?.invoke()
+        }
+    }
+
+    private fun proceedSaveBill(buyerName: String, shortageAcknowledged: Boolean = false) {
         val isNewBillSave = viewModel.isNewBillSession
         viewModel.saveBill(
             buyerName = buyerName,
             buyerAddress = binding.editBuyerAddress.text.toString().trim(),
             buyerPhone = binding.editBuyerPhone.text.toString().trim(),
             payment = paymentRequest(buyerName) ?: return,
+            shortageAcknowledged = shortageAcknowledged,
+            onStockShortage = { shortfalls ->
+                showStockShortage(shortfalls) {
+                    proceedSaveBill(buyerName, shortageAcknowledged = true)
+                }
+            },
             onError = { error ->
+                if (_binding == null) return@saveBill
                 Toast.makeText(
                     requireContext(),
                     com.kex.vikrsaathi.ui.finance.FinanceUi.message(requireContext(), error),

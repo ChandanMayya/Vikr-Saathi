@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingVertical="6dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/textLineName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_primary_dark"
+            android:textStyle="bold"
+            tools:text="Tea" />
+
+        <TextView
+            android:id="@+id/textLineQty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/text_secondary_dark"
+            tools:text="3 × ₹20.00" />
+
+        <TextView
+            android:id="@+id/textLineAmount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:textColor="@color/text_primary_dark"
+            android:textStyle="bold"
+            tools:text="₹60.00" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/textLineMeta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_secondary_dark"
+        android:textSize="12sp"
+        android:visibility="gone"
+        tools:text="Disc 10%"
+        tools:visibility="visible" />
+</LinearLayout>

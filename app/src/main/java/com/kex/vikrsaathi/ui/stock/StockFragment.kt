@@ -45,6 +45,7 @@ class StockFragment : Fragment() {
     }
 
     private lateinit var adapter: StockAdapter
+    private var pendingFocusId: Long = 0L
     private lateinit var listViewPrefs: ListViewPreferences
     private var viewMode: ListViewMode = ListViewMode.COMFORTABLE
 
@@ -89,7 +90,22 @@ class StockFragment : Fragment() {
         applyViewMode(viewMode, persist = false)
 
         viewModel.items.observe(viewLifecycleOwner) { viewModel.onItemsChanged(it) }
-        viewModel.filteredItems.observe(viewLifecycleOwner) { adapter.submitList(it) }
+        pendingFocusId = arguments?.getLong("focusItemId") ?: 0L
+        val focusName = arguments?.getString("focusItemName").orEmpty()
+        if (focusName.isNotBlank()) {
+            binding.editStockSearch.setText(focusName)
+            viewModel.setQuery(focusName)
+        }
+        viewModel.filteredItems.observe(viewLifecycleOwner) { items ->
+            adapter.submitList(items)
+            if (pendingFocusId > 0L) {
+                val match = items.firstOrNull { it.id == pendingFocusId }
+                if (match != null) {
+                    pendingFocusId = 0L
+                    showMovementsDialog(match)
+                }
+            }
+        }
         viewModel.vendorNames.observe(viewLifecycleOwner) { adapter.vendorNames = it }
 
         binding.editStockSearch.addTextChangedListener(object : TextWatcher {

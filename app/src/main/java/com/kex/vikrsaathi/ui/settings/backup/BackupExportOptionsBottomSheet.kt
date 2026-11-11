@@ -32,20 +32,25 @@ class BackupExportOptionsBottomSheet : BottomSheetDialogFragment() {
         val checkTemplates = view.findViewById<MaterialCheckBox>(R.id.checkExportTemplates)
         val checkItems = view.findViewById<MaterialCheckBox>(R.id.checkExportItems)
         val checkCustomers = view.findViewById<MaterialCheckBox>(R.id.checkExportCustomers)
+        val checkVendors = view.findViewById<MaterialCheckBox>(R.id.checkExportVendors)
 
         checkSales.isChecked = true
         checkSettings.isChecked = true
         checkTemplates.isChecked = true
         checkItems.isChecked = true
         checkCustomers.isChecked = true
+        checkVendors.isChecked = true
 
         view.findViewById<View>(R.id.buttonStartExport).setOnClickListener {
+            val customers = checkCustomers.isChecked
             val options = BackupExportOptions(
                 includeSales = checkSales.isChecked,
                 includeSettings = checkSettings.isChecked,
                 includeTemplates = checkTemplates.isChecked,
                 includeItems = checkItems.isChecked,
-                includeCustomers = checkCustomers.isChecked
+                includeCustomers = customers,
+                includeCustomerBalances = customers,
+                includeVendors = checkVendors.isChecked
             )
             callback?.onExport(options)
             dismiss()

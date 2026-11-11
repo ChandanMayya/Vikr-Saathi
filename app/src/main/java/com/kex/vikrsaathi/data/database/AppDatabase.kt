@@ -8,11 +8,14 @@ import com.kex.vikrsaathi.data.dao.BillDao
 import com.kex.vikrsaathi.data.dao.BillDraftDao
 import com.kex.vikrsaathi.data.dao.BillItemDao
 import com.kex.vikrsaathi.data.dao.BillPaymentDao
+import com.kex.vikrsaathi.data.dao.BillVersionDao
 import com.kex.vikrsaathi.data.dao.CustomerDao
 import com.kex.vikrsaathi.data.dao.CustomerLedgerDao
 import com.kex.vikrsaathi.data.dao.InvoiceTemplateDao
 import com.kex.vikrsaathi.data.dao.InvoiceTemplateVersionDao
+import com.kex.vikrsaathi.data.dao.ItemCostDao
 import com.kex.vikrsaathi.data.dao.ItemDao
+import com.kex.vikrsaathi.data.dao.OperatorDao
 import com.kex.vikrsaathi.data.dao.PurchaseDao
 import com.kex.vikrsaathi.data.dao.StockMovementDao
 import com.kex.vikrsaathi.data.dao.VendorDao
@@ -20,6 +23,9 @@ import com.kex.vikrsaathi.data.entity.Bill
 import com.kex.vikrsaathi.data.entity.BillDraftEntity
 import com.kex.vikrsaathi.data.entity.BillItem
 import com.kex.vikrsaathi.data.entity.BillPayment
+import com.kex.vikrsaathi.data.entity.BillVersion
+import com.kex.vikrsaathi.data.entity.BillVersionItem
+import com.kex.vikrsaathi.data.entity.BillVersionPayment
 import com.kex.vikrsaathi.data.entity.Customer
 import com.kex.vikrsaathi.data.entity.CustomerLedgerEntry
 import com.kex.vikrsaathi.data.entity.CustomerReceipt
@@ -29,6 +35,8 @@ import com.kex.vikrsaathi.data.entity.GoodsReceiptLine
 import com.kex.vikrsaathi.data.entity.InvoiceTemplateEntity
 import com.kex.vikrsaathi.data.entity.InvoiceTemplateVersionEntity
 import com.kex.vikrsaathi.data.entity.Item
+import com.kex.vikrsaathi.data.entity.ItemCostLot
+import com.kex.vikrsaathi.data.entity.OperatorProfile
 import com.kex.vikrsaathi.data.entity.PurchaseInvoice
 import com.kex.vikrsaathi.data.entity.PurchaseInvoiceLine
 import com.kex.vikrsaathi.data.entity.PurchaseOrder
@@ -74,9 +82,14 @@ import com.kex.vikrsaathi.data.entity.VendorQuoteLine
         VendorQuote::class,
         VendorQuoteLine::class,
         PurchaseRequest::class,
-        PurchaseRequestLine::class
+        PurchaseRequestLine::class,
+        BillVersion::class,
+        BillVersionItem::class,
+        BillVersionPayment::class,
+        OperatorProfile::class,
+        ItemCostLot::class
     ],
-    version = 14,
+    version = 16,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -90,6 +103,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun invoiceTemplateVersionDao(): InvoiceTemplateVersionDao
     abstract fun stockMovementDao(): StockMovementDao
     abstract fun billPaymentDao(): BillPaymentDao
+    abstract fun billVersionDao(): BillVersionDao
+    abstract fun operatorDao(): OperatorDao
+    abstract fun itemCostDao(): ItemCostDao
     abstract fun customerLedgerDao(): CustomerLedgerDao
     abstract fun vendorDao(): VendorDao
     abstract fun purchaseDao(): PurchaseDao
@@ -118,7 +134,9 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_10_11,
                         MIGRATION_11_12,
                         MIGRATION_12_13,
-                        MIGRATION_13_14
+                        MIGRATION_13_14,
+                        MIGRATION_14_15,
+                        MIGRATION_15_16
                     )
                     .build()
                     .also { INSTANCE = it }
