@@ -201,6 +201,102 @@ class BillVersionHistoryTest {
     }
 
     @Test
+    fun restoreAppendsTheNextVersionAndKeepsEarlierSnapshots() = runBlocking {
+        val customerId = db.customerDao().insert(Customer(name = "Asha", phone = "999", address1 = "Market"))
+        val teaId = db.itemDao().insert(Item(name = "Tea", mrp = 20.0, stockQty = 50))
+        val biscuitId = db.itemDao().insert(Item(name = "Biscuit", mrp = 10.0, stockQty = 50))
+        val roundOff = 0.5
+        val original = lines(teaId, biscuitId, teaQty = 2)
+        val billId = repository.saveBill(
+            customerId = customerId,
+            lineItems = original,
+            billRoundOff = roundOff,
+            payment = BillPaymentRequest.Record(
+                listOf(PaymentPortion(PaymentMethod.CREDIT, Money.rupeesToPaise(BillTotalsCalculator.grandTotal(original, roundOff))))
+            )
+        )
+        val saleDate = now
+        now += 60_000L
+        repository.saveBill(
+            customerId = customerId,
+            lineItems = lines(teaId, biscuitId, teaQty = 5),
+            billRoundOff = roundOff,
+            existingBillId = billId,
+            payment = BillPaymentRequest.Record(
+                listOf(
+                    PaymentPortion(
+                        PaymentMethod.CASH,
+                        Money.rupeesToPaise(BillTotalsCalculator.grandTotal(lines(teaId, biscuitId, teaQty = 5), roundOff))
+                    )
+                )
+            )
+        )
+        db.customerDao().update(db.customerDao().getCustomerById(customerId)!!.copy(name = "Asha Devi"))
+        val before = repository.getVersionHistory(billId)
+        val v1 = before.first { it.version.versionNumber == 1 }
+        val v2 = before.first { it.version.versionNumber == 2 }
+        now += 60_000L
+        repository.restoreVersion(billId, versionNumber = 1)
+
+        val after = repository.getVersionHistory(billId)
+        assertEquals(listOf(3, 2, 1), after.map { it.version.versionNumber })
+        val restored = after.first { it.version.versionNumber == 3 }
+        assertEquals(BillVersionDiffer.restoredFrom(1), restored.version.changeSummary)
+        assertEquals(now, restored.version.createdAt)
+        assertEquals(saleDate, restored.version.saleDate)
+        assertEquals(saleDate, db.billDao().getBillById(billId)?.date)
+        assertTrue(restored.isCurrent)
+        assertEquals(2, restored.items.first { it.itemId == teaId }.quantity)
+        assertEquals(v1.payments.map { it.method to it.amountPaise }, restored.payments.map { it.method to it.amountPaise })
+        assertEquals(v1.version, after.first { it.version.versionNumber == 1 }.version)
+        assertEquals(v1.items, after.first { it.version.versionNumber == 1 }.items)
+        assertEquals(v1.payments, after.first { it.version.versionNumber == 1 }.payments)
+        assertEquals(v2.version, after.first { it.version.versionNumber == 2 }.version)
+        assertEquals(v2.items, after.first { it.version.versionNumber == 2 }.items)
+        assertEquals(v2.payments, after.first { it.version.versionNumber == 2 }.payments)
+        assertEquals(2, db.billItemDao().getItemsForBill(billId).first { it.itemId == teaId }.quantity)
+
+        val printable = repository.printableBill(v1)
+        assertEquals("Asha", printable.customer?.name)
+        assertEquals("999", printable.customer?.phone)
+        assertEquals("Market", printable.customer?.formattedAddress())
+        assertEquals(saleDate, printable.bill.date)
+        assertEquals(v1.version.total, printable.bill.total, 0.001)
+        assertEquals(2, printable.items.first { it.itemId == teaId }.quantity)
+        assertEquals(18.0, printable.items.first { it.itemId == teaId }.finalPrice, 0.001)
+        assertEquals(v1.payments.map { it.method to it.amountPaise }, printable.payments.map { it.method to it.amountPaise })
+        assertEquals("Asha", printable.customer?.name)
+        assertNotEquals("Asha Devi", printable.customer?.name)
+
+        val copyId = repository.duplicateVersion(billId, versionNumber = 2)!!
+        assertNotEquals(billId, copyId)
+        assertEquals(5, db.billItemDao().getItemsForBill(copyId).first { it.itemId == teaId }.quantity)
+        assertEquals(2, db.billItemDao().getItemsForBill(billId).first { it.itemId == teaId }.quantity)
+        assertEquals(PaymentMethod.CASH, db.billPaymentDao().getForBill(copyId).single().method)
+    }
+
+    @Test
+    fun blockedRestoreDoesNotAppendAVersion() = runBlocking {
+        settings.inventoryMode = InventoryMode.BLOCK
+        val teaId = db.itemDao().insert(Item(name = "Tea", mrp = 10.0, stockQty = 5))
+        val billId = saveQty(teaId, 2)
+        settings.inventoryMode = InventoryMode.OFF
+        saveQty(teaId, 1, billId)
+        val before = repository.getVersionHistory(billId)
+        settings.inventoryMode = InventoryMode.BLOCK
+        db.itemDao().updateStockQty(teaId, 0)
+        try {
+            repository.restoreVersion(billId, versionNumber = 1)
+            fail("Restore must honor the stock block")
+        } catch (_: InsufficientStockException) {
+            // expected
+        }
+        assertEquals(before, repository.getVersionHistory(billId))
+        assertEquals(1, db.billItemDao().getItemsForBill(billId).single().quantity)
+        assertEquals(0, db.itemDao().getItemById(teaId)!!.stockQty)
+    }
+
+    @Test
     fun failedEditDoesNotCreateAVersionOrChangeTheBill() = runBlocking {
         settings.inventoryMode = InventoryMode.BLOCK
         val teaId = db.itemDao().insert(Item(name = "Tea", mrp = 10.0, stockQty = 5))

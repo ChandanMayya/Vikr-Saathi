@@ -11,6 +11,8 @@ object BillVersionDiffer {
 
     const val ORIGINAL_SALE = "Original sale"
     const val WALK_IN = "Walk-in customer"
+
+    fun restoredFrom(versionNumber: Int): String = "Restored from version $versionNumber"
     private const val MAX_PARTS = 3
 
     data class LineSnap(

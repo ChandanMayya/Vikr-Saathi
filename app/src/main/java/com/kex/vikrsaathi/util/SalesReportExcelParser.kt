@@ -2,6 +2,7 @@ package com.kex.vikrsaathi.util
 
 import android.content.Context
 import android.net.Uri
+import com.kex.vikrsaathi.domain.inventory.CivilDate
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -160,7 +161,14 @@ object SalesReportExcelParser {
             mrp = cell(SalesReportColumns.MRP).toDoubleOrNull() ?: 0.0,
             discount = cell(SalesReportColumns.DISCOUNT_PERCENT).toDoubleOrNull() ?: 0.0,
             lineTotal = cell(SalesReportColumns.LINE_TOTAL).toDoubleOrNull() ?: 0.0,
-            billTotal = cell(SalesReportColumns.BILL_TOTAL).toDoubleOrNull() ?: 0.0
+            billTotal = cell(SalesReportColumns.BILL_TOTAL).toDoubleOrNull() ?: 0.0,
+            warrantyPeriod = cell(SalesReportColumns.WARRANTY_PERIOD).toIntOrNull()?.takeIf { it > 0 },
+            warrantyUnit = cell(SalesReportColumns.WARRANTY_UNIT),
+            warrantyProvider = cell(SalesReportColumns.WARRANTY_PROVIDER),
+            warrantyProviderName = cell(SalesReportColumns.WARRANTY_PROVIDER_NAME),
+            warrantyTerms = cell(SalesReportColumns.WARRANTY_TERMS),
+            warrantyStart = cell(SalesReportColumns.WARRANTY_START),
+            warrantyEnd = cell(SalesReportColumns.WARRANTY_END)
         )
     }
 

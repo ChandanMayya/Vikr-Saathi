@@ -61,6 +61,30 @@
         <item>Print — open the PDF with a print app.</item>
     </string-array>
 
+    <!-- Return items -->
+    <string name="help_return_items_title">Return Items</string>
+    <string name="help_return_items_overview">Record returned items, choose a refund or replacement, then review before posting.</string>
+    <string name="help_return_items_s1_title">Choose quantities</string>
+    <string-array name="help_return_items_s1">
+        <item>Tap − or + to choose how many units are being returned.</item>
+        <item>You can return only the eligible quantity shown for each item.</item>
+    </string-array>
+    <string name="help_return_items_s2_title">Add back to stock</string>
+    <string-array name="help_return_items_s2">
+        <item>Turn this on only if the returned item can go back into stock.</item>
+        <item>Tracked returns are held for inspection before they can be sold.</item>
+    </string-array>
+    <string name="help_return_items_s3_title">Refunds and replacements</string>
+    <string-array name="help_return_items_s3">
+        <item>Choose Cash, UPI, or Store credit for a refund.</item>
+        <item>Add replacement items to record an exchange. Review who pays or receives the difference.</item>
+    </string-array>
+    <string name="help_return_items_s4_title">Review and post</string>
+    <string-array name="help_return_items_s4">
+        <item>Review the items and settlement before posting the return.</item>
+        <item>Line round-off is shared across returned units. Bill round-off is included when the last item is returned.</item>
+    </string-array>
+
     <!-- Held bills -->
     <string name="help_held_bills_title">Held Bills</string>
     <string name="help_held_bills_overview">Bills you paused while creating a new sale. Resume to continue editing or delete if no longer needed.</string>

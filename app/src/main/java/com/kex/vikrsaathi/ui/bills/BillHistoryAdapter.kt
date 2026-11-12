@@ -34,7 +34,8 @@ class BillHistoryAdapter(
     private val onOpen: (BillWithDetails) -> Unit,
     private val onDuplicate: (BillWithDetails) -> Unit,
     private val onPrint: (BillWithDetails) -> Unit,
-    private val onDelete: (BillWithDetails) -> Unit
+    private val onDelete: (BillWithDetails) -> Unit,
+    private val onOpenLinked: (Long) -> Unit
 ) : ListAdapter<BillWithDetails, RecyclerView.ViewHolder>(DiffCallback()) {
 
     private val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
@@ -42,6 +43,14 @@ class BillHistoryAdapter(
     private val expandedIds = mutableSetOf<Long>()
 
     var itemUnits: Map<Long, String> = emptyMap()
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyDataSetChanged()
+            }
+        }
+
+    var exchangeCards: Map<Long, ExchangeCardLink> = emptyMap()
         set(value) {
             if (field != value) {
                 field = value
@@ -109,6 +118,7 @@ class BillHistoryAdapter(
             binding.buttonPrintBill.setOnClickListener { onPrint(bill) }
             binding.buttonDuplicateBill.setOnClickListener { onDuplicate(bill) }
             binding.buttonDeleteBill.setOnClickListener { onDelete(bill) }
+            bindExchange(binding.textExchangeBadge, binding.textExchangeLink, bill)
         }
     }
 
@@ -154,6 +164,7 @@ class BillHistoryAdapter(
                     show()
                 }
             }
+            bindExchange(binding.textExchangeBadge, binding.textExchangeLink, bill)
         }
     }
 
@@ -206,7 +217,29 @@ class BillHistoryAdapter(
             binding.buttonPrintBill.setOnClickListener { onPrint(bill) }
             binding.buttonDuplicateBill.setOnClickListener { onDuplicate(bill) }
             binding.buttonDeleteBill.setOnClickListener { onDelete(bill) }
+            bindExchange(binding.textExchangeBadge, binding.textExchangeLink, bill)
         }
+    }
+
+    private fun bindExchange(badge: TextView, link: TextView, bill: BillWithDetails) {
+        val card = exchangeCards[bill.bill.id]
+        val context = badge.context
+        if (card == null || card.otherNumber.isBlank()) {
+            badge.isVisible = false
+            link.isVisible = false
+            link.setOnClickListener(null)
+            return
+        }
+        val original = card.role == com.kex.vikrsaathi.domain.bill.ExchangeHistory.Role.ORIGINAL
+        badge.isVisible = true
+        badge.text = context.getString(if (original) R.string.badge_returned_exchanged else R.string.badge_exchange)
+        link.isVisible = true
+        link.text = if (original) {
+            context.getString(R.string.exchange_bill_link, card.otherNumber)
+        } else {
+            context.getString(R.string.exchange_for_original, card.otherNumber)
+        }
+        link.setOnClickListener { onOpenLinked(card.otherBillId) }
     }
 
     private fun bindSaleLines(

@@ -21,6 +21,7 @@ import com.kex.vikrsaathi.data.dao.OperatorDao
 import com.kex.vikrsaathi.data.dao.PurchaseDao
 import com.kex.vikrsaathi.data.dao.StockMovementDao
 import com.kex.vikrsaathi.data.dao.VendorDao
+import com.kex.vikrsaathi.data.dao.WarrantyClaimDao
 import com.kex.vikrsaathi.data.entity.Bill
 import com.kex.vikrsaathi.data.entity.BillBatchAllocation
 import com.kex.vikrsaathi.data.entity.BillDraftEntity
@@ -58,6 +59,8 @@ import com.kex.vikrsaathi.data.entity.VendorPayment
 import com.kex.vikrsaathi.data.entity.VendorPaymentAllocation
 import com.kex.vikrsaathi.data.entity.VendorQuote
 import com.kex.vikrsaathi.data.entity.VendorQuoteLine
+import com.kex.vikrsaathi.data.entity.WarrantyClaim
+import com.kex.vikrsaathi.data.entity.WarrantyClaimEvent
 
 @Database(
     entities = [
@@ -97,9 +100,11 @@ import com.kex.vikrsaathi.data.entity.VendorQuoteLine
         InventoryBatch::class,
         InventoryBatchMovement::class,
         BillBatchAllocation::class,
-        NotificationMark::class
+        NotificationMark::class,
+        WarrantyClaim::class,
+        WarrantyClaimEvent::class
     ],
-    version = 19,
+    version = 22,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -121,6 +126,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun purchaseDao(): PurchaseDao
     abstract fun batchDao(): BatchDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun warrantyClaimDao(): WarrantyClaimDao
 
     companion object {
         @Volatile
@@ -151,7 +157,10 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_15_16,
                         MIGRATION_16_17,
                         MIGRATION_17_18,
-                        MIGRATION_18_19
+                        MIGRATION_18_19,
+                        MIGRATION_19_20,
+                        MIGRATION_20_21,
+                        MIGRATION_21_22
                     )
                     .build()
                     .also { INSTANCE = it }

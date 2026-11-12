@@ -20,7 +20,9 @@ object PdfGenerator {
         currencySymbol: String,
         headerImage: android.graphics.Bitmap?,
         signatureImage: android.graphics.Bitmap?,
-        shopLogoImage: android.graphics.Bitmap? = null
+        shopLogoImage: android.graphics.Bitmap? = null,
+        exchangeTitle: String? = null,
+        exchangeLines: List<String> = emptyList()
     ): File {
         val renderContext = TemplateContextFactory.createForPdf(
             context = context,
@@ -30,7 +32,9 @@ object PdfGenerator {
             currencySymbol = currencySymbol,
             headerImage = headerImage,
             signatureImage = signatureImage,
-            shopLogoImage = shopLogoImage
+            shopLogoImage = shopLogoImage,
+            exchangeTitle = exchangeTitle,
+            exchangeLines = exchangeLines
         )
 
         val document = PdfDocument()

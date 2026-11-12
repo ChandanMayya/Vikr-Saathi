@@ -17,6 +17,7 @@ enum class HelpScreen {
     BILL_VIEW,
     HELD_BILLS,
     BILL_PREVIEW,
+    RETURN_ITEMS,
     CUSTOMERS,
     ITEMS,
     STOCK,

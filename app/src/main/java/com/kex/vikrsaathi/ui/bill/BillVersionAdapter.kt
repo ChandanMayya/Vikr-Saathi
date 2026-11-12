@@ -7,6 +7,8 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.data.entity.BillVersionItem
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
+import com.kex.vikrsaathi.domain.bill.warrantySnapshot
 import com.kex.vikrsaathi.data.entity.BillVersionPayment
 import com.kex.vikrsaathi.data.model.BillVersionDetails
 import com.kex.vikrsaathi.databinding.ItemBillVersionBinding
@@ -21,7 +23,10 @@ import kotlin.math.abs
 class BillVersionAdapter(
     private val currencySymbol: String,
     private val onSelect: (Int) -> Unit,
-    private val onEditCurrent: () -> Unit
+    private val onEditCurrent: () -> Unit,
+    private val onRestore: (BillVersionDetails) -> Unit,
+    private val onPrint: (BillVersionDetails) -> Unit,
+    private val onDuplicate: (BillVersionDetails) -> Unit
 ) : RecyclerView.Adapter<BillVersionAdapter.Holder>() {
 
     private val whenFormat = SimpleDateFormat("d MMM yyyy, h:mm a", Locale.getDefault())
@@ -121,6 +126,21 @@ class BillVersionAdapter(
             )
             binding.textDetailTotal.text = context.getString(R.string.grand_total, money(version.total))
             binding.textPayment.text = paymentText(details.payments, money, context)
+
+            val historical = !details.isCurrent
+            binding.rowVersionActions.isVisible = historical
+            binding.textRestoreHint.isVisible = historical
+            if (historical) {
+                val newest = versions.maxOf { it.version.versionNumber }
+                binding.textRestoreHint.text = context.getString(
+                    R.string.version_restore_hint,
+                    newest + 1,
+                    newest
+                )
+                binding.buttonRestoreVersion.setOnClickListener { onRestore(details) }
+                binding.buttonPrintVersion.setOnClickListener { onPrint(details) }
+                binding.buttonDuplicateVersion.setOnClickListener { onDuplicate(details) }
+            }
         }
 
         private fun bindLine(
@@ -137,6 +157,11 @@ class BillVersionAdapter(
             )
             line.textLineAmount.text = money(amount)
             val notes = buildList {
+                val warranty = item.warrantySnapshot()
+                if (warranty != null) {
+                    add(WarrantyPolicy.headline(warranty))
+                    WarrantyPolicy.validUntil(warranty)?.let { add(it) }
+                }
                 if (item.discount > 0.001) add("Disc ${trimNumber(item.discount)}%")
                 if (abs(item.roundOff) >= 0.005) {
                     add("R/off ${money(item.roundOff)}")

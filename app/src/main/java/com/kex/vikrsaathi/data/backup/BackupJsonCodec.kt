@@ -12,6 +12,7 @@ import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.data.model.template.TemplateJsonCodec
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
 import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.ThemeMode
 import org.json.JSONArray
@@ -372,6 +373,7 @@ object BackupJsonCodec {
             put("vendorManagementEnabled", settings.vendorManagementEnabled)
             put("orderManagementEnabled", settings.orderManagementEnabled)
             put("batchTrackingEnabled", settings.batchTrackingEnabled)
+            put("warrantyEnabled", settings.warrantyEnabled)
             put("expiryAlertDays", settings.expiryAlertDays)
             put("notificationPreferences", settings.notificationPreferencesJson())
             put("invoicePrefix", settings.invoicePrefix)
@@ -436,6 +438,7 @@ object BackupJsonCodec {
             signatureImageBase64 = images?.optString("signature"),
             logoImageBase64 = images?.optString("logo"),
             batchTrackingEnabled = if (obj.has("batchTrackingEnabled")) obj.getBoolean("batchTrackingEnabled") else null,
+            warrantyEnabled = if (obj.has("warrantyEnabled")) obj.getBoolean("warrantyEnabled") else null,
             expiryAlertDays = if (obj.has("expiryAlertDays")) obj.optInt("expiryAlertDays") else null,
             notificationPreferencesJson = obj.optJSONObject("notificationPreferences")?.toString()
         )
@@ -482,6 +485,12 @@ object BackupJsonCodec {
             put("purchaseUnit", item.purchaseUnit)
             put("unitsPerPurchase", item.unitsPerPurchase)
             put("trackBatches", item.trackBatches)
+            put("warrantyApplies", item.warrantyApplies)
+            put("warrantyPeriod", item.warrantyPeriod)
+            put("warrantyUnit", item.warrantyUnit)
+            put("warrantyProvider", item.warrantyProvider)
+            put("warrantyProviderName", item.warrantyProviderName)
+            put("warrantyTerms", item.warrantyTerms)
         }
     }
 
@@ -502,7 +511,13 @@ object BackupJsonCodec {
         baseUnit = obj.optString("baseUnit", ""),
         purchaseUnit = obj.optString("purchaseUnit", ""),
         unitsPerPurchase = obj.optInt("unitsPerPurchase", 1),
-        trackBatches = obj.optBoolean("trackBatches", false)
+        trackBatches = obj.optBoolean("trackBatches", false),
+        warrantyApplies = obj.optBoolean("warrantyApplies", false),
+        warrantyPeriod = obj.optInt("warrantyPeriod", 0),
+        warrantyUnit = obj.optString("warrantyUnit", ""),
+        warrantyProvider = obj.optString("warrantyProvider", ""),
+        warrantyProviderName = obj.optString("warrantyProviderName", ""),
+        warrantyTerms = obj.optString("warrantyTerms", "")
     )
 
     private fun encodeStockMovement(
@@ -593,6 +608,7 @@ object BackupJsonCodec {
                         put("finalPrice", item.finalPrice)
                         put("roundOff", item.roundOff)
                         item.unitCostPaise?.let { put("unitCostPaise", it) }
+                        putWarranty(this, item.warrantyPeriod, item.warrantyUnit, item.warrantyProvider, item.warrantyProviderName, item.warrantyTerms, item.warrantyStartEpochDay, item.warrantyEndEpochDay)
                     })
                 }
             })
@@ -629,7 +645,41 @@ object BackupJsonCodec {
             put("finalPrice", item.finalPrice)
             put("roundOff", item.roundOff)
             item.unitCostPaise?.let { put("unitCostPaise", it) }
+            putWarranty(this, item.warrantyPeriod, item.warrantyUnit, item.warrantyProvider, item.warrantyProviderName, item.warrantyTerms, item.warrantyStartEpochDay, item.warrantyEndEpochDay)
         }
+    }
+
+    private fun putWarranty(
+        obj: JSONObject,
+        period: Int?,
+        unit: String?,
+        provider: String?,
+        providerName: String?,
+        terms: String?,
+        startEpochDay: Long?,
+        endEpochDay: Long?
+    ) {
+        if (period == null) return
+        obj.put("warrantyPeriod", period)
+        obj.put("warrantyUnit", unit)
+        obj.put("warrantyProvider", provider)
+        obj.put("warrantyProviderName", providerName)
+        obj.put("warrantyTerms", terms)
+        startEpochDay?.let { obj.put("warrantyStartEpochDay", it) }
+        endEpochDay?.let { obj.put("warrantyEndEpochDay", it) }
+    }
+
+    private fun decodeWarranty(obj: JSONObject): WarrantyPolicy.Snapshot? {
+        if (!obj.has("warrantyPeriod")) return null
+        return WarrantyPolicy.fromStored(
+            period = obj.optInt("warrantyPeriod"),
+            unit = obj.optString("warrantyUnit"),
+            provider = obj.optString("warrantyProvider"),
+            providerName = obj.optString("warrantyProviderName"),
+            terms = obj.optString("warrantyTerms"),
+            startEpochDay = obj.optLong("warrantyStartEpochDay").takeIf { obj.has("warrantyStartEpochDay") },
+            endEpochDay = obj.optLong("warrantyEndEpochDay").takeIf { obj.has("warrantyEndEpochDay") }
+        )
     }
 
     private fun decodeBill(obj: JSONObject): BillBackup {
@@ -650,7 +700,8 @@ object BackupJsonCodec {
                         itemObj.getLong("unitCostPaise")
                     } else {
                         null
-                    }
+                    },
+                    warranty = decodeWarranty(itemObj)
                 )
             )
         }
@@ -691,7 +742,8 @@ object BackupJsonCodec {
                             itemObj.getLong("unitCostPaise")
                         } else {
                             null
-                        }
+                        },
+                        warranty = decodeWarranty(itemObj)
                     )
                 }
                 add(
@@ -805,6 +857,7 @@ data class SettingsBackup(
     val signatureImageBase64: String?,
     val logoImageBase64: String?,
     val batchTrackingEnabled: Boolean? = null,
+    val warrantyEnabled: Boolean? = null,
     val expiryAlertDays: Int? = null,
     val notificationPreferencesJson: String? = null
 )
@@ -834,7 +887,13 @@ data class ItemBackup(
     val baseUnit: String = "",
     val purchaseUnit: String = "",
     val unitsPerPurchase: Int = 1,
-    val trackBatches: Boolean = false
+    val trackBatches: Boolean = false,
+    val warrantyApplies: Boolean = false,
+    val warrantyPeriod: Int = 0,
+    val warrantyUnit: String = "",
+    val warrantyProvider: String = "",
+    val warrantyProviderName: String = "",
+    val warrantyTerms: String = ""
 )
 
 data class StockMovementBackup(
@@ -871,7 +930,8 @@ data class BillLineItemBackup(
     val discount: Double,
     val finalPrice: Double,
     val roundOff: Double = 0.0,
-    val unitCostPaise: Long? = null
+    val unitCostPaise: Long? = null,
+    val warranty: WarrantyPolicy.Snapshot? = null
 ) {
     fun toLineItem(mappedItemId: Long?): BillLineItem = BillLineItem(
         itemId = mappedItemId,
@@ -880,7 +940,8 @@ data class BillLineItemBackup(
         discount = discount,
         quantity = quantity,
         roundOff = roundOff,
-        unitCostPaise = unitCostPaise
+        unitCostPaise = unitCostPaise,
+        warranty = warranty
     )
 }
 

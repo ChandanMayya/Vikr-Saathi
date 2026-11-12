@@ -2,6 +2,8 @@ package com.kex.vikrsaathi.domain.template
 
 import android.graphics.Bitmap
 import com.kex.vikrsaathi.data.model.BillLineItem
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
+import com.kex.vikrsaathi.domain.bill.warrantySnapshot
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.data.model.template.DataBindingKey
 import com.kex.vikrsaathi.util.NumberToWords
@@ -18,7 +20,9 @@ data class TemplateRenderContext(
     val signatureImage: Bitmap?,
     val shopLogoImage: Bitmap? = null,
     val staticImages: Map<String, Bitmap> = emptyMap(),
-    val imageRenderScale: Float = 1f
+    val imageRenderScale: Float = 1f,
+    val exchangeTitle: String? = null,
+    val exchangeLines: List<String> = emptyList()
 )
 
 data class TableRowData(
@@ -83,7 +87,7 @@ class TemplateBindingResolver {
             TableRowData(
                 mapOf(
                     "sl" to (index + 1).toString(),
-                    "name" to line.name,
+                    "name" to WarrantyPolicy.printText(line.name, item.warrantySnapshot()),
                     "quantity" to line.quantity.toString(),
                     "mrp" to PriceCalculator.formatAmount(line.mrp, context.currencySymbol),
                     "discount" to String.format(Locale.getDefault(), "%.1f", line.discount),

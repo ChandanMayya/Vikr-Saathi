@@ -84,6 +84,13 @@
             app:exitAnim="@anim/nav_fade_out"
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
+            android:id="@+id/action_dashboard_to_warranty"
+            app:destination="@id/warrantyServiceFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
@@ -197,8 +204,15 @@
             app:argType="long" />
         <argument
             android:name="postedReturnId"
-            android:defaultValue="0"
+            android:defaultValue="0L"
             app:argType="long" />
+        <action
+            android:id="@+id/action_returns_to_bill"
+            app:destination="@id/billFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
@@ -209,6 +223,13 @@
         <argument
             android:name="billId"
             app:argType="long" />
+        <action
+            android:id="@+id/action_versions_to_bill"
+            app:destination="@id/billFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 
     <fragment
@@ -271,7 +292,7 @@
         tools:layout="@layout/fragment_stock">
         <argument
             android:name="focusItemId"
-            android:defaultValue="0"
+            android:defaultValue="0L"
             app:argType="long" />
         <argument
             android:name="focusItemName"
@@ -303,11 +324,11 @@
         tools:layout="@layout/fragment_bills_history">
         <argument
             android:name="rangeStart"
-            android:defaultValue="0"
+            android:defaultValue="0L"
             app:argType="long" />
         <argument
             android:name="rangeEnd"
-            android:defaultValue="0"
+            android:defaultValue="0L"
             app:argType="long" />
         <argument
             android:name="itemName"
@@ -673,5 +694,78 @@
             android:name="orderId"
             android:defaultValue="0L"
             app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/warrantyServiceFragment"
+        android:name="com.kex.vikrsaathi.ui.warranty.WarrantyServiceFragment"
+        android:label="@string/warranty_service"
+        tools:layout="@layout/fragment_warranty_service">
+        <action
+            android:id="@+id/action_warranty_to_claim"
+            app:destination="@id/warrantyClaimFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
+            android:id="@+id/action_warranty_to_claims"
+            app:destination="@id/warrantyClaimsFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/warrantyClaimFragment"
+        android:name="com.kex.vikrsaathi.ui.warranty.WarrantyClaimFragment"
+        android:label="@string/warranty_service"
+        tools:layout="@layout/fragment_warranty_claim">
+        <argument
+            android:name="billItemId"
+            android:defaultValue="0L"
+            app:argType="long" />
+        <action
+            android:id="@+id/action_warranty_claim_to_detail"
+            app:destination="@id/warrantyClaimDetailFragment"
+            app:popUpTo="@id/warrantyClaimFragment"
+            app:popUpToInclusive="true"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/warrantyClaimsFragment"
+        android:name="com.kex.vikrsaathi.ui.warranty.WarrantyClaimsFragment"
+        android:label="@string/warranty_claims"
+        tools:layout="@layout/fragment_warranty_claims">
+        <action
+            android:id="@+id/action_warranty_claims_to_detail"
+            app:destination="@id/warrantyClaimDetailFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/warrantyClaimDetailFragment"
+        android:name="com.kex.vikrsaathi.ui.warranty.WarrantyClaimDetailFragment"
+        android:label="@string/warranty_claim"
+        tools:layout="@layout/fragment_warranty_claim_detail">
+        <argument
+            android:name="claimId"
+            android:defaultValue="0L"
+            app:argType="long" />
+        <action
+            android:id="@+id/action_warranty_detail_to_bill"
+            app:destination="@id/billFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
     </fragment>
 </navigation>

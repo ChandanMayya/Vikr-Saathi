@@ -65,6 +65,14 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_ORDER_MANAGEMENT, true)
         set(value) = prefs.edit().putBoolean(KEY_ORDER_MANAGEMENT, value).apply()
 
+    /**
+     * When false, item and new-bill warranty controls stay hidden and new lines
+     * do not copy warranty terms. Saved item settings and past bill snapshots remain.
+     */
+    var warrantyEnabled: Boolean
+        get() = prefs.getBoolean(KEY_WARRANTY_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_WARRANTY_ENABLED, value).apply()
+
     /** Off keeps every lot and its history. New stock movements are not given a lot until it is turned on again. */
     var batchTrackingEnabled: Boolean
         get() = prefs.getBoolean(KEY_BATCH_TRACKING, false)
@@ -155,6 +163,7 @@ class SettingsRepository(context: Context) {
         vendorManagementEnabled = true
         orderManagementEnabled = true
         batchTrackingEnabled = false
+        warrantyEnabled = false
         expiryAlertDays = DEFAULT_EXPIRY_ALERT_DAYS
         NotificationPreferences(context).reset()
         File(filesDir, HEADER_FILE).delete()
@@ -249,6 +258,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_VENDOR_MANAGEMENT = "vendor_management_enabled"
         private const val KEY_ORDER_MANAGEMENT = "order_management_enabled"
         private const val KEY_BATCH_TRACKING = "batch_tracking_enabled"
+        private const val KEY_WARRANTY_ENABLED = "warranty_enabled"
         private const val KEY_EXPIRY_ALERT_DAYS = "expiry_alert_days"
         const val DEFAULT_EXPIRY_ALERT_DAYS = 30
         private const val KEY_INVOICE_PREFIX = "invoice_prefix"

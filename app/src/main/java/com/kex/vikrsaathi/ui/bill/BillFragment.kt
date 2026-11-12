@@ -62,6 +62,7 @@ class BillFragment : Fragment() {
     private var suppressItemSearch = false
     private var suppressBillRoundOffUpdates = false
     private var isReadOnly = false
+    private var drawerListener: DrawerLayout.DrawerListener? = null
 
     private val scannerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -105,7 +106,8 @@ class BillFragment : Fragment() {
             onDiscountChange = { index, discount -> viewModel.updateLineDiscount(index, discount) },
             onRoundOffChange = { index, roundOff -> viewModel.updateLineRoundOff(index, roundOff) },
             onRateChange = { index, rate -> viewModel.updateLineRate(index, rate) },
-            onRemove = { index -> viewModel.removeLine(index) }
+            onRemove = { index -> viewModel.removeLine(index) },
+            warrantySaleMillis = { viewModel.warrantySaleMillis() }
         )
         binding.recyclerBillItems.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerBillItems.adapter = lineAdapter
@@ -452,20 +454,24 @@ class BillFragment : Fragment() {
             )
         }
         viewModel.versionCount.observe(viewLifecycleOwner) { count ->
-            if (count > 0) binding.billDrawer.textVersionCount.text = count.toString()
+            if (count > 0 && _binding != null) binding.billDrawer.textVersionCount.text = count.toString()
         }
-        binding.drawerLayout.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
+        val listener = object : DrawerLayout.SimpleDrawerListener() {
             override fun onDrawerOpened(drawerView: View) {
+                if (_binding == null) return
                 val billId = savedBillId()
                 if (billId > 0L) viewModel.refreshVersionCount(billId)
             }
 
             override fun onDrawerClosed(drawerView: View) {
-                if (drawerView.id == binding.billDrawer.root.id && isReadOnly) {
+                val current = _binding ?: return
+                if (drawerView.id == current.billDrawer.root.id && isReadOnly && isAdded) {
                     requireActivity().invalidateOptionsMenu()
                 }
             }
-        })
+        }
+        drawerListener = listener
+        binding.drawerLayout.addDrawerListener(listener)
     }
 
     private fun savedBillId(): Long {
@@ -1149,6 +1155,8 @@ class BillFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        drawerListener?.let { binding.drawerLayout.removeDrawerListener(it) }
+        drawerListener = null
         binding.root.removeCallbacks(customerFlagCheck)
         binding.root.removeCallbacks(newItemCheck)
         BarcodeScanBus.onBarcodeScanned = null

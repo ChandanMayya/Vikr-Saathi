@@ -27,7 +27,14 @@ data class Item(
     val purchaseUnit: String = "",
     val unitsPerPurchase: Int = 1,
     /** When true, and the shop setting is on, sales use lots instead of the item total alone. */
-    @ColumnInfo(defaultValue = "0") val trackBatches: Boolean = false
+    @ColumnInfo(defaultValue = "0") val trackBatches: Boolean = false,
+    /** Shop choice for this item. Turning the shop setting off does not clear these fields. */
+    @ColumnInfo(defaultValue = "0") val warrantyApplies: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val warrantyPeriod: Int = 0,
+    @ColumnInfo(defaultValue = "''") val warrantyUnit: String = "",
+    @ColumnInfo(defaultValue = "''") val warrantyProvider: String = "",
+    @ColumnInfo(defaultValue = "''") val warrantyProviderName: String = "",
+    @ColumnInfo(defaultValue = "''") val warrantyTerms: String = ""
 ) {
     /** The optional item unit. Packaging no longer stores a second base-unit name. */
     fun stockUnit(): String = baseUnit.ifBlank { remarks }

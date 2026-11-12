@@ -1,6 +1,7 @@
 package com.kex.vikrsaathi.data.draft
 
 import com.kex.vikrsaathi.data.model.BillLineItem
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -21,6 +22,15 @@ object BillDraftCodec {
                     if (line.lineKey.isNotEmpty()) put("lineKey", line.lineKey)
                     line.openingStock?.let { put("openingStock", it) }
                     line.barcode?.let { put("barcode", it) }
+                    line.warranty?.let { warranty ->
+                        put("warrantyPeriod", warranty.period)
+                        put("warrantyUnit", warranty.unit)
+                        put("warrantyProvider", warranty.provider)
+                        put("warrantyProviderName", warranty.providerName)
+                        put("warrantyTerms", warranty.terms)
+                        warranty.startEpochDay?.let { put("warrantyStartEpochDay", it) }
+                        warranty.endEpochDay?.let { put("warrantyEndEpochDay", it) }
+                    }
                 }
             )
         }
@@ -49,7 +59,24 @@ object BillDraftCodec {
                                 null
                             },
                             barcode = obj.optString("barcode").trim().ifEmpty { null },
-                            lineKey = obj.optString("lineKey").trim()
+                            lineKey = obj.optString("lineKey").trim(),
+                            warranty = if (obj.has("warrantyPeriod")) {
+                                WarrantyPolicy.fromStored(
+                                    period = obj.optInt("warrantyPeriod"),
+                                    unit = obj.optString("warrantyUnit"),
+                                    provider = obj.optString("warrantyProvider"),
+                                    providerName = obj.optString("warrantyProviderName"),
+                                    terms = obj.optString("warrantyTerms"),
+                                    startEpochDay = obj.optLong("warrantyStartEpochDay").takeIf {
+                                        obj.has("warrantyStartEpochDay")
+                                    },
+                                    endEpochDay = obj.optLong("warrantyEndEpochDay").takeIf {
+                                        obj.has("warrantyEndEpochDay")
+                                    }
+                                )
+                            } else {
+                                null
+                            }
                         )
                     )
                 }

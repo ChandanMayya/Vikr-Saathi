@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="8dp"
@@ -38,27 +39,34 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonQtyMinus"
-            style="@style/VikrSaathiOutlinedButton"
+            style="@style/VikrSaathiStepperButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:text="-" />
+            android:contentDescription="@string/return_qty_decrease"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:text="−" />
 
         <TextView
             android:id="@+id/textLineQty"
             android:layout_width="48dp"
             android:layout_height="wrap_content"
             android:gravity="center"
+            android:textColor="@color/text_primary_dark"
             android:textAppearance="?attr/textAppearanceTitleMedium" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonQtyPlus"
-            style="@style/VikrSaathiOutlinedButton"
+            style="@style/VikrSaathiStepperButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
+            android:contentDescription="@string/return_qty_increase"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
             android:text="+" />
 
         <TextView
@@ -70,17 +78,22 @@
             android:textColor="@color/text_primary_dark" />
     </LinearLayout>
 
-    <CheckBox
+    <com.google.android.material.checkbox.MaterialCheckBox
         android:id="@+id/checkRestock"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:minHeight="48dp"
-        android:text="@string/return_add_back" />
+        android:text="@string/return_add_back"
+        android:textColor="@color/text_primary_dark"
+        app:buttonIconTint="@color/white"
+        app:buttonTint="@color/return_checkbox_tint" />
 
     <TextView
+        android:id="@+id/textQuarantine"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/return_quarantine_help"
         android:textAppearance="?attr/textAppearanceBodySmall"
-        android:textColor="?android:attr/textColorSecondary" />
+        android:textColor="@color/text_secondary_dark"
+        android:visibility="gone" />
 </LinearLayout>

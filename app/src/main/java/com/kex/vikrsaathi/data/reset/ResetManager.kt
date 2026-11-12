@@ -120,6 +120,8 @@ class ResetManager(
             if (ResetOptions.CATEGORY_SALES in sections) {
                 onProgress("Deleting sales records…", 48)
                 customerFinanceRepository.clearBillLinkedFinanceForSalesReset()
+                database.warrantyClaimDao().deleteAllEvents()
+                database.warrantyClaimDao().deleteAll()
                 // Version rows restrict bill deletes. A sales reset removes them on purpose.
                 database.billVersionDao().deleteAllPayments()
                 database.billVersionDao().deleteAllItems()

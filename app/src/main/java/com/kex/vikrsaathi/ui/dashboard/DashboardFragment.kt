@@ -257,6 +257,9 @@ class DashboardFragment : Fragment() {
         binding.cardSettings.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_settings)
         }
+        binding.cardWarrantyService.setOnClickListener {
+            findNavController().navigate(R.id.action_dashboard_to_warranty)
+        }
         binding.textCustomerDues.setOnClickListener {
             findNavController().navigate(R.id.action_dashboard_to_outstanding)
         }
@@ -288,6 +291,7 @@ class DashboardFragment : Fragment() {
                 height = iconSize
             }
         }
+        binding.rowWarranty.isVisible = settings.warrantyEnabled
         val ordersEnabled = settings.orderManagementEnabled
         binding.textCustomerDues.isVisible = settings.customerBalanceEnabled
         binding.textVendorPayables.isVisible = vendorsEnabled

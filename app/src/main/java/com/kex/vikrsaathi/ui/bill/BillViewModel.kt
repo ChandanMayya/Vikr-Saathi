@@ -23,6 +23,8 @@ import com.kex.vikrsaathi.data.repository.SettingsRepository
 import com.kex.vikrsaathi.data.repository.StockShortfall
 import android.content.Context
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
+import com.kex.vikrsaathi.domain.bill.warrantySnapshot
 import com.kex.vikrsaathi.domain.finance.BillPaymentRequest
 import com.kex.vikrsaathi.domain.finance.BillPaymentStatus
 import com.kex.vikrsaathi.domain.finance.PaymentPortion
@@ -79,6 +81,13 @@ class BillViewModel(
 
     private var editingBillId: Long? = null
 
+    /**
+     * Sale date of the bill open for editing. Warranty preview uses this so a
+     * line added to an older bill shows the same dates save will store.
+     * Null means the bill has not been saved yet, so the sale date is today.
+     */
+    private var editingSaleDateMillis: Long? = null
+
     private val _versionCount = MutableLiveData(0)
     val versionCount: LiveData<Int> = _versionCount
 
@@ -93,6 +102,9 @@ class BillViewModel(
 
     val currentBillId: Long?
         get() = editingBillId
+
+    /** Instant [WarrantyPolicy.resolve] should use for lines that do not yet have saved dates. */
+    fun warrantySaleMillis(): Long = editingSaleDateMillis ?: System.currentTimeMillis()
 
     val isNewBillSession: Boolean
         get() = editingBillId == null
@@ -200,6 +212,7 @@ class BillViewModel(
                 return@launch
             }
             editingBillId = null
+            editingSaleDateMillis = null
             _selectedCustomer.value = restored.customerId?.let { customerRepository.getById(it) }
             _lineItems.value = restored.lineItems
             _billRoundOff.value = restored.roundOff
@@ -231,6 +244,7 @@ class BillViewModel(
         viewModelScope.launch {
             val bill = billRepository.getBillWithDetails(billId) ?: return@launch
             editingBillId = billId
+            editingSaleDateMillis = bill.bill.date
             _selectedCustomer.value = bill.customer
             _lineItems.value = bill.items.map {
                 BillLineItem(
@@ -239,7 +253,9 @@ class BillViewModel(
                     mrp = it.mrp,
                     discount = it.discount,
                     quantity = it.quantity,
-                    roundOff = it.roundOff
+                    roundOff = it.roundOff,
+                    unitCostPaise = it.unitCostPaise,
+                    warranty = it.warrantySnapshot()
                 )
             }
             _billRoundOff.value = bill.bill.roundOff
@@ -252,6 +268,7 @@ class BillViewModel(
 
     fun clearBill() {
         editingBillId = null
+        editingSaleDateMillis = null
         _selectedCustomer.value = null
         _lineItems.value = emptyList()
         _billRoundOff.value = 0.0
@@ -294,7 +311,8 @@ class BillViewModel(
                 itemId = item.id,
                 name = item.name,
                 mrp = item.mrp,
-                discount = effectiveDiscount.coerceAtLeast(0.0)
+                discount = effectiveDiscount.coerceAtLeast(0.0),
+                warranty = WarrantyPolicy.forNewSale(item, settingsRepository.warrantyEnabled)
             ),
             qty
         )
@@ -425,6 +443,8 @@ class BillViewModel(
                 recalculate()
             }
             editingBillId = outcome.billId
+            editingSaleDateMillis = billRepository.getBillWithDetails(outcome.billId)?.bill?.date
+                ?: editingSaleDateMillis
             _versionCount.value = billRepository.displayedVersionCount(outcome.billId)
             onSaved(
                 outcome.billId,
@@ -479,8 +499,9 @@ class BillViewModel(
         }
         val items = _lineItems.value?.toMutableList() ?: mutableListOf()
         val existingIndex = items.indexOfFirst {
-            (it.itemId != null && it.itemId == keyed.itemId) ||
+            val sameItem = (it.itemId != null && it.itemId == keyed.itemId) ||
                 (keyed.isNew && it.isNew && it.name.trim().equals(keyed.name.trim(), ignoreCase = true))
+            sameItem && WarrantyPolicy.sameTerms(it.warranty, keyed.warranty)
         }
         if (existingIndex >= 0) {
             val existing = items[existingIndex]

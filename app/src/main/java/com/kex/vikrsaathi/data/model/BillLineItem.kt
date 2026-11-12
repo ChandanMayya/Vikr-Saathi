@@ -1,5 +1,6 @@
 package com.kex.vikrsaathi.data.model
 
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
 import com.kex.vikrsaathi.util.PriceCalculator
 
 /**
@@ -20,7 +21,9 @@ data class BillLineItem(
     val barcode: String? = null,
     /** Stable row identity. Unsaved catalog items have no [itemId] yet. */
     val lineKey: String = "",
-    val unitCostPaise: Long? = null
+    val unitCostPaise: Long? = null,
+    /** Terms captured for this line. Dates are filled when the bill is saved. */
+    val warranty: WarrantyPolicy.Snapshot? = null
 ) {
     val unitPriceAfterDiscount: Double
         get() = PriceCalculator.priceAfterDiscount(mrp, discount)

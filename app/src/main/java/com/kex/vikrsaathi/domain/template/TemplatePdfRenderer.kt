@@ -3,6 +3,7 @@ package com.kex.vikrsaathi.domain.template
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import com.kex.vikrsaathi.data.model.template.ElementKind
 import com.kex.vikrsaathi.data.model.template.InvoiceTemplate
@@ -25,6 +26,7 @@ object TemplatePdfRenderer {
 
         val templateWithoutTables = template.copy(elements = otherElements)
         renderer.render(canvas, templateWithoutTables, context)
+        drawExchangeBanner(canvas, template, context)
 
         tableElements.forEach { tableElement ->
             val rows = renderer.resolveTableRows(context, tableElement)
@@ -55,6 +57,25 @@ object TemplatePdfRenderer {
         }
 
         document.finishPage(page)
+    }
+
+    private fun drawExchangeBanner(canvas: Canvas, template: InvoiceTemplate, context: TemplateRenderContext) {
+        val title = context.exchangeTitle ?: return
+        val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#F57C00")
+            textSize = 12f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+        val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = 9f
+        }
+        var y = 14f
+        canvas.drawText(title, template.marginLeft, y, titlePaint)
+        context.exchangeLines.forEach { line ->
+            y += 12f
+            canvas.drawText(line, template.marginLeft, y, bodyPaint)
+        }
     }
 
     private data class TableSectionResult(

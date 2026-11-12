@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
@@ -15,15 +14,18 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
+import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.databinding.FragmentBillReturnBinding
 import com.kex.vikrsaathi.databinding.ItemReturnLineBinding
 import com.kex.vikrsaathi.domain.finance.RefundMethod
 import com.kex.vikrsaathi.domain.money.Money
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.util.ViewModelFactory
 import kotlinx.coroutines.launch
 
-class BillReturnFragment : Fragment() {
+class BillReturnFragment : Fragment(), ReplacementSheetHost {
 
     private var _binding: FragmentBillReturnBinding? = null
     private val binding get() = _binding!!
@@ -41,6 +43,7 @@ class BillReturnFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        installHelpMenu(HelpScreen.RETURN_ITEMS)
         binding.radioRefundCash.isChecked = true
         binding.radioDueCash.isChecked = true
         binding.groupRefund.setOnCheckedChangeListener { _, checkedId ->
@@ -60,16 +63,32 @@ class BillReturnFragment : Fragment() {
             viewModel.setDueChoice(choice)
         }
         binding.buttonAddCustomer.setOnClickListener { showCustomerDialog() }
-        binding.buttonAddReplacement.setOnClickListener { showItemDialog() }
+        binding.buttonAddReplacement.setOnClickListener {
+            AddReplacementBottomSheet().show(childFragmentManager, "add-replacement")
+        }
+        val reasons = com.kex.vikrsaathi.domain.bill.ExchangeReason.choices
+        binding.autoReturnReason.setAdapter(android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, reasons))
         binding.buttonReviewReturn.setOnClickListener {
             if (viewModel.preview() == null) {
                 Toast.makeText(requireContext(), R.string.return_select_qty, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            viewModel.rememberText(
-                binding.editReturnReason.text?.toString().orEmpty(),
-                binding.editReturnNote.text?.toString().orEmpty()
+            val reason = binding.autoReturnReason.text?.toString().orEmpty()
+            val note = binding.editReturnNote.text?.toString().orEmpty()
+            val problem = com.kex.vikrsaathi.domain.bill.ExchangeReason.problem(
+                isExchange = viewModel.form.value?.replacements?.isNotEmpty() == true,
+                reason = reason,
+                note = note
             )
+            if (problem == com.kex.vikrsaathi.domain.bill.ExchangeReason.Problem.MISSING) {
+                Toast.makeText(requireContext(), R.string.return_reason_required, Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            if (problem == com.kex.vikrsaathi.domain.bill.ExchangeReason.Problem.NOTE_REQUIRED) {
+                Toast.makeText(requireContext(), R.string.return_reason_note_required, Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            viewModel.rememberText(reason, note)
             findNavController().navigate(R.id.action_return_to_review)
         }
         viewModel.form.observe(viewLifecycleOwner) { render(it) }
@@ -141,6 +160,7 @@ class BillReturnFragment : Fragment() {
             row.checkRestock.setOnCheckedChangeListener { _, checked ->
                 viewModel.setRestock(line.billItemId, checked)
             }
+            row.textQuarantine.isVisible = line.tracked
         }
         renderReplacements(state)
     }
@@ -153,18 +173,27 @@ class BillReturnFragment : Fragment() {
                 val row = ItemReturnLineBinding.inflate(layoutInflater, container, false)
                 row.root.tag = "rep-${item.key}"
                 row.checkRestock.isVisible = false
+                row.textQuarantine.isVisible = false
                 container.addView(row.root)
             }
         }
         state.replacements.forEach { item ->
             val row = ItemReturnLineBinding.bind(container.findViewWithTag("rep-${item.key}"))
             row.textLineName.text = item.name
-            row.textLineMeta.text = PriceCalculator.formatAmount(item.unitPrice, viewModel.currencySymbol)
-            row.textLinePrice.text = ""
+            row.textLineMeta.text = getString(
+                R.string.return_replacement_rate,
+                PriceCalculator.formatAmount(item.unitPrice, viewModel.currencySymbol)
+            ) + " · " + getString(R.string.return_discount_percent) + " " + trimPercent(item.discountPercent)
+            row.textLinePrice.isVisible = false
             row.textLineQty.text = item.quantity.toString()
-            row.textLinePortion.text = PriceCalculator.formatAmount(item.unitPrice * item.quantity, viewModel.currencySymbol)
+            row.textLinePortion.text = PriceCalculator.formatAmount(
+                com.kex.vikrsaathi.domain.bill.ReplacementRatePolicy.lineTotal(item.unitPrice, item.discountPercent, item.quantity),
+                viewModel.currencySymbol
+            )
             row.buttonQtyMinus.setOnClickListener { viewModel.setReplacementQuantity(item.key, item.quantity - 1) }
             row.buttonQtyPlus.setOnClickListener { viewModel.setReplacementQuantity(item.key, item.quantity + 1) }
+            row.checkRestock.isVisible = false
+            row.textQuarantine.isVisible = false
         }
     }
 
@@ -189,27 +218,28 @@ class BillReturnFragment : Fragment() {
             .show()
     }
 
-    private fun showItemDialog() {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.item_name)
-            minHeight = (48 * resources.displayMetrics.density).toInt()
+    override fun loadReplacementItems(query: String, onResult: (List<Item>) -> Unit) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            onResult(viewModel.replacementChoices(query))
         }
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.return_add_replacement)
-            .setView(input)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.save) { _, _ ->
-                viewLifecycleOwner.lifecycleScope.launch {
-                    val matches = viewModel.searchItems(input.text?.toString().orEmpty())
-                    val item = matches.firstOrNull()
-                    if (item == null) {
-                        Toast.makeText(requireContext(), R.string.no_master_items, Toast.LENGTH_SHORT).show()
-                        return@launch
-                    }
-                    viewModel.addReplacement(item.id, item.name, item.mrp)
-                }
-            }
-            .show()
+    }
+
+    override fun replacementChoice(item: Item): ReplacementChoice = viewModel.replacementChoice(item)
+
+    override fun currencySymbol(): String = viewModel.currencySymbol
+
+    override fun addApprovedReplacement(
+        item: Item,
+        name: String,
+        rate: Double,
+        discountPercent: Double,
+        quantity: Int
+    ) {
+        viewModel.addReplacement(item.id, name, rate, discountPercent, quantity, item)
+    }
+
+    private fun trimPercent(value: Double): String {
+        return String.format(java.util.Locale.US, "%.2f", value).trimEnd('0').trimEnd('.') + "%"
     }
 
     private fun money(paise: Long): String {

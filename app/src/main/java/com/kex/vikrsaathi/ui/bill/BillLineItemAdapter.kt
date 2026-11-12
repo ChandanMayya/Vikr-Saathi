@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.data.model.BillLineItem
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
 import com.kex.vikrsaathi.databinding.ItemBillLineBinding
 import com.kex.vikrsaathi.util.PriceCalculator
 
@@ -19,7 +20,8 @@ class BillLineItemAdapter(
     private val onDiscountChange: (Int, Double) -> Unit,
     private val onRoundOffChange: (Int, Double) -> Unit,
     private val onRateChange: (Int, Double) -> Unit,
-    private val onRemove: (Int) -> Unit
+    private val onRemove: (Int) -> Unit,
+    private val warrantySaleMillis: () -> Long = { System.currentTimeMillis() }
 ) : ListAdapter<BillLineItem, BillLineItemAdapter.ViewHolder>(DiffCallback()) {
 
     var readOnly: Boolean = false
@@ -194,6 +196,7 @@ class BillLineItemAdapter(
             suppressUpdates = true
             binding.textSlNo.text = bindingAdapterPosition.plus(1).toString()
             binding.textParticulars.text = line.name
+            bindWarranty(line)
             bindNewItemState(line)
             binding.layoutQuantity.visibility = View.VISIBLE
             binding.editQuantity.visibility = View.VISIBLE
@@ -226,6 +229,22 @@ class BillLineItemAdapter(
             binding.textMrp.text = unitPrice
             binding.textPrice.text = PriceCalculator.formatAmount(line.lineTotal, currencySymbol)
             suppressUpdates = wasSuppressed
+        }
+
+        private fun bindWarranty(line: BillLineItem) {
+            // Undated lines preview from the bill sale date, the same instant save stores.
+            val saved = WarrantyPolicy.resolve(line.warranty, warrantySaleMillis())
+            val until = saved?.let { WarrantyPolicy.validUntil(it) }
+            if (saved == null || until == null) {
+                binding.layoutWarranty.visibility = View.GONE
+                return
+            }
+            binding.layoutWarranty.visibility = View.VISIBLE
+            binding.textWarrantyHeadline.text = WarrantyPolicy.headline(saved)
+            binding.textWarrantyUntil.text = until
+            val extra = WarrantyPolicy.extraLine(saved)
+            binding.textWarrantyExtra.visibility = if (extra.isNullOrBlank()) View.GONE else View.VISIBLE
+            binding.textWarrantyExtra.text = extra.orEmpty()
         }
 
         private fun bindNewItemState(line: BillLineItem) {

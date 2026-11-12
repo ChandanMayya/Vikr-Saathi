@@ -187,6 +187,8 @@ class BillReturnFlowTest {
         } catch (error: InsufficientStockException) {
             assertTrue(db.customerLedgerDao().getAllReturns().isEmpty())
             assertEquals(1, db.itemDao().getItemById(tea)!!.stockQty)
+            assertEquals(1, db.billDao().getAllBillsWithDetailsSync().size)
+            assertEquals(billId, db.billDao().getAllBillsWithDetailsSync().single().bill.id)
         }
         settings.inventoryMode = InventoryMode.OFF
         val customerId = db.customerDao().insert(Customer(name = "Asha"))
@@ -209,6 +211,42 @@ class BillReturnFlowTest {
         assertEquals(PaymentMethod.EXCHANGE, replacementPayments.single().method)
         assertEquals(1500L, replacementPayments.single().amountPaise)
         assertTrue(db.customerLedgerDao().getAll().isEmpty())
+    }
+
+    @Test
+    fun exchangeKeepsApprovedDiscountAndANewInvoiceNumber() = runBlocking {
+        val pen = db.itemDao().insert(Item(name = "Pen", mrp = 10.0, discount = 10.0, sellingPrice = 5.0, stockQty = 4))
+        val billId = bills.saveBill(
+            customerId = null,
+            lineItems = listOf(BillLineItem(itemId = pen, name = "Pen", mrp = 10.0, discount = 0.0, quantity = 1)),
+            payment = com.kex.vikrsaathi.domain.finance.BillPaymentRequest.KeepLegacy
+        )
+        val original = bills.getBillWithDetails(billId)!!
+        val lineId = original.items.single().id
+        val posted = finance.postExchange(
+            billId = billId,
+            lines = listOf(BillReturnLineInput(lineId, 1, true)),
+            replacementLines = listOf(BillLineItem(itemId = pen, name = "Pen", mrp = 10.0, discount = 50.0, quantity = 2)),
+            replacementRoundOff = 0.0,
+            dueMethod = PaymentMethod.CASH,
+            reason = "Wrong item",
+            note = null,
+            occurredAt = 12L,
+            actorLabel = "Owner"
+        )
+        val unchanged = bills.getBillWithDetails(billId)!!
+        assertEquals(original.bill.billNumber, unchanged.bill.billNumber)
+        assertEquals(original.bill.total, unchanged.bill.total, 0.001)
+        val replacement = bills.getBillWithDetails(posted.replacementBillId!!)!!
+        assertTrue(replacement.bill.billNumber != original.bill.billNumber)
+        assertEquals(10.0, replacement.items.single().mrp, 0.001)
+        assertEquals(50.0, replacement.items.single().discount, 0.001)
+        assertEquals(2, replacement.items.single().quantity)
+        val record = db.customerLedgerDao().getReturnById(posted.returnId)!!
+        assertEquals(posted.replacementBillId, record.exchangeBillId)
+        assertEquals("Wrong item", record.reason)
+        assertEquals(10.0, db.itemDao().getItemById(pen)!!.mrp, 0.001)
+        assertEquals(10.0, db.itemDao().getItemById(pen)!!.discount, 0.001)
     }
 
     @Test

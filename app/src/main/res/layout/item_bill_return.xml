@@ -22,6 +22,33 @@
         android:textAppearance="?attr/textAppearanceBodyLarge"
         android:textColor="@color/text_primary_dark" />
 
+    <LinearLayout
+        android:id="@+id/rowExchangeActions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonOpenExchange"
+            style="@style/VikrSaathiOutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:minHeight="48dp"
+            android:text="@string/return_open_exchange" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonPrintExchange"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minHeight="48dp"
+            android:text="@string/print" />
+    </LinearLayout>
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/buttonVoidReturn"
         style="@style/VikrSaathiOutlinedButton"

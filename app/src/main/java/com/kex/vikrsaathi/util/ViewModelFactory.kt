@@ -24,6 +24,7 @@ import com.kex.vikrsaathi.ui.settings.backup.BackupViewModel
 import com.kex.vikrsaathi.ui.settings.reset.ResetViewModel
 import com.kex.vikrsaathi.ui.settings.invoicebuilder.InvoiceBuilderViewModel
 import com.kex.vikrsaathi.ui.stock.StockViewModel
+import com.kex.vikrsaathi.ui.warranty.WarrantyServiceViewModel
 
 class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Factory {
 
@@ -64,7 +65,8 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
             modelClass.isAssignableFrom(BillVersionsViewModel::class.java) ->
                 BillVersionsViewModel(
                     app.billRepository,
-                    app.settingsRepository
+                    app.settingsRepository,
+                    app.invoiceTemplateRepository
                 ) as T
             modelClass.isAssignableFrom(BillReturnViewModel::class.java) ->
                 BillReturnViewModel(
@@ -104,6 +106,7 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
             modelClass.isAssignableFrom(BillsHistoryViewModel::class.java) ->
                 BillsHistoryViewModel(
                     app.billRepository,
+                    app.customerFinanceRepository,
                     app.settingsRepository,
                     app.customerRepository,
                     app.itemRepository,
@@ -138,6 +141,11 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                 ) as T
             modelClass.isAssignableFrom(ResetViewModel::class.java) ->
                 ResetViewModel(app.resetManager) as T
+            modelClass.isAssignableFrom(WarrantyServiceViewModel::class.java) ->
+                WarrantyServiceViewModel(
+                    app.warrantyClaimRepository,
+                    app.settingsRepository
+                ) as T
             else -> throw IllegalArgumentException("Unknown ViewModel: ${modelClass.name}")
         }
     }

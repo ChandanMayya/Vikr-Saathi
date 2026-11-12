@@ -11,6 +11,7 @@ import com.kex.vikrsaathi.data.repository.InventoryRepository
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.data.repository.WarrantyClaimRepository
 import com.kex.vikrsaathi.data.backup.BackupManager
 import com.kex.vikrsaathi.data.reset.ResetHistoryStore
 import com.kex.vikrsaathi.data.reset.ResetManager
@@ -87,6 +88,13 @@ class VikrSaathiApp : Application() {
         )
     }
     val billDraftRepository by lazy { BillDraftRepository(database.billDraftDao()) }
+    val warrantyClaimRepository by lazy {
+        WarrantyClaimRepository(
+            database = database,
+            claims = database.warrantyClaimDao(),
+            bills = database.billDao()
+        )
+    }
     val invoiceTemplateRepository by lazy {
         InvoiceTemplateRepository(
             database.invoiceTemplateDao(),

@@ -34,6 +34,8 @@ import com.kex.vikrsaathi.data.model.DashboardPeriodStats
 import com.kex.vikrsaathi.data.model.DashboardTopItem
 import com.kex.vikrsaathi.domain.bill.BillVersionDiffer
 import com.kex.vikrsaathi.domain.bill.OperatorLabels
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
+import com.kex.vikrsaathi.domain.bill.warrantySnapshot
 import com.kex.vikrsaathi.domain.dashboard.DashboardPeriod
 import com.kex.vikrsaathi.domain.dashboard.DashboardPeriods
 import com.kex.vikrsaathi.domain.dashboard.GrossProfitCalculator
@@ -103,7 +105,8 @@ class BillRepository(
         payment: BillPaymentRequest = BillPaymentRequest.LeaveUnchanged,
         shortageAcknowledged: Boolean = false,
         dueEpochDay: Long? = null,
-        applyDueDate: Boolean = false
+        applyDueDate: Boolean = false,
+        changeSummary: String? = null
     ): Long {
         val subtotal = BillTotalsCalculator.lineItemsSubtotal(lineItems)
         val total = subtotal + billRoundOff
@@ -115,13 +118,14 @@ class BillRepository(
 
             if (existingBillId != null) {
                 val existing = billDao.getBillById(existingBillId)
-                    ?: return@withTransaction saveBill(
+                    ?:                     return@withTransaction saveBill(
                         customerId,
                         lineItems,
                         billRoundOff,
                         null,
                         payment,
-                        shortageAcknowledged
+                        shortageAcknowledged,
+                        changeSummary = changeSummary
                     )
                 val priorItems = billItemDao.getItemsForBill(existingBillId)
                 val priorPayments = billPaymentDao.getForBill(existingBillId)
@@ -160,7 +164,8 @@ class BillRepository(
                     )
                 )
                 billItemDao.deleteItemsForBill(existingBillId)
-                billItemDao.insertAll(lineItems.toPricedBillItems(billId))
+                // Warranty dates follow the original sale date, including lines added in this edit.
+                billItemDao.insertAll(lineItems.toPricedBillItems(billId, existing.date))
                 inventoryRepository.applyBillStockChanges(
                     billId = billId,
                     oldQuantities = oldQuantities,
@@ -177,7 +182,7 @@ class BillRepository(
                 val stored = billDao.getBillById(billId) ?: existing
                 val newItems = billItemDao.getItemsForBill(billId)
                 val newPayments = billPaymentDao.getForBill(billId)
-                val summary = BillVersionDiffer.summarize(
+                val summary = changeSummary ?: BillVersionDiffer.summarize(
                     before = previousState,
                     after = stateOf(stored, newItems, newPayments),
                     currencySymbol = settingsRepository.currencySymbol
@@ -207,7 +212,7 @@ class BillRepository(
                     dueEpochDay = if (applyDueDate) dueEpochDay else null
                 )
                 billId = billDao.insertBill(bill)
-                billItemDao.insertAll(lineItems.toPricedBillItems(billId))
+                billItemDao.insertAll(lineItems.toPricedBillItems(billId, ledgerAt))
                 inventoryRepository.applyBillStockChanges(
                     billId = billId,
                     oldQuantities = oldQuantities,
@@ -292,19 +297,7 @@ class BillRepository(
         return listOf(
             BillVersionDetails(
                 version = synthetic,
-                items = live.items.map { item ->
-                    BillVersionItem(
-                        versionId = 0,
-                        itemId = item.itemId,
-                        itemName = item.itemName,
-                        quantity = item.quantity,
-                        mrp = item.mrp,
-                        discount = item.discount,
-                        finalPrice = item.finalPrice,
-                        roundOff = item.roundOff,
-                        unitCostPaise = item.unitCostPaise
-                    )
-                },
+                items = live.items.map { item -> item.toVersionItem(0) },
                 payments = live.payments.map { payment ->
                     BillVersionPayment(
                         versionId = 0,
@@ -326,7 +319,9 @@ class BillRepository(
                 mrp = item.mrp,
                 discount = item.discount,
                 quantity = item.quantity,
-                roundOff = item.roundOff
+                roundOff = item.roundOff,
+                unitCostPaise = item.unitCostPaise,
+                warranty = item.warrantySnapshot()?.withoutDates()
             )
         }
         val portions = billPaymentDao.getForBill(billId).map {
@@ -343,6 +338,125 @@ class BillRepository(
             billRoundOff = source.bill.roundOff,
             payment = request,
             shortageAcknowledged = shortageAcknowledged
+        )
+    }
+
+    /**
+     * Writes the selected snapshot back onto this bill and appends a new version.
+     * Earlier snapshots are left untouched. The bill's sale date stays as it is.
+     */
+    suspend fun restoreVersion(
+        billId: Long,
+        versionNumber: Int,
+        shortageAcknowledged: Boolean = false
+    ): Long {
+        val selected = versionDetails(billId, versionNumber) ?: return billId
+        if (selected.isCurrent) return billId
+        return saveBill(
+            customerId = selected.version.customerId,
+            lineItems = selected.toLineItems(keepWarrantyDates = true),
+            billRoundOff = selected.version.roundOff,
+            existingBillId = billId,
+            payment = selected.toPaymentRequest(clearWhenEmpty = true),
+            shortageAcknowledged = shortageAcknowledged,
+            changeSummary = BillVersionDiffer.restoredFrom(versionNumber)
+        )
+    }
+
+    /** Creates a new bill from the selected snapshot, not from the live bill. */
+    suspend fun duplicateVersion(
+        billId: Long,
+        versionNumber: Int,
+        shortageAcknowledged: Boolean = false
+    ): Long? {
+        val selected = versionDetails(billId, versionNumber) ?: return null
+        if (selected.version.id == 0L) {
+            return duplicateBill(billId, shortageAcknowledged)
+        }
+        return saveBill(
+            customerId = selected.version.customerId,
+            lineItems = selected.toLineItems(keepWarrantyDates = false),
+            billRoundOff = selected.version.roundOff,
+            payment = selected.toPaymentRequest(clearWhenEmpty = false),
+            shortageAcknowledged = shortageAcknowledged
+        )
+    }
+
+    /** Customer, lines, totals, and payment split taken from the snapshot. */
+    fun printableBill(details: BillVersionDetails): BillWithDetails {
+        val version = details.version
+        val bill = Bill(
+            id = version.billId,
+            billNumber = version.billNumber,
+            customerId = version.customerId,
+            total = version.total,
+            roundOff = version.roundOff,
+            date = version.saleDate,
+            paymentStatus = version.paymentStatus,
+            paymentLabel = version.paymentLabel
+        )
+        val customer = com.kex.vikrsaathi.data.entity.Customer(
+            id = version.customerId ?: 0L,
+            name = version.customerName,
+            address1 = version.customerAddress,
+            phone = version.customerPhone
+        )
+        return BillWithDetails(
+            bill = bill,
+            customer = customer,
+            items = details.items.map { item ->
+                BillItem(
+                    billId = version.billId,
+                    itemId = item.itemId,
+                    itemName = item.itemName,
+                    quantity = item.quantity,
+                    mrp = item.mrp,
+                    discount = item.discount,
+                    finalPrice = item.finalPrice,
+                    roundOff = item.roundOff,
+                    unitCostPaise = item.unitCostPaise,
+                    warrantyPeriod = item.warrantyPeriod,
+                    warrantyUnit = item.warrantyUnit,
+                    warrantyProvider = item.warrantyProvider,
+                    warrantyProviderName = item.warrantyProviderName,
+                    warrantyTerms = item.warrantyTerms,
+                    warrantyStartEpochDay = item.warrantyStartEpochDay,
+                    warrantyEndEpochDay = item.warrantyEndEpochDay
+                )
+            },
+            payments = details.payments.map { payment ->
+                BillPayment(
+                    billId = version.billId,
+                    method = payment.method,
+                    amountPaise = payment.amountPaise
+                )
+            }
+        )
+    }
+
+    private suspend fun versionDetails(billId: Long, versionNumber: Int): BillVersionDetails? =
+        getVersionHistory(billId).firstOrNull { it.version.versionNumber == versionNumber }
+
+    private fun BillVersionDetails.toLineItems(keepWarrantyDates: Boolean): List<BillLineItem> = items.map { item ->
+        val warranty = item.warrantySnapshot()
+        BillLineItem(
+            itemId = item.itemId,
+            name = item.itemName,
+            mrp = item.mrp,
+            discount = item.discount,
+            quantity = item.quantity,
+            roundOff = item.roundOff,
+            unitCostPaise = item.unitCostPaise,
+            warranty = if (keepWarrantyDates) warranty else warranty?.withoutDates()
+        )
+    }
+
+    private fun BillVersionDetails.toPaymentRequest(clearWhenEmpty: Boolean): BillPaymentRequest {
+        if (payments.isEmpty()) {
+            return if (clearWhenEmpty) BillPaymentRequest.ClearToLegacy else BillPaymentRequest.KeepLegacy
+        }
+        return BillPaymentRequest.Record(
+            payments.map { PaymentPortion(it.method, it.amountPaise) }
         )
     }
 
@@ -469,17 +583,7 @@ class BillRepository(
         )
         val billId = billDao.insertBill(bill)
         billItemDao.insertAll(lineItems.map { line ->
-            BillItem(
-                billId = billId,
-                itemId = line.itemId,
-                itemName = line.name,
-                quantity = line.quantity,
-                mrp = line.mrp,
-                discount = line.discount,
-                finalPrice = line.unitPriceAfterDiscount,
-                roundOff = line.roundOff,
-                unitCostPaise = line.unitCostPaise
-            )
+            line.toStoredBillItem(billId, date)
         })
         payments.forEach { portion ->
             billPaymentDao.insert(
@@ -536,6 +640,19 @@ class BillRepository(
                     throw FinanceException(FinanceError.LEGACY_BILL_HAS_PAYMENTS)
                 }
                 billDao.updatePaymentStatus(billId, BillPaymentStatus.LEGACY, BillPaymentStatus.LABEL_LEGACY)
+            }
+            BillPaymentRequest.ClearToLegacy -> {
+                billPaymentDao.deleteForBill(billId)
+                billDao.updatePaymentStatus(billId, BillPaymentStatus.LEGACY, BillPaymentStatus.LABEL_LEGACY)
+                val existingLedger = customerLedgerDao.getForBill(billId).map { it.toLedgerRow() }
+                val plan = BillLedgerPlanner.planCreditSale(
+                    existing = existingLedger,
+                    newCustomerId = customerId ?: previousCustomerId,
+                    newCreditPaise = 0L,
+                    billId = billId,
+                    reason = ReversalReason.BILL_EDITED
+                )
+                insertPlan(plan, billDate)
             }
             is BillPaymentRequest.Record -> {
                 val split = PaymentSplitValidator.validate(
@@ -663,21 +780,7 @@ class BillRepository(
             )
         )
         if (items.isNotEmpty()) {
-            database.billVersionDao().insertItems(
-                items.map { item ->
-                    BillVersionItem(
-                        versionId = versionId,
-                        itemId = item.itemId,
-                        itemName = item.itemName,
-                        quantity = item.quantity,
-                        mrp = item.mrp,
-                        discount = item.discount,
-                        finalPrice = item.finalPrice,
-                        roundOff = item.roundOff,
-                        unitCostPaise = item.unitCostPaise
-                    )
-                }
-            )
+            database.billVersionDao().insertItems(items.map { it.toVersionItem(versionId) })
         }
         if (payments.isNotEmpty()) {
             database.billVersionDao().insertPayments(
@@ -731,27 +834,57 @@ class BillRepository(
         )
     }
 
-    private fun List<BillLineItem>.toBillItems(billId: Long): List<BillItem> = map { line ->
-        BillItem(
+    private fun List<BillLineItem>.toBillItems(billId: Long, saleMillis: Long): List<BillItem> =
+        map { it.toStoredBillItem(billId, saleMillis) }
+
+    private fun BillLineItem.toStoredBillItem(billId: Long, saleMillis: Long): BillItem {
+        val saved = WarrantyPolicy.resolve(warranty, saleMillis)
+        return BillItem(
             billId = billId,
-            itemId = line.itemId,
-            itemName = line.name,
-            quantity = line.quantity,
-            mrp = line.mrp,
-            discount = line.discount,
-            finalPrice = line.unitPriceAfterDiscount,
-            roundOff = line.roundOff,
-            unitCostPaise = line.unitCostPaise
+            itemId = itemId,
+            itemName = name,
+            quantity = quantity,
+            mrp = mrp,
+            discount = discount,
+            finalPrice = unitPriceAfterDiscount,
+            roundOff = roundOff,
+            unitCostPaise = unitCostPaise,
+            warrantyPeriod = saved?.period,
+            warrantyUnit = saved?.unit,
+            warrantyProvider = saved?.provider,
+            warrantyProviderName = saved?.providerName,
+            warrantyTerms = saved?.terms,
+            warrantyStartEpochDay = saved?.startEpochDay,
+            warrantyEndEpochDay = saved?.endEpochDay
         )
     }
 
-    private suspend fun List<BillLineItem>.toPricedBillItems(billId: Long): List<BillItem> {
+    private fun BillItem.toVersionItem(versionId: Long) = BillVersionItem(
+        versionId = versionId,
+        itemId = itemId,
+        itemName = itemName,
+        quantity = quantity,
+        mrp = mrp,
+        discount = discount,
+        finalPrice = finalPrice,
+        roundOff = roundOff,
+        unitCostPaise = unitCostPaise,
+        warrantyPeriod = warrantyPeriod,
+        warrantyUnit = warrantyUnit,
+        warrantyProvider = warrantyProvider,
+        warrantyProviderName = warrantyProviderName,
+        warrantyTerms = warrantyTerms,
+        warrantyStartEpochDay = warrantyStartEpochDay,
+        warrantyEndEpochDay = warrantyEndEpochDay
+    )
+
+    private suspend fun List<BillLineItem>.toPricedBillItems(billId: Long, saleMillis: Long): List<BillItem> {
         return map { line ->
             val cost = line.itemId?.let { itemId ->
                 itemCostRepository.consume(itemId, line.quantity)
             }
             line.copy(unitCostPaise = cost).let { priced ->
-                listOf(priced).toBillItems(billId).single()
+                listOf(priced).toBillItems(billId, saleMillis).single()
             }
         }
     }

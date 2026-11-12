@@ -12,6 +12,9 @@ import com.kex.vikrsaathi.data.repository.CustomerRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.OperatorRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
+import com.kex.vikrsaathi.data.entity.Item
+import com.kex.vikrsaathi.domain.bill.ReplacementRatePolicy
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
 import com.kex.vikrsaathi.domain.finance.ExchangeMoney
 import com.kex.vikrsaathi.domain.finance.FinanceException
 import com.kex.vikrsaathi.domain.finance.PaymentMethod
@@ -32,7 +35,8 @@ data class ReturnLineState(
     val already: Int,
     val unitPrice: Double,
     val quantity: Int,
-    val restock: Boolean
+    val restock: Boolean,
+    val tracked: Boolean = false
 ) {
     val eligible: Int get() = (sold - already).coerceAtLeast(0)
 }
@@ -42,7 +46,16 @@ data class ReplacementState(
     val itemId: Long,
     val name: String,
     val unitPrice: Double,
-    val quantity: Int
+    val discountPercent: Double = 0.0,
+    val quantity: Int,
+    val warranty: WarrantyPolicy.Snapshot? = null
+)
+
+data class ReplacementChoice(
+    val itemId: Long,
+    val name: String,
+    val master: ReplacementRatePolicy.PriceQuote,
+    val comparison: ReplacementRatePolicy.PriceComparison
 )
 
 data class ReturnFormState(
@@ -78,6 +91,7 @@ class BillReturnViewModel(
 
     private var billId: Long = -1L
     private var sources: List<ReturnValuation.SourceLine> = emptyList()
+    private var billedPrices: List<Pair<Long?, ReplacementRatePolicy.BilledPrice>> = emptyList()
     private var already: Map<Long, Int> = emptyMap()
     private var billRoundOff: Double = 0.0
     private var nextReplacementKey = 1L
@@ -112,7 +126,16 @@ class BillReturnViewModel(
                 prior.map { ReturnValuation.PriorLine(it.billItemId, it.itemId, it.itemName, it.quantity) }
             )
             billRoundOff = details.bill.roundOff
+            billedPrices = details.items.map { item ->
+                item.itemId to ReplacementRatePolicy.BilledPrice(item.mrp, item.discount, item.finalPrice)
+            }
             val customer = details.bill.customerId?.let { customers.getById(it) }
+            val trackingOn = settings.batchTrackingEnabled
+            val trackedIds = if (trackingOn) {
+                items.getAllSync().filter { it.trackBatches }.map { it.id }.toSet()
+            } else {
+                emptySet()
+            }
             _form.value = ReturnFormState(
                 loaded = true,
                 billNumber = details.bill.billNumber,
@@ -128,7 +151,8 @@ class BillReturnViewModel(
                         already = already[source.billItemId] ?: 0,
                         unitPrice = source.finalPrice,
                         quantity = 0,
-                        restock = source.itemId != null
+                        restock = source.itemId != null,
+                        tracked = source.itemId != null && source.itemId in trackedIds
                     )
                 }
             )
@@ -165,16 +189,45 @@ class BillReturnViewModel(
         it.copy(attachedCustomerId = customerId, attachedCustomerName = name)
     }
 
-    fun addReplacement(itemId: Long, name: String, unitPrice: Double) = update { state ->
-        val existing = state.replacements.indexOfFirst { it.itemId == itemId }
-        val next = if (existing >= 0) {
-            state.replacements.mapIndexed { index, row ->
-                if (index == existing) row.copy(quantity = row.quantity + 1) else row
-            }
+    fun addReplacement(
+        itemId: Long,
+        name: String,
+        unitPrice: Double,
+        discountPercent: Double,
+        quantity: Int = 1,
+        source: Item? = null
+    ) = update { state ->
+        val warranty = source?.let { WarrantyPolicy.forNewSale(it, settings.warrantyEnabled) }
+        val merged = ReplacementRatePolicy.merge(
+            lines = state.replacements.map { it.toPolicyLine() },
+            itemId = itemId,
+            name = name,
+            unitPrice = unitPrice,
+            discountPercent = discountPercent,
+            quantity = quantity,
+            nextKey = nextReplacementKey
+        )
+        nextReplacementKey = merged.nextKey
+        val previous = state.replacements.associateBy { it.key }
+        state.copy(replacements = merged.lines.map { line ->
+            val kept = previous[line.key]?.warranty
+            line.toState(kept ?: if (line.key !in previous) warranty else null)
+        })
+    }
+
+    suspend fun replacementChoices(query: String): List<Item> {
+        val trimmed = query.trim()
+        return if (trimmed.isBlank()) {
+            items.getAllSync().sortedBy { it.name.lowercase() }.take(20)
         } else {
-            state.replacements + ReplacementState(nextReplacementKey++, itemId, name, unitPrice, 1)
+            items.searchByName(trimmed)
         }
-        state.copy(replacements = next)
+    }
+
+    fun replacementChoice(item: Item): ReplacementChoice {
+        val master = ReplacementRatePolicy.masterQuote(item.mrp, item.discount, item.sellingPrice)
+        val billed = billedPrices.filter { it.first == item.id }.map { it.second }
+        return ReplacementChoice(item.id, item.name, master, ReplacementRatePolicy.compare(master, billed))
     }
 
     fun setReplacementQuantity(key: Long, quantity: Int) = update { state ->
@@ -186,8 +239,6 @@ class BillReturnViewModel(
             }
         )
     }
-
-    suspend fun searchItems(query: String) = items.searchByName(query)
 
     suspend fun searchCustomers(query: String) = customers.search(query)
 
@@ -241,6 +292,15 @@ class BillReturnViewModel(
         val requests = currentRequests()
         if (requests.isEmpty()) {
             onError(FinanceException(com.kex.vikrsaathi.domain.finance.FinanceError.NOTHING_TO_RECORD))
+            return
+        }
+        val reasonProblem = com.kex.vikrsaathi.domain.bill.ExchangeReason.problem(
+            isExchange = state.replacements.isNotEmpty(),
+            reason = reason,
+            note = note
+        )
+        if (reasonProblem != null) {
+            onError(FinanceException(com.kex.vikrsaathi.domain.finance.FinanceError.REASON_REQUIRED))
             return
         }
         update { it.copy(posting = true) }
@@ -299,8 +359,9 @@ class BillReturnViewModel(
                 itemId = it.itemId,
                 name = it.name,
                 mrp = it.unitPrice,
-                discount = 0.0,
-                quantity = it.quantity
+                discount = it.discountPercent,
+                quantity = it.quantity,
+                warranty = it.warranty
             )
         }
     }
@@ -316,6 +377,25 @@ class BillReturnViewModel(
             else -> if (shopRefunds) RefundMethod.CASH else PaymentMethod.CASH
         }
     }
+
+    private fun ReplacementState.toPolicyLine() = ReplacementRatePolicy.Line(
+        key = key,
+        itemId = itemId,
+        name = name,
+        unitPrice = unitPrice,
+        discountPercent = discountPercent,
+        quantity = quantity
+    )
+
+    private fun ReplacementRatePolicy.Line.toState(warranty: WarrantyPolicy.Snapshot?) = ReplacementState(
+        key = key,
+        itemId = itemId,
+        name = name,
+        unitPrice = unitPrice,
+        discountPercent = discountPercent,
+        quantity = quantity,
+        warranty = warranty
+    )
 
     private fun update(block: (ReturnFormState) -> ReturnFormState) {
         val current = _form.value ?: ReturnFormState()

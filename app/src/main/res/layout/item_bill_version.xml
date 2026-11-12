@@ -268,6 +268,64 @@
                     android:layout_marginTop="2dp"
                     android:textColor="@color/text_primary_dark"
                     tools:text="Cash ₹1,240.00" />
+
+                <LinearLayout
+                    android:id="@+id/rowVersionActions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonRestoreVersion"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:minHeight="48dp"
+                        android:text="@string/restore"
+                        app:icon="@drawable/ic_redo"
+                        app:iconTint="@color/white" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonPrintVersion"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:minHeight="48dp"
+                        android:text="@string/print"
+                        android:textColor="@color/text_accent_soft"
+                        app:icon="@drawable/ic_print"
+                        app:iconTint="@color/text_accent_soft"
+                        app:strokeColor="@color/stroke_button" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonDuplicateVersion"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:text="@string/duplicate"
+                        android:textColor="@color/text_accent_soft"
+                        app:icon="@drawable/ic_copy"
+                        app:iconTint="@color/text_accent_soft"
+                        app:strokeColor="@color/stroke_button" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/textRestoreHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:textColor="@color/text_secondary_dark"
+                    android:textSize="13sp"
+                    android:visibility="gone"
+                    tools:text="Restoring creates v4 and keeps v1–v3 in history."
+                    tools:visibility="visible" />
             </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

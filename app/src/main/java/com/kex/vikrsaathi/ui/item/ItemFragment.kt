@@ -12,6 +12,7 @@ import androidx.fragment.app.viewModels
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Item
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
 import com.kex.vikrsaathi.databinding.DialogItemFormBinding
 import com.kex.vikrsaathi.ui.stock.showBatchAdjustDialog
 import com.kex.vikrsaathi.databinding.FragmentItemsBinding
@@ -175,16 +176,22 @@ class ItemFragment : Fragment() {
             formBinding.textCurrentStock.visibility = View.GONE
             formBinding.buttonAdjustStock.visibility = View.GONE
         }
+        bindWarrantyForm(formBinding, existing)
 
-        MaterialAlertDialogBuilder(requireContext())
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(if (existing == null) R.string.add_item else R.string.edit_item)
             .setView(formBinding.root)
-            .setPositiveButton(R.string.save) { _, _ ->
+            .setPositiveButton(R.string.save, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        dialog.show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val name = formBinding.editItemName.text.toString().trim()
                 val mrp = formBinding.editItemMrp.text.toString().toDoubleOrNull()
                 if (name.isEmpty() || mrp == null) {
                     Toast.makeText(requireContext(), R.string.invalid_item, Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
+                    dialog.dismiss()
+                    return@setOnClickListener
                 }
                 val openingStock = formBinding.editOpeningStock.text.toString().toIntOrNull() ?: 0
                 val unit = formBinding.editItemUnit.text.toString().trim()
@@ -209,8 +216,9 @@ class ItemFragment : Fragment() {
                         ),
                         Toast.LENGTH_SHORT
                     ).show()
-                    return@setPositiveButton
+                    return@setOnClickListener
                 }
+                val warranty = readWarranty(formBinding, existing) ?: return@setOnClickListener
                 val item = Item(
                     id = existing?.id ?: 0,
                     name = name,
@@ -224,7 +232,13 @@ class ItemFragment : Fragment() {
                     preferredVendorId = if (vendors == null) existing?.preferredVendorId else selectedVendorId,
                     baseUnit = unit,
                     purchaseUnit = purchaseUnit,
-                    unitsPerPurchase = unitsPerPurchase
+                    unitsPerPurchase = unitsPerPurchase,
+                    warrantyApplies = warranty.applies,
+                    warrantyPeriod = warranty.period,
+                    warrantyUnit = warranty.unit,
+                    warrantyProvider = warranty.provider,
+                    warrantyProviderName = warranty.providerName,
+                    warrantyTerms = warranty.terms
                 )
                 viewModel.saveItem(item, openingStock = if (existing == null) openingStock else 0) { result ->
                     result.onFailure {
@@ -235,9 +249,118 @@ class ItemFragment : Fragment() {
                         ).show()
                     }
                 }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+                dialog.dismiss()
+        }
+    }
+
+    private data class ItemWarrantyInput(
+        val applies: Boolean,
+        val period: Int,
+        val unit: String,
+        val provider: String,
+        val providerName: String,
+        val terms: String
+    )
+
+    private fun bindWarrantyForm(formBinding: DialogItemFormBinding, existing: Item?) {
+        val enabled = (requireActivity().application as VikrSaathiApp).settingsRepository.warrantyEnabled
+        formBinding.sectionWarranty.isVisible = enabled
+        if (!enabled) return
+        val units = listOf(
+            WarrantyPolicy.DAYS to getString(R.string.warranty_unit_days),
+            WarrantyPolicy.MONTHS to getString(R.string.warranty_unit_months),
+            WarrantyPolicy.YEARS to getString(R.string.warranty_unit_years)
+        )
+        val providers = listOf(
+            WarrantyPolicy.MANUFACTURER to getString(R.string.warranty_provider_manufacturer),
+            WarrantyPolicy.SHOP to getString(R.string.warranty_provider_shop),
+            WarrantyPolicy.OTHER to getString(R.string.warranty_provider_other)
+        )
+        formBinding.editWarrantyUnit.setAdapter(
+            android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, units.map { it.second })
+        )
+        formBinding.editWarrantyProvider.setAdapter(
+            android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, providers.map { it.second })
+        )
+        val unitLabel = units.firstOrNull { it.first == existing?.warrantyUnit }?.second
+            ?: getString(R.string.warranty_unit_months)
+        val providerLabel = providers.firstOrNull { it.first == existing?.warrantyProvider }?.second
+            ?: getString(R.string.warranty_provider_manufacturer)
+        if ((existing?.warrantyPeriod ?: 0) > 0) {
+            formBinding.editWarrantyPeriod.setText(existing?.warrantyPeriod.toString())
+        }
+        formBinding.editWarrantyUnit.setText(unitLabel, false)
+        formBinding.editWarrantyProvider.setText(providerLabel, false)
+        formBinding.editWarrantyProviderName.setText(existing?.warrantyProviderName.orEmpty())
+        formBinding.editWarrantyTerms.setText(existing?.warrantyTerms.orEmpty())
+        formBinding.switchItemWarranty.isChecked = existing?.warrantyApplies == true
+        formBinding.layoutWarrantyDetails.isVisible = formBinding.switchItemWarranty.isChecked
+        formBinding.switchItemWarranty.setOnCheckedChangeListener { _, checked ->
+            formBinding.layoutWarrantyDetails.isVisible = checked
+        }
+    }
+
+    private fun readWarranty(formBinding: DialogItemFormBinding, existing: Item?): ItemWarrantyInput? {
+        val shopEnabled = (requireActivity().application as VikrSaathiApp).settingsRepository.warrantyEnabled
+        if (!shopEnabled) {
+            return ItemWarrantyInput(
+                applies = existing?.warrantyApplies == true,
+                period = existing?.warrantyPeriod ?: 0,
+                unit = existing?.warrantyUnit.orEmpty(),
+                provider = existing?.warrantyProvider.orEmpty(),
+                providerName = existing?.warrantyProviderName.orEmpty(),
+                terms = existing?.warrantyTerms.orEmpty()
+            )
+        }
+        if (!formBinding.switchItemWarranty.isChecked) {
+            return ItemWarrantyInput(
+                applies = false,
+                period = WarrantyPolicy.parsePeriod(formBinding.editWarrantyPeriod.text?.toString().orEmpty())
+                    ?: existing?.warrantyPeriod ?: 0,
+                unit = warrantyCode(
+                    formBinding.editWarrantyUnit.text?.toString().orEmpty(),
+                    existing?.warrantyUnit.orEmpty()
+                ),
+                provider = providerCode(
+                    formBinding.editWarrantyProvider.text?.toString().orEmpty(),
+                    existing?.warrantyProvider.orEmpty()
+                ),
+                providerName = formBinding.editWarrantyProviderName.text?.toString().orEmpty().trim(),
+                terms = formBinding.editWarrantyTerms.text?.toString().orEmpty().trim()
+            )
+        }
+        val period = WarrantyPolicy.parsePeriod(formBinding.editWarrantyPeriod.text?.toString().orEmpty())
+        if (period == null) {
+            formBinding.layoutWarrantyPeriod.error = getString(R.string.warranty_period_invalid)
+            Toast.makeText(requireContext(), R.string.warranty_period_invalid, Toast.LENGTH_SHORT).show()
+            return null
+        }
+        formBinding.layoutWarrantyPeriod.error = null
+        return ItemWarrantyInput(
+            applies = true,
+            period = period,
+            unit = warrantyCode(formBinding.editWarrantyUnit.text?.toString().orEmpty(), WarrantyPolicy.MONTHS),
+            provider = providerCode(
+                formBinding.editWarrantyProvider.text?.toString().orEmpty(),
+                WarrantyPolicy.MANUFACTURER
+            ),
+            providerName = formBinding.editWarrantyProviderName.text?.toString().orEmpty().trim(),
+            terms = formBinding.editWarrantyTerms.text?.toString().orEmpty().trim()
+        )
+    }
+
+    private fun warrantyCode(label: String, fallback: String): String = when (label) {
+        getString(R.string.warranty_unit_days) -> WarrantyPolicy.DAYS
+        getString(R.string.warranty_unit_months) -> WarrantyPolicy.MONTHS
+        getString(R.string.warranty_unit_years) -> WarrantyPolicy.YEARS
+        else -> fallback.ifBlank { WarrantyPolicy.MONTHS }
+    }
+
+    private fun providerCode(label: String, fallback: String): String = when (label) {
+        getString(R.string.warranty_provider_manufacturer) -> WarrantyPolicy.MANUFACTURER
+        getString(R.string.warranty_provider_shop) -> WarrantyPolicy.SHOP
+        getString(R.string.warranty_provider_other) -> WarrantyPolicy.OTHER
+        else -> fallback.ifBlank { WarrantyPolicy.MANUFACTURER }
     }
 
     private fun showAdjustStockDialog(item: Item) {

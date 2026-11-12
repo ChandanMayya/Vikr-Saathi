@@ -333,6 +333,10 @@ class CustomerFinanceRepository(
 
     suspend fun returnsForBill(billId: Long): List<SalesReturn> = ledgerDao.getReturnsForBill(billId)
 
+    suspend fun exchangeRecords(): List<SalesReturn> = ledgerDao.getAllReturns()
+
+    suspend fun allReturnLines(): List<SalesReturnLine> = ledgerDao.getAllReturnLines()
+
     suspend fun linesForReturn(returnId: Long): List<SalesReturnLine> = ledgerDao.getLinesForReturn(returnId)
 
     suspend fun postBillReturn(

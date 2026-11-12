@@ -3,6 +3,9 @@ package com.kex.vikrsaathi.util
 import android.content.Context
 import android.os.Environment
 import com.kex.vikrsaathi.data.model.BillWithDetails
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
+import com.kex.vikrsaathi.domain.bill.warrantySnapshot
+import com.kex.vikrsaathi.domain.inventory.CivilDate
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -27,7 +30,14 @@ object SalesReportExcelExporter {
                 XlsxSpreadsheet.CellValue.Number(row.mrp),
                 XlsxSpreadsheet.CellValue.Number(row.discount),
                 XlsxSpreadsheet.CellValue.Number(row.lineTotal),
-                XlsxSpreadsheet.CellValue.Number(row.billTotal)
+                XlsxSpreadsheet.CellValue.Number(row.billTotal),
+                XlsxSpreadsheet.CellValue.Text(row.warrantyPeriod?.toString().orEmpty()),
+                XlsxSpreadsheet.CellValue.Text(row.warrantyUnit),
+                XlsxSpreadsheet.CellValue.Text(row.warrantyProvider),
+                XlsxSpreadsheet.CellValue.Text(row.warrantyProviderName),
+                XlsxSpreadsheet.CellValue.Text(row.warrantyTerms),
+                XlsxSpreadsheet.CellValue.Text(row.warrantyStart),
+                XlsxSpreadsheet.CellValue.Text(row.warrantyEnd)
             )
         }
         val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: context.filesDir
@@ -61,6 +71,7 @@ object SalesReportExcelExporter {
                 )
             } else {
                 bill.items.forEach { item ->
+                    val warranty = item.warrantySnapshot()
                     result.add(
                         SalesReportRow(
                             billNumber = bill.bill.billNumber,
@@ -74,7 +85,14 @@ object SalesReportExcelExporter {
                             mrp = item.mrp,
                             discount = item.discount,
                             lineTotal = item.finalPrice * item.quantity,
-                            billTotal = bill.bill.total
+                            billTotal = bill.bill.total,
+                            warrantyPeriod = warranty?.period,
+                            warrantyUnit = warranty?.unit.orEmpty(),
+                            warrantyProvider = warranty?.provider.orEmpty(),
+                            warrantyProviderName = warranty?.providerName.orEmpty(),
+                            warrantyTerms = warranty?.terms.orEmpty(),
+                            warrantyStart = warranty?.startEpochDay?.let { CivilDate.iso(it) }.orEmpty(),
+                            warrantyEnd = warranty?.endEpochDay?.let { CivilDate.iso(it) }.orEmpty()
                         )
                     )
                 }

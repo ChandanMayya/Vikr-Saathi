@@ -69,7 +69,14 @@ data class BillVersionItem(
     val discount: Double,
     val finalPrice: Double,
     val roundOff: Double = 0.0,
-    val unitCostPaise: Long? = null
+    val unitCostPaise: Long? = null,
+    val warrantyPeriod: Int? = null,
+    val warrantyUnit: String? = null,
+    val warrantyProvider: String? = null,
+    val warrantyProviderName: String? = null,
+    val warrantyTerms: String? = null,
+    val warrantyStartEpochDay: Long? = null,
+    val warrantyEndEpochDay: Long? = null
 )
 
 @Entity(

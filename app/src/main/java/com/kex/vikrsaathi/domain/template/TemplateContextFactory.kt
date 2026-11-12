@@ -17,7 +17,9 @@ object TemplateContextFactory {
         headerImage: Bitmap?,
         signatureImage: Bitmap?,
         shopLogoImage: Bitmap?,
-        imageRenderScale: Float = 1f
+        imageRenderScale: Float = 1f,
+        exchangeTitle: String? = null,
+        exchangeLines: List<String> = emptyList()
     ): TemplateRenderContext {
         return TemplateRenderContext(
             bill = bill,
@@ -27,7 +29,9 @@ object TemplateContextFactory {
             signatureImage = signatureImage,
             shopLogoImage = shopLogoImage,
             staticImages = TemplateImageStore.loadForTemplate(context, template),
-            imageRenderScale = imageRenderScale
+            imageRenderScale = imageRenderScale,
+            exchangeTitle = exchangeTitle,
+            exchangeLines = exchangeLines
         )
     }
 
@@ -39,7 +43,9 @@ object TemplateContextFactory {
         currencySymbol: String,
         headerImage: Bitmap?,
         signatureImage: Bitmap?,
-        shopLogoImage: Bitmap?
+        shopLogoImage: Bitmap?,
+        exchangeTitle: String? = null,
+        exchangeLines: List<String> = emptyList()
     ): TemplateRenderContext = create(
         context = context,
         template = template,
@@ -49,6 +55,8 @@ object TemplateContextFactory {
         headerImage = headerImage,
         signatureImage = signatureImage,
         shopLogoImage = shopLogoImage,
-        imageRenderScale = PdfRenderQuality.IMAGE_SCALE
+        imageRenderScale = PdfRenderQuality.IMAGE_SCALE,
+        exchangeTitle = exchangeTitle,
+        exchangeLines = exchangeLines
     )
 }

@@ -41,6 +41,15 @@ object HelpContentProvider {
                 R.string.help_bill_preview_overview,
                 section(R.string.help_bill_preview_s1_title, R.array.help_bill_preview_s1)
             )
+            HelpScreen.RETURN_ITEMS -> guide(
+                context,
+                R.string.help_return_items_title,
+                R.string.help_return_items_overview,
+                section(R.string.help_return_items_s1_title, R.array.help_return_items_s1),
+                section(R.string.help_return_items_s2_title, R.array.help_return_items_s2),
+                section(R.string.help_return_items_s3_title, R.array.help_return_items_s3),
+                section(R.string.help_return_items_s4_title, R.array.help_return_items_s4)
+            )
             HelpScreen.CUSTOMERS -> guide(
                 context,
                 R.string.help_customers_title,

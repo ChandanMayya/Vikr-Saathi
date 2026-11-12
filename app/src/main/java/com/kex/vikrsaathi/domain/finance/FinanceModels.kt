@@ -121,6 +121,9 @@ sealed class BillPaymentRequest {
     /** Keep a pre-feature bill as legacy. Does not create customer debt. */
     data object KeepLegacy : BillPaymentRequest()
 
+    /** Remove recorded payments and customer credit, matching a snapshot that had none. */
+    data object ClearToLegacy : BillPaymentRequest()
+
     data class Record(val portions: List<PaymentPortion>) : BillPaymentRequest()
 }
 

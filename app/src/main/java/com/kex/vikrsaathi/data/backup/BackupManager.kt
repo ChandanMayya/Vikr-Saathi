@@ -89,6 +89,11 @@ class BackupManager(
             )
             val root = JSONObject(json)
             FinanceBackupCodec.attach(root, options, payload.finance)
+            if (options.includeSales) {
+                val storedClaims = database.warrantyClaimDao().allClaims()
+                val storedEvents = database.warrantyClaimDao().allEvents()
+                root.put("warrantyClaims", WarrantyClaimBackup.encode(storedClaims, storedEvents))
+            }
             root.toString(2)
         }
     }
@@ -370,7 +375,13 @@ class BackupManager(
                             baseUnit = backup.baseUnit,
                             purchaseUnit = backup.purchaseUnit,
                             unitsPerPurchase = backup.unitsPerPurchase,
-                            trackBatches = backup.trackBatches
+                            trackBatches = backup.trackBatches,
+                            warrantyApplies = backup.warrantyApplies,
+                            warrantyPeriod = backup.warrantyPeriod,
+                            warrantyUnit = backup.warrantyUnit,
+                            warrantyProvider = backup.warrantyProvider,
+                            warrantyProviderName = backup.warrantyProviderName,
+                            warrantyTerms = backup.warrantyTerms
                         )
                     )
                     itemIdMap[backup.legacyId] = id
@@ -549,6 +560,7 @@ class BackupManager(
                     errors.add("Bill ${backup.billNumber}: ${e.message}")
                 }
             }
+            importWarrantyClaims(root, billIdMap)
             val allocationStore = BatchRepository(database, settingsRepository)
             BackupJsonCodec.parseAllocations(root).forEach { row ->
                 val billId = billIdMap[row.billLegacyId] ?: return@forEach
@@ -599,6 +611,69 @@ class BackupManager(
         }
     }
 
+    private suspend fun importWarrantyClaims(root: JSONObject, billIdMap: Map<Long, Long>) {
+        val decoded = WarrantyClaimBackup.decode(root)
+        if (decoded.isEmpty()) return
+        val dao = database.warrantyClaimDao()
+        decoded.forEach { row ->
+            if (row.reference.isBlank() || dao.countReference(row.reference) > 0) return@forEach
+            val billId = row.billLegacyId?.let { billIdMap[it] }
+            val billItemId = if (billId != null) {
+                val items = database.billItemDao().getItemsForBill(billId)
+                WarrantyClaimBackup.matchingBillItemId(items, row.itemName, row.warrantyEndEpochDay)
+            } else {
+                null
+            }
+            val id = dao.insertClaim(
+                com.kex.vikrsaathi.data.entity.WarrantyClaim(
+                    reference = row.reference,
+                    sequence = row.sequence,
+                    billId = billId,
+                    billItemId = billItemId,
+                    billNumber = row.billNumber,
+                    saleDateMillis = row.saleDateMillis,
+                    customerName = row.customerName,
+                    customerPhone = row.customerPhone,
+                    itemName = row.itemName,
+                    warrantyPeriod = row.warrantyPeriod,
+                    warrantyUnit = row.warrantyUnit,
+                    warrantyProvider = row.warrantyProvider,
+                    warrantyProviderName = row.warrantyProviderName,
+                    warrantyTerms = row.warrantyTerms,
+                    warrantyStartEpochDay = row.warrantyStartEpochDay,
+                    warrantyEndEpochDay = row.warrantyEndEpochDay,
+                    issue = row.issue,
+                    condition = row.condition,
+                    note = row.note,
+                    status = row.status,
+                    resolutionNote = row.resolutionNote,
+                    createdAt = row.createdAt,
+                    updatedAt = row.updatedAt,
+                    serviceCentre = row.serviceCentre,
+                    serviceReference = row.serviceReference,
+                    serviceSentEpochDay = row.serviceSentEpochDay,
+                    providerOutcome = row.providerOutcome,
+                    providerOutcomeNote = row.providerOutcomeNote,
+                    providerResponseEpochDay = row.providerResponseEpochDay,
+                    handoverEpochDay = row.handoverEpochDay,
+                    handoverRecipient = row.handoverRecipient,
+                    handoverNote = row.handoverNote
+                )
+            )
+            row.events.forEach { event ->
+                dao.insertEvent(
+                    com.kex.vikrsaathi.data.entity.WarrantyClaimEvent(
+                        claimId = id,
+                        status = event.status,
+                        note = event.note,
+                        createdAt = event.createdAt,
+                        eventKind = event.eventKind
+                    )
+                )
+            }
+        }
+    }
+
     private fun validateSchema(json: String) {
         val root = JSONObject(json)
         val version = root.optInt("schemaVersion", 0)
@@ -623,6 +698,7 @@ class BackupManager(
         backup.vendorManagementEnabled?.let { settingsRepository.vendorManagementEnabled = it }
         backup.orderManagementEnabled?.let { settingsRepository.orderManagementEnabled = it }
         backup.batchTrackingEnabled?.let { settingsRepository.batchTrackingEnabled = it }
+        backup.warrantyEnabled?.let { settingsRepository.warrantyEnabled = it }
         backup.expiryAlertDays?.let { settingsRepository.expiryAlertDays = it }
         backup.notificationPreferencesJson?.let { settingsRepository.applyNotificationPreferences(it) }
         AppThemeManager.apply(backup.themeMode)
@@ -795,7 +871,14 @@ class BackupManager(
                         discount = item.discount,
                         finalPrice = item.finalPrice,
                         roundOff = item.roundOff,
-                        unitCostPaise = item.unitCostPaise
+                        unitCostPaise = item.unitCostPaise,
+                        warrantyPeriod = item.warranty?.period,
+                        warrantyUnit = item.warranty?.unit,
+                        warrantyProvider = item.warranty?.provider,
+                        warrantyProviderName = item.warranty?.providerName,
+                        warrantyTerms = item.warranty?.terms,
+                        warrantyStartEpochDay = item.warranty?.startEpochDay,
+                        warrantyEndEpochDay = item.warranty?.endEpochDay
                     )
                 },
                 payments = version.payments.map { payment ->

@@ -2,7 +2,7 @@
 <resources>
     <string name="notify_allow">Allow notifications</string>
     <string name="notify_allow_hint">Reminders are created on this phone. Nothing is sent to a server, by SMS, or on WhatsApp.</string>
-    <string name="notify_customizations">Notification customizations</string>
+    <string name="notify_customizations">Notification Configuration</string>
     <string name="notify_customizations_hint">Choose which reminders to receive, and when.</string>
     <string name="notify_opt_in_title">Notifications stay on this phone</string>
     <string name="notify_opt_in_body">Vikr Saathi can remind you about unpaid bills, sales, stock, orders, and backups. These messages are created from the shop data already stored on this device. Android will ask permission next. You can turn each reminder on separately.</string>

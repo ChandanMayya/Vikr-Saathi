@@ -102,7 +102,16 @@ class BillsHistoryFragment : Fragment() {
                 duplicateBill(bill.bill.id)
             },
             onPrint = { bill -> printBill(bill) },
-            onDelete = { bill -> confirmDelete(bill) }
+            onDelete = { bill -> confirmDelete(bill) },
+            onOpenLinked = { billId ->
+                findNavController().navigate(
+                    R.id.action_bills_history_to_bill,
+                    bundleOf(
+                        BillFragment.ARG_BILL_ID to billId,
+                        BillFragment.ARG_READ_ONLY to true
+                    )
+                )
+            }
         )
         binding.recyclerBills.adapter = adapter
         applyViewMode(viewMode, persist = false)
@@ -122,7 +131,11 @@ class BillsHistoryFragment : Fragment() {
 
         viewModel.allBills.observe(viewLifecycleOwner) { bills ->
             allBills = bills
+            viewModel.refreshExchangeCards(bills)
             applyFilters()
+        }
+        viewModel.exchangeCards.observe(viewLifecycleOwner) { cards ->
+            adapter.exchangeCards = cards
         }
         viewModel.itemUnits.observe(viewLifecycleOwner) { units ->
             adapter.itemUnits = units

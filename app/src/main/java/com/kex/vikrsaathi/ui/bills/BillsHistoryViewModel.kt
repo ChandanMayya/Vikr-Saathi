@@ -10,12 +10,15 @@ import androidx.lifecycle.viewModelScope
 import com.kex.vikrsaathi.data.entity.Bill
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.data.repository.BillRepository
+import com.kex.vikrsaathi.data.repository.CustomerFinanceRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
 import com.kex.vikrsaathi.data.repository.InsufficientStockException
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
 import com.kex.vikrsaathi.data.repository.SettingsRepository
 import com.kex.vikrsaathi.data.repository.StockShortfall
+import com.kex.vikrsaathi.domain.finance.PaymentMethod
+import com.kex.vikrsaathi.ui.finance.FinanceUi
 import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.BillsFilterHelper
 import com.kex.vikrsaathi.util.SalesImportResult
@@ -29,8 +32,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
+data class ExchangeCardLink(
+    val role: com.kex.vikrsaathi.domain.bill.ExchangeHistory.Role,
+    val otherBillId: Long,
+    val otherNumber: String,
+    val returnedQuantity: Int
+)
+
 class BillsHistoryViewModel(
     private val repository: BillRepository,
+    private val finance: CustomerFinanceRepository,
     private val settingsRepository: SettingsRepository,
     private val customerRepository: CustomerRepository,
     private val itemRepository: ItemRepository,
@@ -38,6 +49,9 @@ class BillsHistoryViewModel(
 ) : ViewModel() {
 
     val allBills: LiveData<List<BillWithDetails>> = repository.allBillsWithDetails
+
+    private val _exchangeCards = MutableLiveData<Map<Long, ExchangeCardLink>>(emptyMap())
+    val exchangeCards: LiveData<Map<Long, ExchangeCardLink>> = _exchangeCards
 
     /** Catalog stock-unit labels, loaded once for the history list rather than per bill. */
     val itemUnits: LiveData<Map<Long, String>> = itemRepository.labeledUnits.map { rows ->
@@ -53,6 +67,32 @@ class BillsHistoryViewModel(
 
     val inventoryMode: InventoryMode
         get() = settingsRepository.inventoryMode
+
+    fun refreshExchangeCards(bills: List<BillWithDetails>) {
+        viewModelScope.launch {
+            val numbers = bills.associate { it.bill.id to it.bill.billNumber }
+            val quantityByReturn = finance.allReturnLines().groupBy { it.returnId }
+                .mapValues { (_, lines) -> lines.sumOf { it.quantity } }
+            val relations = com.kex.vikrsaathi.domain.bill.ExchangeHistory.relations(
+                finance.exchangeRecords().map { record ->
+                    com.kex.vikrsaathi.domain.bill.ExchangeHistory.ReturnLink(
+                        originalBillId = record.billId,
+                        replacementBillId = record.exchangeBillId,
+                        voided = record.voidedAt != null || record.voidsReturnId != null,
+                        returnedQuantity = quantityByReturn[record.id] ?: 0
+                    )
+                }
+            )
+            _exchangeCards.value = relations.mapValues { (_, relation) ->
+                ExchangeCardLink(
+                    role = relation.role,
+                    otherBillId = relation.otherBillId,
+                    otherNumber = numbers[relation.otherBillId].orEmpty(),
+                    returnedQuantity = relation.returnedQuantity
+                )
+            }
+        }
+    }
 
     fun search(query: String) {
         _searchQuery.value = query
@@ -94,6 +134,7 @@ class BillsHistoryViewModel(
             val file = withContext(Dispatchers.IO) {
                 val bill = repository.getBillWithDetails(billId) ?: return@withContext null
                 val template = invoiceTemplateRepository.getDefaultTemplate()
+                val exchange = exchangePrint(bill)
                 PdfGenerator.generateBillPdf(
                     context = appContext,
                     template = template,
@@ -102,11 +143,32 @@ class BillsHistoryViewModel(
                     currencySymbol = settingsRepository.currencySymbol,
                     headerImage = settingsRepository.getHeaderImage(),
                     signatureImage = settingsRepository.getSignatureImage(),
-                    shopLogoImage = settingsRepository.getShopLogoImage()
+                    shopLogoImage = settingsRepository.getShopLogoImage(),
+                    exchangeTitle = exchange?.first,
+                    exchangeLines = exchange?.second.orEmpty()
                 )
             }
             onResult(file)
         }
+    }
+
+    private suspend fun exchangePrint(bill: BillWithDetails): Pair<String, List<String>>? {
+        val record = finance.exchangeRecords().firstOrNull {
+            it.exchangeBillId == bill.bill.id && it.voidedAt == null && it.voidsReturnId == null
+        } ?: return null
+        val original = record.billId?.let { repository.getBillWithDetails(it)?.bill?.billNumber }.orEmpty()
+        val symbol = settingsRepository.currencySymbol
+        val credit = bill.payments.filter { it.method == PaymentMethod.EXCHANGE }.sumOf { it.amountPaise }
+        val cash = bill.payments.filter { it.method == PaymentMethod.CASH }.sumOf { it.amountPaise }
+        val upi = bill.payments.filter { it.method == PaymentMethod.UPI }.sumOf { it.amountPaise }
+        val lines = buildList {
+            if (original.isNotBlank()) add("Against original bill $original")
+            if (credit > 0L) add("Exchange credit ${FinanceUi.formatPaise(credit, symbol)}")
+            if (cash > 0L) add("Cash received ${FinanceUi.formatPaise(cash, symbol)}")
+            if (upi > 0L) add("UPI received ${FinanceUi.formatPaise(upi, symbol)}")
+            if (record.moneyRefundedPaise > 0L) add("Refund to customer ${FinanceUi.formatPaise(record.moneyRefundedPaise, symbol)}")
+        }
+        return "EXCHANGE BILL" to lines
     }
 
     fun getBillDetails(billId: Long, callback: (BillWithDetails?) -> Unit) {

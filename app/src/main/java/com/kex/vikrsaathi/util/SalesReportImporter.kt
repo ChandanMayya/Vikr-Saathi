@@ -5,6 +5,8 @@ import android.net.Uri
 import com.kex.vikrsaathi.data.entity.Customer
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.data.model.BillLineItem
+import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
+import com.kex.vikrsaathi.domain.inventory.CivilDate
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.CustomerRepository
 import com.kex.vikrsaathi.data.repository.ItemRepository
@@ -45,7 +47,8 @@ class SalesReportImporter(
                         name = row.itemName,
                         mrp = row.mrp,
                         discount = row.discount,
-                        quantity = row.quantity
+                        quantity = row.quantity,
+                        warranty = warrantyFromRow(row)
                     )
                 }
             }
@@ -73,6 +76,30 @@ class SalesReportImporter(
         }
 
         return SalesImportResult(imported, skipped, errors)
+    }
+
+    private fun warrantyFromRow(row: SalesReportRow): WarrantyPolicy.Snapshot? {
+        val period = row.warrantyPeriod ?: return null
+        val unit = when (row.warrantyUnit.trim().uppercase(java.util.Locale.US)) {
+            WarrantyPolicy.DAYS, "DAY", "DAYS" -> WarrantyPolicy.DAYS
+            WarrantyPolicy.MONTHS, "MONTH", "MONTHS" -> WarrantyPolicy.MONTHS
+            WarrantyPolicy.YEARS, "YEAR", "YEARS" -> WarrantyPolicy.YEARS
+            else -> return null
+        }
+        val provider = when (row.warrantyProvider.trim().uppercase(java.util.Locale.US)) {
+            WarrantyPolicy.SHOP, "SHOP" -> WarrantyPolicy.SHOP
+            WarrantyPolicy.OTHER, "OTHER" -> WarrantyPolicy.OTHER
+            else -> WarrantyPolicy.MANUFACTURER
+        }
+        return WarrantyPolicy.Snapshot(
+            period = period,
+            unit = unit,
+            provider = provider,
+            providerName = row.warrantyProviderName.trim(),
+            terms = row.warrantyTerms.trim(),
+            startEpochDay = CivilDate.parse(row.warrantyStart),
+            endEpochDay = CivilDate.parse(row.warrantyEnd)
+        )
     }
 
     private suspend fun resolveCustomer(row: SalesReportRow): Long? {

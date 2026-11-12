@@ -1001,6 +1001,133 @@ val MIGRATION_17_18 = object : Migration(17, 18) {
     }
 }
 
+val MIGRATION_21_22 = object : Migration(21, 22) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        addClaimColumn(db, "serviceCentre", "TEXT NOT NULL DEFAULT ''")
+        addClaimColumn(db, "serviceReference", "TEXT NOT NULL DEFAULT ''")
+        addClaimColumn(db, "serviceSentEpochDay", "INTEGER")
+        addClaimColumn(db, "providerOutcome", "TEXT")
+        addClaimColumn(db, "providerOutcomeNote", "TEXT NOT NULL DEFAULT ''")
+        addClaimColumn(db, "providerResponseEpochDay", "INTEGER")
+        addClaimColumn(db, "handoverEpochDay", "INTEGER")
+        addClaimColumn(db, "handoverRecipient", "TEXT NOT NULL DEFAULT ''")
+        addClaimColumn(db, "handoverNote", "TEXT NOT NULL DEFAULT ''")
+        if (!hasColumn(db, "warranty_claim_events", "eventKind")) {
+            db.execSQL("ALTER TABLE warranty_claim_events ADD COLUMN eventKind TEXT NOT NULL DEFAULT 'STATUS'")
+        }
+    }
+
+    private fun addClaimColumn(db: SupportSQLiteDatabase, column: String, definition: String) {
+        if (!hasColumn(db, "warranty_claims", column)) {
+            db.execSQL("ALTER TABLE warranty_claims ADD COLUMN $column $definition")
+        }
+    }
+
+    private fun hasColumn(db: SupportSQLiteDatabase, table: String, column: String): Boolean {
+        val cursor = db.query("PRAGMA table_info($table)")
+        cursor.use {
+            val name = it.getColumnIndex("name")
+            while (it.moveToNext()) {
+                if (it.getString(name) == column) return true
+            }
+        }
+        return false
+    }
+}
+
+val MIGRATION_20_21 = object : Migration(20, 21) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS warranty_claims (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                reference TEXT NOT NULL,
+                sequence INTEGER NOT NULL,
+                billId INTEGER,
+                billItemId INTEGER,
+                billNumber TEXT NOT NULL,
+                saleDateMillis INTEGER NOT NULL,
+                customerName TEXT NOT NULL,
+                customerPhone TEXT NOT NULL,
+                itemName TEXT NOT NULL,
+                warrantyPeriod INTEGER,
+                warrantyUnit TEXT,
+                warrantyProvider TEXT,
+                warrantyProviderName TEXT,
+                warrantyTerms TEXT,
+                warrantyStartEpochDay INTEGER,
+                warrantyEndEpochDay INTEGER,
+                issue TEXT NOT NULL,
+                condition TEXT NOT NULL,
+                note TEXT NOT NULL,
+                status TEXT NOT NULL,
+                resolutionNote TEXT NOT NULL,
+                createdAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_warranty_claims_reference ON warranty_claims(reference)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_warranty_claims_billId ON warranty_claims(billId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_warranty_claims_billItemId ON warranty_claims(billItemId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_warranty_claims_status ON warranty_claims(status)")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS warranty_claim_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                claimId INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                note TEXT NOT NULL,
+                createdAt INTEGER NOT NULL,
+                FOREIGN KEY(claimId) REFERENCES warranty_claims(id) ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_warranty_claim_events_claimId ON warranty_claim_events(claimId)")
+    }
+}
+
+val MIGRATION_19_20 = object : Migration(19, 20) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        addItemColumn(db, "warrantyApplies", "INTEGER NOT NULL DEFAULT 0")
+        addItemColumn(db, "warrantyPeriod", "INTEGER NOT NULL DEFAULT 0")
+        addItemColumn(db, "warrantyUnit", "TEXT NOT NULL DEFAULT ''")
+        addItemColumn(db, "warrantyProvider", "TEXT NOT NULL DEFAULT ''")
+        addItemColumn(db, "warrantyProviderName", "TEXT NOT NULL DEFAULT ''")
+        addItemColumn(db, "warrantyTerms", "TEXT NOT NULL DEFAULT ''")
+        listOf("bill_items", "bill_version_items").forEach { table ->
+            addColumn(db, table, "warrantyPeriod", "INTEGER")
+            addColumn(db, table, "warrantyUnit", "TEXT")
+            addColumn(db, table, "warrantyProvider", "TEXT")
+            addColumn(db, table, "warrantyProviderName", "TEXT")
+            addColumn(db, table, "warrantyTerms", "TEXT")
+            addColumn(db, table, "warrantyStartEpochDay", "INTEGER")
+            addColumn(db, table, "warrantyEndEpochDay", "INTEGER")
+        }
+    }
+
+    private fun addItemColumn(db: SupportSQLiteDatabase, column: String, definition: String) {
+        addColumn(db, "items", column, definition)
+    }
+
+    private fun addColumn(db: SupportSQLiteDatabase, table: String, column: String, definition: String) {
+        if (!hasColumn(db, table, column)) {
+            db.execSQL("ALTER TABLE $table ADD COLUMN $column $definition")
+        }
+    }
+
+    private fun hasColumn(db: SupportSQLiteDatabase, table: String, column: String): Boolean {
+        val cursor = db.query("PRAGMA table_info($table)")
+        cursor.use {
+            val name = it.getColumnIndex("name")
+            while (it.moveToNext()) {
+                if (it.getString(name) == column) return true
+            }
+        }
+        return false
+    }
+}
+
 val MIGRATION_18_19 = object : Migration(18, 19) {
     override fun migrate(db: SupportSQLiteDatabase) {
         if (!hasColumn(db, "bills", "dueEpochDay")) {

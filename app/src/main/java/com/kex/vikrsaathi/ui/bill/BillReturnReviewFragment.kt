@@ -70,26 +70,26 @@ class BillReturnReviewFragment : Fragment() {
         val state = viewModel.form.value ?: return
         val preview = viewModel.preview()
         val symbol = viewModel.currencySymbol
+        val plan = viewModel.exchangePlan()
         val body = buildString {
-            appendLine(state.billNumber)
-            appendLine(getString(R.string.return_header_meta, state.dateLabel, state.customerName.ifBlank {
-                getString(R.string.return_walk_in)
-            }))
-            appendLine()
-            state.lines.filter { it.quantity > 0 }.forEach { line ->
-                val value = preview?.lines?.firstOrNull { it.billItemId == line.billItemId }?.valuePaise ?: 0L
-                appendLine("${line.name} × ${line.quantity} · ${money(value)}")
-                appendLine(
-                    if (line.restock) getString(R.string.return_restock_effect) else getString(R.string.return_damaged_effect)
-                )
-            }
-            appendLine()
-            appendLine("${getString(R.string.return_value)} ${money(preview?.totalPaise ?: 0L)}")
-            if (preview != null && preview.billRoundOffPaise != 0L) {
-                appendLine(getString(R.string.return_round_off_note))
-            }
-            val plan = viewModel.exchangePlan()
             if (plan == null) {
+                appendLine(state.billNumber)
+                appendLine(getString(R.string.return_header_meta, state.dateLabel, state.customerName.ifBlank {
+                    getString(R.string.return_walk_in)
+                }))
+                appendLine()
+                state.lines.filter { it.quantity > 0 }.forEach { line ->
+                    val value = preview?.lines?.firstOrNull { it.billItemId == line.billItemId }?.valuePaise ?: 0L
+                    appendLine("${line.name} × ${line.quantity} · ${money(value)}")
+                    appendLine(
+                        if (line.restock) getString(R.string.return_restock_effect) else getString(R.string.return_damaged_effect)
+                    )
+                }
+                appendLine()
+                appendLine("${getString(R.string.return_value)} ${money(preview?.totalPaise ?: 0L)}")
+                if (preview != null && preview.billRoundOffPaise != 0L) {
+                    appendLine(getString(R.string.return_round_off_note))
+                }
                 appendLine(refundLabel(state.refundMethod) + " " + money(preview?.totalPaise ?: 0L))
                 appendLine(
                     if (state.refundMethod == RefundMethod.STORE_CREDIT) {
@@ -98,21 +98,48 @@ class BillReturnReviewFragment : Fragment() {
                         getString(R.string.return_cash_note)
                     }
                 )
+                if (reason.isNotBlank()) appendLine(reason)
+                if (note.isNotBlank()) appendLine(note)
             } else {
-                appendLine("${getString(R.string.return_replacement_total)} ${money(viewModel.replacementPaise())}")
-                state.replacements.forEach { item ->
-                    appendLine("${item.name} × ${item.quantity} · ${PriceCalculator.formatAmount(item.unitPrice * item.quantity, symbol)}")
+                appendLine(getString(R.string.return_original_bill_label, state.billNumber))
+                if (reason.isNotBlank()) appendLine(getString(R.string.return_reason) + ": " + reason)
+                appendLine()
+                appendLine(getString(R.string.return_returned_items))
+                state.lines.filter { it.quantity > 0 }.forEach { line ->
+                    val value = preview?.lines?.firstOrNull { it.billItemId == line.billItemId }?.valuePaise ?: 0L
+                    appendLine("${line.name} × ${line.quantity} · ${money(value)}")
                 }
+                appendLine("${getString(R.string.return_value)} ${money(preview?.totalPaise ?: 0L)}")
+                appendLine()
+                appendLine(getString(R.string.return_replacement))
+                state.replacements.forEach { item ->
+                    val total = com.kex.vikrsaathi.domain.bill.ReplacementRatePolicy.lineTotal(
+                        item.unitPrice,
+                        item.discountPercent,
+                        item.quantity
+                    )
+                    appendLine(
+                        "${item.name} × ${item.quantity} · " +
+                            PriceCalculator.formatAmount(item.unitPrice, symbol) +
+                            " · " + trimPercent(item.discountPercent) +
+                            " · " + PriceCalculator.formatAmount(total, symbol)
+                    )
+                }
+                appendLine("${getString(R.string.return_replacement_total)} ${money(viewModel.replacementPaise())}")
+                appendLine("${getString(R.string.return_exchange_credit)} ${money(plan.exchangeCreditPaise)}")
                 when {
                     plan.customerPaysPaise > 0L -> appendLine("${getString(R.string.return_customer_pays)} ${money(plan.customerPaysPaise)}")
                     plan.shopRefundsPaise > 0L -> appendLine("${getString(R.string.return_shop_refunds)} ${money(plan.shopRefundsPaise)}")
                     else -> appendLine(getString(R.string.return_even))
                 }
+                if (note.isNotBlank()) appendLine(note)
             }
-            if (reason.isNotBlank()) appendLine(reason)
-            if (note.isNotBlank()) appendLine(note)
         }
         binding.textReviewBody.text = body.trim()
+    }
+
+    private fun trimPercent(value: Double): String {
+        return String.format(java.util.Locale.US, "%.2f", value).trimEnd('0').trimEnd('.') + "%"
     }
 
     private fun refundLabel(method: String): String = when (method) {
