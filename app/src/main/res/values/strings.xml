@@ -35,7 +35,10 @@
     <string name="dashboard_top_items_today">Top Items Today</string>
     <string name="dashboard_top_items_empty">No items sold today</string>
     <string name="dashboard_qty_sold">Qty %1$d</string>
-    <string name="dashboard_quick_actions">Quick Actions</string>
+    <string name="dashboard_quick_actions">Quick actions</string>
+    <string name="dashboard_actions">Actions</string>
+    <string name="dashboard_expand_quick_actions">Expand quick actions</string>
+    <string name="dashboard_collapse_quick_actions">Collapse quick actions</string>
     <string name="analysis">Analysis</string>
     <string name="analysis_options">Analysis options</string>
     <string name="analysis_range_today">Today</string>

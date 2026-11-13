@@ -92,7 +92,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"
-                        android:minHeight="48dp"
+                        android:maxLines="1"
                         android:textColor="@color/text_primary_dark" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -109,7 +109,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"
-                        android:minHeight="48dp"
+                        android:maxLines="1"
                         android:textColor="@color/text_primary_dark" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -125,7 +125,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"
-                        android:minHeight="48dp"
+                        android:maxLines="1"
                         android:textColor="@color/text_primary_dark" />
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
@@ -156,7 +156,8 @@
                         android:id="@+id/editLotNumber"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="text" />
+                        android:inputType="text"
+                        android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -169,7 +170,8 @@
                         android:id="@+id/editLotExpiry"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="date" />
+                        android:inputType="date"
+                        android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.checkbox.MaterialCheckBox

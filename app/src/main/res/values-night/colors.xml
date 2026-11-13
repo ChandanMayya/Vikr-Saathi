@@ -15,6 +15,9 @@
     <color name="stroke_default">#5D4037</color>
     <color name="stroke_subtle">#424242</color>
     <color name="stroke_button">#6D4C41</color>
+    <!-- Thin tray outline: muted warm brown, lighter than the tray so it stays visible. -->
+    <color name="quick_actions_stroke">@color/stroke_button</color>
+    <color name="quick_actions_stroke_open">@color/stroke_button</color>
     <color name="text_accent">#FFB74D</color>
     <color name="text_accent_soft">#FFA726</color>
     <color name="balance_receivable">#81C784</color>

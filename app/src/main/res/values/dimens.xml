@@ -18,4 +18,9 @@
     <dimen name="pin_section_top_margin">36dp</dimen>
     <dimen name="pin_keypad_bottom_margin">20dp</dimen>
     <dimen name="pin_icon_size">24dp</dimen>
+    <dimen name="quick_actions_outline">1dp</dimen>
+    <dimen name="quick_actions_content_gap">8dp</dimen>
+    <!-- Outline plus the clear gap inside it. Keep in step with QuickActionsMotion.INSET_DP. -->
+    <dimen name="quick_actions_content_inset">9dp</dimen>
+    <dimen name="quick_actions_corner_radius">20dp</dimen>
 </resources>

@@ -126,8 +126,9 @@
                         android:id="@+id/editServiceCentre"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:ellipsize="end"
                         android:inputType="textCapWords"
-                        android:minHeight="48dp" />
+                        android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -140,8 +141,9 @@
                         android:id="@+id/editServiceReference"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:ellipsize="end"
                         android:inputType="text"
-                        android:minHeight="48dp" />
+                        android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -155,8 +157,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:clickable="true"
+                        android:ellipsize="end"
                         android:focusable="false"
-                        android:minHeight="48dp" />
+                        android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -205,8 +208,9 @@
                         android:id="@+id/autoProviderOutcome"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:ellipsize="end"
                         android:inputType="none"
-                        android:minHeight="48dp" />
+                        android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -220,9 +224,11 @@
                         android:id="@+id/editProviderNote"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:gravity="top|start"
                         android:inputType="textCapSentences|textMultiLine"
-                        android:maxLines="3"
-                        android:minHeight="48dp" />
+                        android:maxLines="4"
+                        android:minLines="2"
+                        android:scrollbars="vertical" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -236,8 +242,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:clickable="true"
+                        android:ellipsize="end"
                         android:focusable="false"
-                        android:minHeight="48dp" />
+                        android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -310,8 +317,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:clickable="true"
+                            android:ellipsize="end"
                             android:focusable="false"
-                            android:minHeight="48dp" />
+                            android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -324,8 +332,9 @@
                             android:id="@+id/editHandoverRecipient"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:ellipsize="end"
                             android:inputType="textCapWords"
-                            android:minHeight="48dp" />
+                            android:maxLines="1" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -338,9 +347,11 @@
                             android:id="@+id/editHandoverNote"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:gravity="top|start"
                             android:inputType="textCapSentences|textMultiLine"
-                            android:maxLines="3"
-                            android:minHeight="48dp" />
+                            android:maxLines="4"
+                            android:minLines="2"
+                            android:scrollbars="vertical" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.button.MaterialButton
@@ -381,8 +392,9 @@
                         android:id="@+id/autoClaimStatus"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:ellipsize="end"
                         android:inputType="none"
-                        android:minHeight="48dp" />
+                        android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -391,16 +403,18 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:hint="@string/warranty_outcome"
-                    android:visibility="gone">
+                    android:visibility="gone"
+                    app:helperText="@string/warranty_outcome_hint">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/editClaimOutcome"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/warranty_outcome_hint"
+                        android:gravity="top|start"
                         android:inputType="textCapSentences|textMultiLine"
-                        android:maxLines="3"
-                        android:minHeight="48dp" />
+                        android:maxLines="4"
+                        android:minLines="2"
+                        android:scrollbars="vertical" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton

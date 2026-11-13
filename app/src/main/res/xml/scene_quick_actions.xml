@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MotionScene xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:motion="http://schemas.android.com/apk/res-auto">
+
+    <Transition
+        motion:constraintSetEnd="@+id/expanded"
+        motion:constraintSetStart="@+id/collapsed"
+        motion:duration="250"
+        motion:motionInterpolator="linear">
+        <KeyFrameSet>
+            <KeyAttribute
+                motion:framePosition="50"
+                motion:motionTarget="@id/cardStock"
+                android:alpha="0"
+                android:translationY="18dp" />
+            <KeyAttribute
+                motion:framePosition="50"
+                motion:motionTarget="@id/cardAnalysis"
+                android:alpha="0"
+                android:translationY="18dp" />
+            <KeyAttribute
+                motion:framePosition="50"
+                motion:motionTarget="@id/cardOrders"
+                android:alpha="0"
+                android:translationY="18dp" />
+            <KeyAttribute
+                motion:framePosition="50"
+                motion:motionTarget="@id/cardWarrantyService"
+                android:alpha="0"
+                android:translationY="18dp" />
+            <KeyAttribute
+                motion:framePosition="50"
+                motion:motionTarget="@id/cardSettings"
+                android:alpha="0"
+                android:translationY="18dp" />
+            <KeyAttribute
+                motion:framePosition="90"
+                motion:motionTarget="@id/cardVendors"
+                android:alpha="0"
+                android:translationY="18dp" />
+        </KeyFrameSet>
+    </Transition>
+
+    <ConstraintSet android:id="@+id/collapsed">
+        <Constraint
+            android:id="@id/cardNewBill"
+            android:layout_width="0dp"
+            android:layout_height="72dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="4dp"
+            android:alpha="1"
+            motion:layout_constraintEnd_toStartOf="@id/cardBillsHistory"
+            motion:layout_constraintHorizontal_chainStyle="spread"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toTopOf="parent" />
+        <Constraint
+            android:id="@id/cardBillsHistory"
+            android:layout_width="0dp"
+            android:layout_height="72dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="4dp"
+            android:alpha="1"
+            motion:layout_constraintEnd_toStartOf="@id/cardItems"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toEndOf="@id/cardNewBill"
+            motion:layout_constraintTop_toTopOf="parent" />
+        <Constraint
+            android:id="@id/cardItems"
+            android:layout_width="0dp"
+            android:layout_height="72dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="4dp"
+            android:alpha="1"
+            motion:layout_constraintEnd_toStartOf="@id/cardCustomers"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toEndOf="@id/cardBillsHistory"
+            motion:layout_constraintTop_toTopOf="parent" />
+        <Constraint
+            android:id="@id/cardCustomers"
+            android:layout_width="0dp"
+            android:layout_height="72dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="0dp"
+            android:alpha="1"
+            motion:layout_constraintEnd_toEndOf="parent"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toEndOf="@id/cardItems"
+            motion:layout_constraintTop_toTopOf="parent" />
+
+        <Constraint
+            android:id="@id/cardVendors"
+            android:layout_width="0dp"
+            android:layout_height="96dp"
+            android:layout_marginTop="104dp"
+            android:layout_marginEnd="0dp"
+            android:alpha="0"
+            android:translationY="18dp"
+            motion:layout_constraintEnd_toEndOf="parent"
+            motion:layout_constraintHorizontal_bias="1"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toTopOf="parent"
+            motion:layout_constraintWidth_percent="0.31" />
+        <Constraint
+            android:id="@id/cardStock"
+            android:layout_width="0dp"
+            android:layout_height="108dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="208dp"
+            android:layout_marginEnd="4dp"
+            android:alpha="0"
+            android:translationY="18dp"
+            motion:layout_constraintEnd_toStartOf="@id/cardAnalysis"
+            motion:layout_constraintHorizontal_chainStyle="spread"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toTopOf="parent" />
+        <Constraint
+            android:id="@id/cardAnalysis"
+            android:layout_width="0dp"
+            android:layout_height="108dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:alpha="0"
+            android:translationY="18dp"
+            motion:layout_goneMarginEnd="0dp"
+            motion:layout_constraintEnd_toStartOf="@id/cardOrders"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toEndOf="@id/cardStock"
+            motion:layout_constraintTop_toTopOf="@id/cardStock" />
+        <Constraint
+            android:id="@id/cardOrders"
+            android:layout_width="0dp"
+            android:layout_height="108dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="0dp"
+            android:alpha="0"
+            android:translationY="18dp"
+            motion:layout_constraintEnd_toEndOf="parent"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toEndOf="@id/cardAnalysis"
+            motion:layout_constraintTop_toTopOf="@id/cardStock" />
+        <Constraint
+            android:id="@id/cardWarrantyService"
+            android:layout_width="0dp"
+            android:layout_height="108dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="0dp"
+            android:alpha="0"
+            android:translationY="18dp"
+            motion:layout_constraintEnd_toEndOf="parent"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toBottomOf="@id/cardStock" />
+        <Constraint
+            android:id="@id/cardSettings"
+            android:layout_width="0dp"
+            android:layout_height="76dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="0dp"
+            android:alpha="0"
+            android:translationY="18dp"
+            motion:layout_constraintEnd_toEndOf="parent"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toBottomOf="@id/cardWarrantyService"
+            motion:layout_goneMarginTop="8dp" />
+    </ConstraintSet>
+
+    <ConstraintSet android:id="@+id/expanded">
+        <Constraint
+            android:id="@id/cardNewBill"
+            android:layout_width="0dp"
+            android:layout_height="92dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="4dp"
+            android:alpha="1"
+            motion:layout_constraintEnd_toStartOf="@id/cardBillsHistory"
+            motion:layout_constraintHorizontal_chainStyle="spread"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toTopOf="parent" />
+        <Constraint
+            android:id="@id/cardBillsHistory"
+            android:layout_width="0dp"
+            android:layout_height="92dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="0dp"
+            android:alpha="1"
+            motion:layout_constraintEnd_toEndOf="parent"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toEndOf="@id/cardNewBill"
+            motion:layout_constraintTop_toTopOf="parent" />
+        <Constraint
+            android:id="@id/cardItems"
+            android:layout_width="0dp"
+            android:layout_height="96dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="4dp"
+            android:alpha="1"
+            motion:layout_constraintEnd_toStartOf="@id/cardCustomers"
+            motion:layout_constraintHorizontal_chainStyle="spread"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toBottomOf="@id/cardNewBill" />
+        <Constraint
+            android:id="@id/cardCustomers"
+            android:layout_width="0dp"
+            android:layout_height="96dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:alpha="1"
+            motion:layout_goneMarginEnd="0dp"
+            motion:layout_constraintEnd_toStartOf="@id/cardVendors"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toEndOf="@id/cardItems"
+            motion:layout_constraintTop_toTopOf="@id/cardItems" />
+        <Constraint
+            android:id="@id/cardVendors"
+            android:layout_width="0dp"
+            android:layout_height="96dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="0dp"
+            android:alpha="1"
+            android:translationY="0dp"
+            motion:layout_constraintEnd_toEndOf="parent"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toEndOf="@id/cardCustomers"
+            motion:layout_constraintTop_toTopOf="@id/cardItems" />
+        <Constraint
+            android:id="@id/cardStock"
+            android:layout_width="0dp"
+            android:layout_height="108dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="208dp"
+            android:layout_marginEnd="4dp"
+            android:alpha="1"
+            android:translationY="0dp"
+            motion:layout_constraintEnd_toStartOf="@id/cardAnalysis"
+            motion:layout_constraintHorizontal_chainStyle="spread"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toTopOf="parent" />
+        <Constraint
+            android:id="@id/cardAnalysis"
+            android:layout_width="0dp"
+            android:layout_height="108dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:alpha="1"
+            android:translationY="0dp"
+            motion:layout_goneMarginEnd="0dp"
+            motion:layout_constraintEnd_toStartOf="@id/cardOrders"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toEndOf="@id/cardStock"
+            motion:layout_constraintTop_toTopOf="@id/cardStock" />
+        <Constraint
+            android:id="@id/cardOrders"
+            android:layout_width="0dp"
+            android:layout_height="108dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="0dp"
+            android:alpha="1"
+            android:translationY="0dp"
+            motion:layout_constraintEnd_toEndOf="parent"
+            motion:layout_constraintHorizontal_weight="1"
+            motion:layout_constraintStart_toEndOf="@id/cardAnalysis"
+            motion:layout_constraintTop_toTopOf="@id/cardStock" />
+        <Constraint
+            android:id="@id/cardWarrantyService"
+            android:layout_width="0dp"
+            android:layout_height="108dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="0dp"
+            android:alpha="1"
+            android:translationY="0dp"
+            motion:layout_constraintEnd_toEndOf="parent"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toBottomOf="@id/cardStock" />
+        <Constraint
+            android:id="@id/cardSettings"
+            android:layout_width="0dp"
+            android:layout_height="76dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="0dp"
+            android:alpha="1"
+            android:translationY="0dp"
+            motion:layout_constraintEnd_toEndOf="parent"
+            motion:layout_constraintStart_toStartOf="parent"
+            motion:layout_constraintTop_toBottomOf="@id/cardWarrantyService"
+            motion:layout_goneMarginTop="8dp" />
+    </ConstraintSet>
+</MotionScene>

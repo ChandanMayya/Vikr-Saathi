@@ -90,48 +90,54 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/warranty_issue">
+                    android:hint="@string/warranty_issue"
+                    app:helperText="@string/warranty_issue_hint">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/editClaimIssue"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/warranty_issue_hint"
+                        android:gravity="top|start"
                         android:inputType="textCapSentences|textMultiLine"
-                        android:maxLines="3"
-                        android:minHeight="48dp" />
+                        android:maxLines="4"
+                        android:minLines="2"
+                        android:scrollbars="vertical" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="@string/warranty_condition">
+                    android:hint="@string/warranty_condition"
+                    app:helperText="@string/warranty_condition_hint">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/editClaimCondition"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/warranty_condition_hint"
-                        android:inputType="textCapSentences"
-                        android:maxLines="2"
-                        android:minHeight="48dp" />
+                        android:gravity="top|start"
+                        android:inputType="textCapSentences|textMultiLine"
+                        android:maxLines="3"
+                        android:minLines="2"
+                        android:scrollbars="vertical" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="@string/warranty_note">
+                    android:hint="@string/warranty_note"
+                    app:helperText="@string/warranty_note_hint">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/editClaimNote"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/warranty_note_hint"
+                        android:gravity="top|start"
                         android:inputType="textCapSentences|textMultiLine"
                         android:maxLines="3"
-                        android:minHeight="48dp" />
+                        android:minLines="2"
+                        android:scrollbars="vertical" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
