@@ -39,5 +39,8 @@ enum class HelpScreen {
     ANALYSIS,
     ACCOUNTS,
     CUSTOMER_LEDGER,
-    VENDORS
+    VENDORS,
+    WARRANTY_SERVICE,
+    WARRANTY_CLAIMS,
+    RETURNS
 }

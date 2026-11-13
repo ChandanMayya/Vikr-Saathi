@@ -827,6 +827,7 @@
     <string name="return_reason_note_required">Add a note when the reason is Other.</string>
     <string name="return_original_bill_label">Original bill %1$s</string>
     <string name="return_returned_items">Returned items</string>
+    <string name="return_line_qty">× %1$d</string>
     <string name="return_exchange_credit">Exchange credit</string>
     <string name="exchange_cash_received">Cash received</string>
     <string name="exchange_upi_received">UPI received</string>

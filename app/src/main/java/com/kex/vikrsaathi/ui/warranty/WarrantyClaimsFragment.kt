@@ -18,6 +18,8 @@ import com.kex.vikrsaathi.databinding.FragmentWarrantyClaimsBinding
 import com.kex.vikrsaathi.databinding.ItemWarrantyClaimBinding
 import com.kex.vikrsaathi.domain.bill.WarrantyClaimPolicy
 import com.kex.vikrsaathi.domain.bill.WarrantySlip
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.ViewModelFactory
 
 class WarrantyClaimsFragment : Fragment() {
@@ -33,6 +35,7 @@ class WarrantyClaimsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        installHelpMenu(HelpScreen.WARRANTY_CLAIMS)
         val adapter = ClaimAdapter { claim ->
             findNavController().navigate(
                 R.id.action_warranty_claims_to_detail,
@@ -78,22 +81,40 @@ class WarrantyClaimsFragment : Fragment() {
             private val onClick: (WarrantyClaim) -> Unit
         ) : RecyclerView.ViewHolder(binding.root) {
             fun bind(claim: WarrantyClaim) {
+                val context = binding.root.context
                 binding.textClaimReference.text = claim.reference
                 binding.textClaimStatus.text = WarrantyClaimPolicy.label(claim.status)
-                val who = listOf(claim.customerName, claim.itemName).filter { it.isNotBlank() }
-                binding.textClaimParties.text = who.joinToString(" · ")
-                val received = binding.root.context.getString(R.string.warranty_date_received)
-                binding.textClaimMeta.text =
-                    "${claim.billNumber} · $received ${WarrantySlip.formatWhen(claim.createdAt)}"
+                val statusColor = when (claim.status) {
+                    WarrantyClaimPolicy.RESOLVED -> R.color.balance_receivable
+                    WarrantyClaimPolicy.REJECTED -> R.color.balance_payable
+                    else -> R.color.text_accent
+                }
+                binding.textClaimStatus.setTextColor(context.getColor(statusColor))
+                binding.textClaimCustomer.text = claim.customerName.ifBlank {
+                    context.getString(R.string.return_walk_in)
+                }
+                binding.textClaimPhone.isVisible = claim.customerPhone.isNotBlank()
+                binding.textClaimPhone.text = claim.customerPhone
+                binding.textClaimItem.text = claim.itemName
+                binding.textClaimInvoice.text = claim.billNumber
+                binding.textClaimReceived.text = WarrantySlip.formatWhen(claim.createdAt)
+                binding.layoutClaimIssue.isVisible = claim.issue.isNotBlank()
+                binding.textClaimIssue.text = claim.issue
                 val outcome = claim.providerOutcome
                 binding.textClaimOutcome.isVisible = !outcome.isNullOrBlank()
                 if (!outcome.isNullOrBlank()) {
                     binding.textClaimOutcome.text = WarrantyClaimPolicy.outcomeLabel(outcome)
+                    val outcomeColor = if (outcome == WarrantyClaimPolicy.DECLINED) {
+                        R.color.balance_payable
+                    } else {
+                        R.color.balance_receivable
+                    }
+                    binding.textClaimOutcome.setTextColor(context.getColor(outcomeColor))
                 }
                 val returned = claim.handoverEpochDay != null
                 binding.textClaimHandover.text = WarrantyClaimPolicy.handoverLabel(returned)
                 val handoverColor = if (returned) R.color.text_secondary_dark else R.color.text_accent
-                binding.textClaimHandover.setTextColor(binding.root.context.getColor(handoverColor))
+                binding.textClaimHandover.setTextColor(context.getColor(handoverColor))
                 binding.root.setOnClickListener { onClick(claim) }
             }
         }

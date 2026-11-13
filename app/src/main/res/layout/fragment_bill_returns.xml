@@ -9,9 +9,11 @@
         android:id="@+id/textReturnsHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="20dp"
+        android:paddingHorizontal="16dp"
         android:paddingTop="16dp"
-        android:textColor="@color/text_secondary_dark" />
+        android:textAppearance="?attr/textAppearanceTitleSmall"
+        android:textColor="@color/text_primary_dark"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/textReturnsEmpty"

@@ -19,11 +19,14 @@ import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentBillReturnsBinding
 import com.kex.vikrsaathi.databinding.ItemBillReturnBinding
+import com.kex.vikrsaathi.databinding.ItemBillReturnLineBinding
 import com.kex.vikrsaathi.domain.finance.PaymentMethod
 import com.kex.vikrsaathi.domain.finance.RefundMethod
 import com.kex.vikrsaathi.domain.money.Money
 import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.ui.finance.FinanceUi
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.PdfGenerator
 import com.kex.vikrsaathi.util.PdfPrintHelper
 import com.kex.vikrsaathi.util.ViewModelFactory
@@ -47,6 +50,7 @@ class BillReturnsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        installHelpMenu(HelpScreen.RETURNS)
         val adapter = ReturnAdapter(
             onVoid = { row -> confirmVoid(row) },
             onOpen = { billId ->
@@ -59,7 +63,10 @@ class BillReturnsFragment : Fragment() {
         )
         binding.recyclerReturns.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerReturns.adapter = adapter
-        viewModel.header.observe(viewLifecycleOwner) { binding.textReturnsHeader.text = it }
+        viewModel.header.observe(viewLifecycleOwner) { number ->
+            binding.textReturnsHeader.isVisible = number.isNotBlank()
+            binding.textReturnsHeader.text = getString(R.string.return_original_bill_label, number)
+        }
         viewModel.rows.observe(viewLifecycleOwner) { rows ->
             binding.textReturnsEmpty.isVisible = rows.isEmpty()
             adapter.submit(rows)
@@ -165,37 +172,71 @@ class BillReturnsFragment : Fragment() {
             fun bind(row: BillReturnRow) {
                 val record = row.record
                 val voided = record.voidedAt != null || record.voidsReturnId != null
-                binding.textReturnWhen.text = viewModel.formatWhen(record.occurredAt) +
-                    if (voided) " · ${getString(R.string.return_voided)}" else ""
-                val lines = row.lines.joinToString("\n") { line ->
-                    val stock = if (line.restock) {
-                        getString(R.string.return_restock_effect)
-                    } else {
-                        getString(R.string.return_damaged_effect)
-                    }
-                    "${line.itemName} × ${line.quantity} · ${viewModel.money(line.lineValuePaise)} · $stock"
+                binding.textReturnWhen.text = viewModel.formatWhen(record.occurredAt)
+                binding.textReturnVoided.isVisible = voided
+                val headline = when {
+                    record.refundMethod == RefundMethod.STORE_CREDIT -> record.creditAdjustmentPaise
+                    record.moneyRefundedPaise > 0L -> record.moneyRefundedPaise
+                    else -> record.returnValuePaise
                 }
-                val settlement = when {
-                    record.exchangeBillId != null -> {
-                        val number = row.replacementNumber.orEmpty()
-                        if (number.isBlank()) getString(R.string.payment_exchange)
-                        else getString(R.string.exchange_bill_link, number)
-                    }
-                    record.refundMethod == RefundMethod.STORE_CREDIT ->
-                        getString(R.string.refund_store_credit) + " " + viewModel.money(record.creditAdjustmentPaise)
-                    record.moneyRefundedPaise > 0L ->
-                        viewModel.settlementLabel(record) + " " + viewModel.money(record.moneyRefundedPaise)
-                    else -> viewModel.money(record.returnValuePaise)
+                binding.textReturnAmount.text = viewModel.money(headline)
+                binding.layoutReturnLines.removeAllViews()
+                val inflater = LayoutInflater.from(binding.root.context)
+                row.lines.forEach { line ->
+                    val lineBinding = ItemBillReturnLineBinding.inflate(inflater, binding.layoutReturnLines, true)
+                    lineBinding.textReturnItemName.text = line.itemName
+                    lineBinding.textReturnItemAmount.text = viewModel.money(line.lineValuePaise)
+                    lineBinding.textReturnItemQty.text = getString(R.string.return_line_qty, line.quantity)
+                    val restocked = line.restock
+                    lineBinding.textReturnItemStock.setText(
+                        if (restocked) R.string.return_restock_effect else R.string.return_damaged_effect
+                    )
+                    lineBinding.textReturnItemStock.setTextColor(
+                        requireContext().getColor(
+                            if (restocked) R.color.balance_receivable else R.color.text_secondary_dark
+                        )
+                    )
                 }
-                binding.textReturnSummary.text = listOf(lines, settlement, record.reason, record.note.orEmpty())
-                    .filter { it.isNotBlank() }
-                    .joinToString("\n")
                 val exchangeId = record.exchangeBillId
-                binding.rowExchangeActions.isVisible = !voided && exchangeId != null
+                when {
+                    exchangeId != null -> {
+                        binding.layoutReturnSettlement.isVisible = true
+                        binding.textReturnSettlementLabel.setText(R.string.payment_exchange)
+                        val number = row.replacementNumber.orEmpty()
+                        binding.textReturnSettlementValue.text = number.ifBlank {
+                            getString(R.string.payment_exchange)
+                        }
+                    }
+                    record.refundMethod == RefundMethod.STORE_CREDIT -> {
+                        binding.layoutReturnSettlement.isVisible = true
+                        binding.textReturnSettlementLabel.setText(R.string.refund_method)
+                        binding.textReturnSettlementValue.text =
+                            getString(R.string.refund_store_credit) + " " + viewModel.money(record.creditAdjustmentPaise)
+                    }
+                    record.moneyRefundedPaise > 0L -> {
+                        binding.layoutReturnSettlement.isVisible = true
+                        binding.textReturnSettlementLabel.setText(R.string.refund_method)
+                        val method = when (record.refundMethod) {
+                            RefundMethod.CASH -> getString(R.string.refund_cash)
+                            RefundMethod.UPI -> getString(R.string.refund_upi)
+                            else -> viewModel.settlementLabel(record)
+                        }
+                        binding.textReturnSettlementValue.text = "$method ${viewModel.money(record.moneyRefundedPaise)}"
+                    }
+                    else -> binding.layoutReturnSettlement.isVisible = false
+                }
+                binding.layoutReturnReason.isVisible = record.reason.isNotBlank()
+                binding.textReturnReason.text = record.reason
+                val note = record.note.orEmpty()
+                binding.layoutReturnNote.isVisible = note.isNotBlank()
+                binding.textReturnNote.text = note
+                val showExchange = !voided && exchangeId != null
+                binding.rowExchangeActions.isVisible = showExchange
                 binding.buttonOpenExchange.setOnClickListener { exchangeId?.let(onOpen) }
                 binding.buttonPrintExchange.setOnClickListener { exchangeId?.let(onPrint) }
                 binding.buttonVoidReturn.isVisible = !voided
                 binding.buttonVoidReturn.setOnClickListener { onVoid(row) }
+                binding.dividerReturnActions.isVisible = showExchange || !voided
             }
         }
     }

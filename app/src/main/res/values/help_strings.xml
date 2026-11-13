@@ -374,4 +374,63 @@
         <item>Restore from backup — replaces current data with a backup file.</item>
         <item>Always export a backup before resetting.</item>
     </string-array>
+
+    <!-- Warranty service -->
+    <string name="help_warranty_service_title">Warranty Service</string>
+    <string name="help_warranty_service_overview">Track a warranty claim for an item sold on a bill. A claim keeps the sale record. It does not create a new bill, refund, or stock change.</string>
+    <string name="help_warranty_service_s1_title">Find the sale</string>
+    <string-array name="help_warranty_service_s1">
+        <item>Search by bill, customer, or item, then choose a line from an actual sale.</item>
+        <item>Start a claim only when the sale shows Active warranty. Expired or missing warranty cannot be claimed.</item>
+    </string-array>
+    <string name="help_warranty_service_s2_title">New claim</string>
+    <string-array name="help_warranty_service_s2">
+        <item>Issue / reason is required. Item condition and note are optional.</item>
+        <item>Save claim stores a reference. Open it later from View claims.</item>
+    </string-array>
+    <string name="help_warranty_service_s3_title">Service sections</string>
+    <string-array name="help_warranty_service_s3">
+        <item>Service centre — where the item was sent, its reference number, and the sent date.</item>
+        <item>Provider outcome — the result from the provider. Save this before returning the item.</item>
+        <item>Customer handover — appears after an outcome is saved. Record when the item was returned and who received it.</item>
+        <item>Claim timeline — the history of status, service, outcome, and handover updates.</item>
+    </string-array>
+    <string name="help_warranty_service_s4_title">Use it effectively</string>
+    <string-array name="help_warranty_service_s4">
+        <item>Claim declined marks the claim Rejected. The other outcomes mark it Resolved.</item>
+        <item>Returning the item does not change the claim status. Print service slip for the customer to keep.</item>
+    </string-array>
+
+    <!-- Warranty claims -->
+    <string name="help_warranty_claims_title">Warranty claims</string>
+    <string name="help_warranty_claims_overview">Saved warranty claims, kept separate from Bills History. Open a claim here to continue its service record.</string>
+    <string name="help_warranty_claims_s1_title">Each card</string>
+    <string-array name="help_warranty_claims_s1">
+        <item>Shows the claim reference, customer and item, original invoice, and date received.</item>
+        <item>Also shows the claim status, the provider outcome when one is saved, and Awaiting customer or Returned to customer.</item>
+    </string-array>
+    <string name="help_warranty_claims_s2_title">How to use</string>
+    <string-array name="help_warranty_claims_s2">
+        <item>Tap a card to update the service centre, provider outcome, handover, and service slip.</item>
+        <item>Start a new claim from Warranty Service by choosing an item from a sale.</item>
+    </string-array>
+
+    <!-- Returns -->
+    <string name="help_returns_title">Returns</string>
+    <string name="help_returns_overview">Returns already posted for this bill, including refunds and exchanges. Start a new one from the bill with Return / exchange.</string>
+    <string name="help_returns_s1_title">Each return</string>
+    <string-array name="help_returns_s1">
+        <item>Shows the date, returned items and quantities, whether stock was added back, and the refund or exchange.</item>
+        <item>A saved reason or note is shown under the items. A voided return stays in the list and is marked Voided.</item>
+    </string-array>
+    <string name="help_returns_s2_title">Exchange bills</string>
+    <string-array name="help_returns_s2">
+        <item>Open shows the exchange bill. Print prints that exchange bill.</item>
+        <item>An exchange stays on record. To undo the replacement, return that exchange bill separately.</item>
+    </string-array>
+    <string name="help_returns_s3_title">Void a return</string>
+    <string-array name="help_returns_s3">
+        <item>Void keeps the return and posts a reversal. Stock that was added back is removed.</item>
+        <item>An exchange cannot be voided from this list.</item>
+    </string-array>
 </resources>

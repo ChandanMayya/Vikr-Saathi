@@ -187,6 +187,30 @@ object HelpContentProvider {
                 R.string.help_vendors_overview,
                 section(R.string.help_vendors_s1_title, R.array.help_vendors_s1)
             )
+            HelpScreen.WARRANTY_SERVICE -> guide(
+                context,
+                R.string.help_warranty_service_title,
+                R.string.help_warranty_service_overview,
+                section(R.string.help_warranty_service_s1_title, R.array.help_warranty_service_s1),
+                section(R.string.help_warranty_service_s2_title, R.array.help_warranty_service_s2),
+                section(R.string.help_warranty_service_s3_title, R.array.help_warranty_service_s3),
+                section(R.string.help_warranty_service_s4_title, R.array.help_warranty_service_s4)
+            )
+            HelpScreen.WARRANTY_CLAIMS -> guide(
+                context,
+                R.string.help_warranty_claims_title,
+                R.string.help_warranty_claims_overview,
+                section(R.string.help_warranty_claims_s1_title, R.array.help_warranty_claims_s1),
+                section(R.string.help_warranty_claims_s2_title, R.array.help_warranty_claims_s2)
+            )
+            HelpScreen.RETURNS -> guide(
+                context,
+                R.string.help_returns_title,
+                R.string.help_returns_overview,
+                section(R.string.help_returns_s1_title, R.array.help_returns_s1),
+                section(R.string.help_returns_s2_title, R.array.help_returns_s2),
+                section(R.string.help_returns_s3_title, R.array.help_returns_s3)
+            )
         }
     }
 

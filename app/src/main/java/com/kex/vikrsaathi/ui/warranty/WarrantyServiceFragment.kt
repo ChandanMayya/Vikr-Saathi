@@ -21,6 +21,8 @@ import com.kex.vikrsaathi.databinding.ItemWarrantySaleBinding
 import com.kex.vikrsaathi.domain.bill.WarrantyClaimPolicy
 import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
 import com.kex.vikrsaathi.domain.bill.WarrantySlip
+import com.kex.vikrsaathi.ui.help.HelpScreen
+import com.kex.vikrsaathi.ui.help.installHelpMenu
 import com.kex.vikrsaathi.util.ViewModelFactory
 
 class WarrantyServiceFragment : Fragment() {
@@ -37,6 +39,7 @@ class WarrantyServiceFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        installHelpMenu(HelpScreen.WARRANTY_SERVICE)
         val adapter = SaleAdapter { line -> onSaleSelected(line) }
         binding.recyclerWarrantySales.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerWarrantySales.adapter = adapter
