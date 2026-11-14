@@ -15,6 +15,8 @@ import com.kex.vikrsaathi.domain.inventory.BatchSource
 import com.kex.vikrsaathi.domain.inventory.BatchState
 import com.kex.vikrsaathi.domain.inventory.CivilDate
 import com.kex.vikrsaathi.domain.inventory.FefoAllocator
+import com.kex.vikrsaathi.domain.inventory.SaleLot
+import com.kex.vikrsaathi.domain.inventory.SavedLotUse
 import java.util.TimeZone
 
 data class ReceiptLot(
@@ -56,6 +58,67 @@ class BatchRepository(
     }
 
     suspend fun batchesFor(itemId: Long): List<InventoryBatch> = dao.batchesForItem(itemId)
+
+    /**
+     * Lots that can be chosen on a bill. Quantity already on [editingBillId] is counted
+     * as still available, because saving that bill puts it back before allocating again.
+     */
+    suspend fun saleLots(itemId: Long, editingBillId: Long?): List<SaleLot> {
+        if (!tracks(itemId)) return emptyList()
+        val today = CivilDate.today(clock(), zone)
+        val held = heldQuantities(editingBillId)
+        return dao.batchesForItem(itemId).mapNotNull { batch ->
+            val quantity = batch.quantityOnHand + (held[batch.id] ?: 0)
+            if (quantity <= 0 || batch.state == BatchState.QUARANTINE) return@mapNotNull null
+            val lot = batch.copy(quantityOnHand = quantity).toLot()
+            if (!FefoAllocator.isEligible(lot, today)) return@mapNotNull null
+            SaleLot(
+                id = batch.id,
+                lotNumber = batch.lotNumber,
+                internalRef = batch.internalRef,
+                expiryEpochDay = batch.expiryEpochDay,
+                quantityOnHand = quantity
+            )
+        }
+    }
+
+    suspend fun tracesForBill(billId: Long): Map<Long, List<SavedLotUse>> {
+        if (billId <= 0L) return emptyMap()
+        return groupTraces(dao.allocationsForBill(billId))
+    }
+
+    /** Every sale line that already recorded a lot, including after batch tracking is turned off. */
+    suspend fun saleTraces(): Map<Long, List<SavedLotUse>> = groupTraces(dao.allAllocations())
+
+    private suspend fun groupTraces(rows: List<BillBatchAllocation>): Map<Long, List<SavedLotUse>> {
+        val grouped = linkedMapOf<Long, MutableList<SavedLotUse>>()
+        rows.forEach { row ->
+            val use = traceOf(row) ?: return@forEach
+            grouped.getOrPut(use.first) { mutableListOf() } += use.second
+        }
+        return grouped
+    }
+
+    private suspend fun traceOf(row: BillBatchAllocation): Pair<Long, SavedLotUse>? {
+        val billItemId = row.billItemId ?: return null
+        val snapshotted = !row.internalRef.isNullOrBlank()
+        val batch = if (snapshotted) null else dao.batch(row.batchId)
+        val ref = row.internalRef?.takeIf { it.isNotBlank() } ?: batch?.internalRef ?: return null
+        return billItemId to SavedLotUse(
+            batchId = row.batchId,
+            lotNumber = if (snapshotted) row.lotNumber else batch?.lotNumber,
+            internalRef = ref,
+            expiryEpochDay = if (snapshotted) row.expiryEpochDay else batch?.expiryEpochDay,
+            quantity = row.quantity
+        )
+    }
+
+    private suspend fun heldQuantities(billId: Long?): Map<Long, Int> {
+        if (billId == null || billId <= 0L) return emptyMap()
+        return dao.allocationsForBill(billId)
+            .groupBy { it.batchId }
+            .mapValues { (_, rows) -> rows.sumOf { it.quantity } }
+    }
 
     suspend fun movements(batchId: Long): List<InventoryBatchMovement> = dao.movements(batchId)
 
@@ -239,18 +302,23 @@ class BatchRepository(
         return plan.eligible + extraEligible to plan.expired
     }
 
-    suspend fun syncBill(billId: Long, isEdit: Boolean, oldQuantities: Map<Long, Int>) {
+    suspend fun syncBill(
+        billId: Long,
+        isEdit: Boolean,
+        oldQuantities: Map<Long, Int>,
+        chosenBatchIds: List<Long?> = emptyList()
+    ) {
         if (!settings.batchTrackingEnabled) return
         val lines = database.billItemDao().getItemsForBill(billId)
         val previous = dao.allocationsForBill(billId)
         if (previous.isNotEmpty()) {
             restore(previous, billId)
             dao.deleteAllocationsForBill(billId)
-            allocate(billId, lines)
+            allocate(billId, lines, chosenBatchIds)
             return
         }
         if (!isEdit) {
-            allocate(billId, lines)
+            allocate(billId, lines, chosenBatchIds)
             return
         }
         val newQty = lines.filter { it.itemId != null }.groupBy { it.itemId!! }
@@ -259,7 +327,12 @@ class BatchRepository(
         itemIds.forEach { itemId ->
             if (!tracks(itemId)) return@forEach
             val extra = (newQty[itemId] ?: 0) - (oldQuantities[itemId] ?: 0)
-            if (extra > 0) allocateQuantity(billId, null, itemId, extra)
+            if (extra > 0) {
+                val choice = lines.indexOfFirst { it.itemId == itemId }
+                    .takeIf { it >= 0 }
+                    ?.let { chosenBatchIds.getOrNull(it) }
+                allocateQuantity(billId, null, itemId, extra, choice)
+            }
         }
     }
 
@@ -319,29 +392,63 @@ class BatchRepository(
         )
     }
 
-    private suspend fun allocate(billId: Long, lines: List<BillItem>) {
-        lines.forEach { line ->
-            val itemId = line.itemId ?: return@forEach
-            if (!tracks(itemId) || line.quantity <= 0) return@forEach
-            allocateQuantity(billId, line.id, itemId, line.quantity)
+    private suspend fun allocate(billId: Long, lines: List<BillItem>, chosenBatchIds: List<Long?>) {
+        lines.forEachIndexed { index, line ->
+            val itemId = line.itemId ?: return@forEachIndexed
+            if (!tracks(itemId) || line.quantity <= 0) return@forEachIndexed
+            allocateQuantity(billId, line.id, itemId, line.quantity, chosenBatchIds.getOrNull(index))
         }
     }
 
-    private suspend fun allocateQuantity(billId: Long, billItemId: Long?, itemId: Long, quantity: Int) {
+    private suspend fun allocateQuantity(
+        billId: Long,
+        billItemId: Long?,
+        itemId: Long,
+        quantity: Int,
+        preferredBatchId: Long? = null
+    ) {
+        if (preferredBatchId != null && takePreferred(billId, billItemId, itemId, quantity, preferredBatchId)) {
+            return
+        }
         val today = CivilDate.today(clock(), zone)
         val lots = dao.batchesForItem(itemId).map { it.toLot() }
         val plan = FefoAllocator.plan(lots, quantity, today)
         plan.taken.forEach { take ->
-            change(take.lotId, -take.quantity, StockMovementType.SALE, StockReferenceType.BILL, billId, "Sale")
-            dao.insertAllocation(
-                BillBatchAllocation(
-                    billId = billId,
-                    billItemId = billItemId,
-                    batchId = take.lotId,
-                    quantity = take.quantity
-                )
-            )
+            recordSale(billId, billItemId, take.lotId, take.quantity)
         }
+    }
+
+    /** Takes only the chosen lot. Other lots stay untouched so the expiry on the bill is that lot. */
+    private suspend fun takePreferred(
+        billId: Long,
+        billItemId: Long?,
+        itemId: Long,
+        quantity: Int,
+        preferredBatchId: Long
+    ): Boolean {
+        val batch = dao.batch(preferredBatchId) ?: return false
+        if (batch.itemId != itemId) return false
+        val today = CivilDate.today(clock(), zone)
+        if (!FefoAllocator.isEligible(batch.toLot(), today)) return false
+        val use = minOf(batch.quantityOnHand, quantity)
+        if (use > 0) recordSale(billId, billItemId, preferredBatchId, use)
+        return true
+    }
+
+    private suspend fun recordSale(billId: Long, billItemId: Long?, batchId: Long, quantity: Int) {
+        val batch = dao.batch(batchId)
+        change(batchId, -quantity, StockMovementType.SALE, StockReferenceType.BILL, billId, "Sale")
+        dao.insertAllocation(
+            BillBatchAllocation(
+                billId = billId,
+                billItemId = billItemId,
+                batchId = batchId,
+                quantity = quantity,
+                lotNumber = batch?.lotNumber,
+                internalRef = batch?.internalRef,
+                expiryEpochDay = batch?.expiryEpochDay
+            )
+        )
     }
 
     private suspend fun restore(previous: List<BillBatchAllocation>, billId: Long) {

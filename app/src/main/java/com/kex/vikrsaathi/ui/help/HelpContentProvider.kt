@@ -70,6 +70,13 @@ object HelpContentProvider {
                 R.string.help_stock_overview,
                 section(R.string.help_stock_s1_title, R.array.help_stock_s1)
             )
+            HelpScreen.STOCK_HISTORY -> guide(
+                context,
+                R.string.help_stock_history_title,
+                R.string.help_stock_history_overview,
+                section(R.string.help_stock_history_s1_title, R.array.help_stock_history_s1),
+                section(R.string.help_stock_history_s2_title, R.array.help_stock_history_s2)
+            )
             HelpScreen.BILLS_HISTORY -> guide(
                 context,
                 R.string.help_bills_history_title,

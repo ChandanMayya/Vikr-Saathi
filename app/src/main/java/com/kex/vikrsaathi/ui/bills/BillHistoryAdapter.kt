@@ -58,6 +58,15 @@ class BillHistoryAdapter(
             }
         }
 
+    /** Bill item id to the lot and expiry recorded on that sale line. */
+    var batchNotes: Map<Long, String> = emptyMap()
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyDataSetChanged()
+            }
+        }
+
     var viewMode: ListViewMode = ListViewMode.COMFORTABLE
         set(value) {
             if (field != value) {
@@ -136,7 +145,12 @@ class BillHistoryAdapter(
             val shown = if (expanded) lines else lines.take(COMPACT_PREVIEW)
             binding.textItemSummary.isVisible = shown.isNotEmpty()
             binding.textItemSummary.text = shown.joinToString("   ·   ") { line ->
-                "${line.itemName} · ${quantityRate(line)}"
+                val batch = batchLabel(context, line)
+                if (batch.isEmpty()) {
+                    "${line.itemName} · ${quantityRate(line)}"
+                } else {
+                    "${line.itemName} · ${quantityRate(line)} · $batch"
+                }
             }
             val hidden = (lines.size - COMPACT_PREVIEW).coerceAtLeast(0)
             binding.buttonMoreItems.isVisible = hidden > 0
@@ -261,6 +275,9 @@ class BillHistoryAdapter(
                 val row = ItemBillHistoryLineBinding.inflate(inflater, container, false)
                 row.textHistoryItemName.text = line.itemName
                 row.textHistoryItemMeta.text = lineMeta(container.context, line, detailed)
+                val batch = batchLabel(container.context, line)
+                row.textHistoryBatch.isVisible = batch.isNotEmpty()
+                row.textHistoryBatch.text = batch
                 row.textHistoryItemAmount.text = PriceCalculator.formatAmount(lineAmount(line), currencySymbol)
                 container.addView(row.root)
             }
@@ -296,6 +313,9 @@ class BillHistoryAdapter(
             val adjust = lineAdjustments(container.context, line)
             row.textDetailItemAdjust.isVisible = adjust.isNotEmpty()
             row.textDetailItemAdjust.text = adjust
+            val batch = batchLabel(container.context, line)
+            row.textDetailBatch.isVisible = batch.isNotEmpty()
+            row.textDetailBatch.text = batch
             row.textDetailItemAmount.text = PriceCalculator.formatAmount(lineAmount(line), currencySymbol)
             container.addView(row.root)
         }
@@ -310,6 +330,12 @@ class BillHistoryAdapter(
             if (billId in expandedIds) expandedIds.remove(billId) else expandedIds.add(billId)
             onToggle()
         }
+    }
+
+    private fun batchLabel(context: android.content.Context, line: BillItem): String {
+        val note = batchNotes[line.id]?.replace("\n", " · ")?.trim().orEmpty()
+        if (note.isEmpty()) return ""
+        return context.getString(R.string.bill_history_batch, note)
     }
 
     private fun lineAdjustments(context: android.content.Context, line: BillItem): String {

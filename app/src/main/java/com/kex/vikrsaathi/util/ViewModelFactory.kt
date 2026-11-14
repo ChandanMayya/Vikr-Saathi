@@ -93,7 +93,8 @@ class ViewModelFactory(private val app: VikrSaathiApp) : ViewModelProvider.Facto
                     app.billDraftRepository,
                     app.settingsRepository,
                     app.invoiceTemplateRepository,
-                    app.inventoryRepository
+                    app.inventoryRepository,
+                    app.batchRepository
                 ) as T
             modelClass.isAssignableFrom(BillPreviewViewModel::class.java) ->
                 BillPreviewViewModel(

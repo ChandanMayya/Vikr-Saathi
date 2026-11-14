@@ -72,6 +72,19 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/textItemExpiry"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_new_flag"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:textColor="@color/orange_700"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
             style="@style/VikrSaathiBillLineLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

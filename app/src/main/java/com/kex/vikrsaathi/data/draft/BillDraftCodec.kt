@@ -20,6 +20,7 @@ object BillDraftCodec {
                     put("roundOff", line.roundOff)
                     put("isNew", line.isNew)
                     if (line.lineKey.isNotEmpty()) put("lineKey", line.lineKey)
+                    line.batchId?.let { put("batchId", it) }
                     line.openingStock?.let { put("openingStock", it) }
                     line.barcode?.let { put("barcode", it) }
                     line.warranty?.let { warranty ->
@@ -60,6 +61,7 @@ object BillDraftCodec {
                             },
                             barcode = obj.optString("barcode").trim().ifEmpty { null },
                             lineKey = obj.optString("lineKey").trim(),
+                            batchId = obj.optLong("batchId").takeIf { obj.has("batchId") && it > 0L },
                             warranty = if (obj.has("warrantyPeriod")) {
                                 WarrantyPolicy.fromStored(
                                     period = obj.optInt("warrantyPeriod"),

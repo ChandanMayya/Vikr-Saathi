@@ -60,7 +60,11 @@ class BillPreviewViewModel(
                 currencySymbol = settingsRepository.currencySymbol,
                 headerImage = settingsRepository.getHeaderImage(),
                 signatureImage = settingsRepository.getSignatureImage(),
-                shopLogoImage = settingsRepository.getShopLogoImage()
+                shopLogoImage = settingsRepository.getShopLogoImage(),
+                batchNotes = billRepository.batchNotesForPrint(
+                    billId,
+                    context.getString(com.kex.vikrsaathi.R.string.expiry_unknown)
+                )
             )
             _preview.value = BillPreviewUiState(
                 billNumber = bill.bill.billNumber,
@@ -91,7 +95,11 @@ class BillPreviewViewModel(
                 currencySymbol = settingsRepository.currencySymbol,
                 headerImage = settingsRepository.getHeaderImage(),
                 signatureImage = settingsRepository.getSignatureImage(),
-                shopLogoImage = settingsRepository.getShopLogoImage()
+                shopLogoImage = settingsRepository.getShopLogoImage(),
+                batchNotes = billRepository.batchNotesForPrint(
+                    billId,
+                    context.getString(com.kex.vikrsaathi.R.string.expiry_unknown)
+                )
             )
             onResult(file)
         }

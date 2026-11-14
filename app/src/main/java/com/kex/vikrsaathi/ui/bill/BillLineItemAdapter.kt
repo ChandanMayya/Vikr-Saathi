@@ -11,6 +11,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
+import com.kex.vikrsaathi.domain.inventory.CivilDate
+import com.kex.vikrsaathi.domain.inventory.SaleLot
+import com.kex.vikrsaathi.domain.inventory.SavedLotUse
 import com.kex.vikrsaathi.databinding.ItemBillLineBinding
 import com.kex.vikrsaathi.util.PriceCalculator
 
@@ -21,8 +24,16 @@ class BillLineItemAdapter(
     private val onRoundOffChange: (Int, Double) -> Unit,
     private val onRateChange: (Int, Double) -> Unit,
     private val onRemove: (Int) -> Unit,
+    private val onBatchClick: (Int) -> Unit = {},
     private val warrantySaleMillis: () -> Long = { System.currentTimeMillis() }
 ) : ListAdapter<BillLineItem, BillLineItemAdapter.ViewHolder>(DiffCallback()) {
+
+    var lotsByItem: Map<Long, List<SaleLot>> = emptyMap()
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
 
     var readOnly: Boolean = false
         set(value) {
@@ -197,6 +208,7 @@ class BillLineItemAdapter(
             binding.textSlNo.text = bindingAdapterPosition.plus(1).toString()
             binding.textParticulars.text = line.name
             bindWarranty(line)
+            bindBatch(line)
             bindNewItemState(line)
             binding.layoutQuantity.visibility = View.VISIBLE
             binding.editQuantity.visibility = View.VISIBLE
@@ -246,6 +258,79 @@ class BillLineItemAdapter(
             binding.textWarrantyExtra.visibility = if (extra.isNullOrBlank()) View.GONE else View.VISIBLE
             binding.textWarrantyExtra.text = extra.orEmpty()
         }
+
+        private fun bindBatch(line: BillLineItem) {
+            val lots = line.itemId?.let { lotsByItem[it] }.orEmpty()
+            val canChoose = !readOnly && lots.isNotEmpty()
+            val selected = lots.firstOrNull { it.id == line.batchId }
+            val savedText = savedLotText(line.savedLots)
+            val showSaved = line.batchId == null && savedText.isNotBlank()
+            val visible = canChoose || selected != null || savedText.isNotBlank()
+            binding.layoutBatch.visibility = if (visible) View.VISIBLE else View.GONE
+            if (!visible) return
+            binding.textBatch.text = when {
+                canChoose && selected != null -> lotChoice(selected)
+                canChoose -> binding.root.context.getString(R.string.bill_batch_earliest)
+                selected != null -> lotTrace(selected.lotNumber, selected.internalRef, selected.expiryEpochDay)
+                else -> savedText
+            }
+            binding.textBatch.isClickable = canChoose
+            binding.textBatch.setOnClickListener(
+                if (canChoose) {
+                    View.OnClickListener {
+                        val pos = bindingAdapterPosition
+                        if (pos != RecyclerView.NO_POSITION) onBatchClick(pos)
+                    }
+                } else {
+                    null
+                }
+            )
+            val chosen = selected
+            val short = chosen != null && line.quantity > chosen.quantityOnHand
+            val showSplit = canChoose && showSaved
+            binding.textBatchNote.visibility = if (short || showSplit) View.VISIBLE else View.GONE
+            binding.textBatchNote.text = when {
+                chosen != null && short -> binding.root.context.getString(
+                    R.string.bill_batch_short,
+                    chosen.quantityOnHand
+                )
+                showSplit -> savedText
+                else -> ""
+            }
+        }
+
+        private fun lotChoice(lot: SaleLot): String {
+            val context = binding.root.context
+            return context.getString(
+                R.string.bill_batch_choice,
+                lotName(lot.lotNumber, lot.internalRef),
+                lotExpiry(lot.expiryEpochDay),
+                lot.quantityOnHand
+            )
+        }
+
+        private fun savedLotText(uses: List<SavedLotUse>): String {
+            if (uses.isEmpty()) return ""
+            return uses.joinToString("\n") { use ->
+                val trace = lotTrace(use.lotNumber, use.internalRef, use.expiryEpochDay)
+                if (uses.size > 1) "$trace × ${use.quantity}" else trace
+            }
+        }
+
+        private fun lotTrace(lotNumber: String?, internalRef: String, expiryEpochDay: Long?): String {
+            return binding.root.context.getString(
+                R.string.bill_batch_trace,
+                lotName(lotNumber, internalRef),
+                lotExpiry(expiryEpochDay)
+            )
+        }
+
+        private fun lotName(lotNumber: String?, internalRef: String): String =
+            lotNumber?.trim()?.takeIf { it.isNotEmpty() } ?: internalRef
+
+        private fun lotExpiry(expiryEpochDay: Long?): String =
+            expiryEpochDay?.let { CivilDate.format(it) }
+                ?: binding.root.context.getString(R.string.expiry_unknown)
 
         private fun bindNewItemState(line: BillLineItem) {
             binding.textNewBadge.visibility = if (line.isNew) View.VISIBLE else View.GONE

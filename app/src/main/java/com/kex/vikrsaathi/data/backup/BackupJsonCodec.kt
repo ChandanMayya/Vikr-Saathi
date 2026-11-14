@@ -280,7 +280,14 @@ object BackupJsonCodec {
                     BillBatchAllocationBackup(
                         billLegacyId = obj.getLong("billLegacyId"),
                         batchLegacyId = obj.getLong("batchLegacyId"),
-                        quantity = obj.optInt("quantity")
+                        quantity = obj.optInt("quantity"),
+                        lotNumber = obj.optString("lotNumber").takeIf { obj.has("lotNumber") && it.isNotBlank() },
+                        internalRef = obj.optString("internalRef").takeIf { obj.has("internalRef") && it.isNotBlank() },
+                        expiryEpochDay = if (obj.has("expiryEpochDay") && !obj.isNull("expiryEpochDay")) {
+                            obj.getLong("expiryEpochDay")
+                        } else {
+                            null
+                        }
                     )
                 )
             }
@@ -315,6 +322,9 @@ object BackupJsonCodec {
         put("billLegacyId", row.billId)
         put("batchLegacyId", row.batchId)
         put("quantity", row.quantity)
+        row.lotNumber?.let { put("lotNumber", it) }
+        row.internalRef?.let { put("internalRef", it) }
+        row.expiryEpochDay?.let { put("expiryEpochDay", it) }
     }
 
     fun selectedOperatorLegacyId(root: JSONObject): Long =
@@ -996,7 +1006,10 @@ data class InventoryBatchMovementBackup(
 data class BillBatchAllocationBackup(
     val billLegacyId: Long,
     val batchLegacyId: Long,
-    val quantity: Int
+    val quantity: Int,
+    val lotNumber: String? = null,
+    val internalRef: String? = null,
+    val expiryEpochDay: Long? = null
 )
 
 data class ItemCostLotBackup(

@@ -31,6 +31,7 @@ import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.data.model.BillVersionDetails
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.data.model.DashboardPeriodStats
+import com.kex.vikrsaathi.data.model.analytics.SalesTrendSeries
 import com.kex.vikrsaathi.data.model.DashboardTopItem
 import com.kex.vikrsaathi.domain.bill.BillVersionDiffer
 import com.kex.vikrsaathi.domain.bill.OperatorLabels
@@ -41,6 +42,7 @@ import com.kex.vikrsaathi.domain.dashboard.DashboardPeriods
 import com.kex.vikrsaathi.domain.dashboard.GrossProfitCalculator
 import com.kex.vikrsaathi.domain.dashboard.PeriodComparison
 import com.kex.vikrsaathi.data.entity.CostSourceType
+import com.kex.vikrsaathi.domain.inventory.CivilDate
 import com.kex.vikrsaathi.domain.inventory.StockDeltaCalculator
 import com.kex.vikrsaathi.domain.inventory.StockPolicy
 import com.kex.vikrsaathi.util.InventoryMode
@@ -67,6 +69,27 @@ class BillRepository(
 
     suspend fun getBillWithDetails(billId: Long): BillWithDetails? =
         billDao.getBillWithDetails(billId)
+
+    /** Lot and expiry recorded on each saved bill line, keyed by bill item id. */
+    suspend fun batchNotesForPrint(billId: Long, expiryUnknown: String): Map<Long, String> =
+        formatBatchNotes(batches.tracesForBill(billId), expiryUnknown)
+
+    /** Lot and expiry recorded on every saved bill line, keyed by bill item id. */
+    suspend fun batchNotesByItem(expiryUnknown: String): Map<Long, String> =
+        formatBatchNotes(batches.saleTraces(), expiryUnknown)
+
+    private fun formatBatchNotes(
+        traces: Map<Long, List<com.kex.vikrsaathi.domain.inventory.SavedLotUse>>,
+        expiryUnknown: String
+    ): Map<Long, String> {
+        return traces.mapValues { (_, uses) ->
+            uses.joinToString("\n") { use ->
+                val name = use.lotNumber?.trim()?.takeIf { it.isNotEmpty() } ?: use.internalRef
+                val expiry = use.expiryEpochDay?.let { CivilDate.format(it) } ?: expiryUnknown
+                if (uses.size > 1) "$name · $expiry × ${use.quantity}" else "$name · $expiry"
+            }
+        }
+    }
 
     suspend fun getPayments(billId: Long): List<BillPayment> = billPaymentDao.getForBill(billId)
 
@@ -229,7 +252,12 @@ class BillRepository(
                     payment = payment
                 )
             }
-            batches.syncBill(billId, existingBillId != null, oldQuantities)
+            batches.syncBill(
+                billId,
+                existingBillId != null,
+                oldQuantities,
+                lineItems.map { it.batchId }
+            )
             billId
         }
     }
@@ -562,6 +590,16 @@ class BillRepository(
             }
         }
         val roundOff = bills.sumOf { Money.rupeesToPaise(it.bill.roundOff) }
+        val trendReturns = activeReturns.filter {
+            it.occurredAt >= window.startInclusive && it.occurredAt < window.endExclusive
+        }
+        val trend = SalesTrendSeries.build(
+            rows = billDao.getBillTotalsBetween(window.startInclusive, window.endExclusive),
+            startInclusive = window.startInclusive,
+            endExclusive = window.endExclusive,
+            returnsInRange = trendReturns,
+            zone = zone
+        )
         return DashboardPeriodStats(
             period = period,
             window = window,
@@ -570,7 +608,8 @@ class BillRepository(
             billCount = billCount,
             comparison = PeriodComparison.of(total, previousTotal, billCount, previousCount),
             topItems = topItems,
-            profit = GrossProfitCalculator.calculate(sales, roundOff, returns)
+            profit = GrossProfitCalculator.calculate(sales, roundOff, returns),
+            trend = trend
         )
     }
 

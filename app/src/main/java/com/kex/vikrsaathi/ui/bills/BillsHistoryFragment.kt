@@ -19,6 +19,7 @@ import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.kex.vikrsaathi.R
@@ -44,6 +45,7 @@ import com.kex.vikrsaathi.util.ViewModelFactory
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
 import java.text.DateFormat
+import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -132,6 +134,7 @@ class BillsHistoryFragment : Fragment() {
         viewModel.allBills.observe(viewLifecycleOwner) { bills ->
             allBills = bills
             viewModel.refreshExchangeCards(bills)
+            refreshBatchNotes()
             applyFilters()
         }
         viewModel.exchangeCards.observe(viewLifecycleOwner) { cards ->
@@ -356,6 +359,15 @@ class BillsHistoryFragment : Fragment() {
             forcedToInclusive = forcedToInclusive,
             itemName = forcedItemName
         )
+    }
+
+    private fun refreshBatchNotes() {
+        val app = requireActivity().application as VikrSaathiApp
+        viewLifecycleOwner.lifecycleScope.launch {
+            val notes = app.billRepository.batchNotesByItem(getString(R.string.expiry_unknown))
+            if (!isAdded) return@launch
+            adapter.batchNotes = notes
+        }
     }
 
     private fun getFilteredBills(): List<BillWithDetails> {

@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.data.entity.Item
+import com.kex.vikrsaathi.data.repository.ExpiryAlert
 import com.kex.vikrsaathi.databinding.ItemMasterBinding
 import com.kex.vikrsaathi.databinding.ItemMasterCompactBinding
 import com.kex.vikrsaathi.databinding.ItemMasterDetailsBinding
@@ -22,8 +23,25 @@ class ItemAdapter(
     private val currencySymbol: String,
     private val lowStockThreshold: Int,
     private val onEdit: (Item) -> Unit,
-    private val onDelete: (Item) -> Unit
+    private val onDelete: (Item) -> Unit,
+    private val onOpenBatches: (Item) -> Unit
 ) : ListAdapter<Item, RecyclerView.ViewHolder>(DiffCallback()) {
+
+    var batchTrackingEnabled: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyDataSetChanged()
+            }
+        }
+
+    var expiringByItem: Map<Long, List<ExpiryAlert>> = emptyMap()
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyDataSetChanged()
+            }
+        }
 
     var viewMode: ListViewMode = ListViewMode.COMFORTABLE
         set(value) {
@@ -120,6 +138,8 @@ class ItemAdapter(
             val discount = discountText(item.discount)
             binding.layoutItemDiscount.isVisible = discount != null
             if (discount != null) binding.textItemDiscount.text = discount
+            bindExpiry(binding.textItemExpiry, item)
+            binding.root.setOnClickListener { openBatches(item) }
             binding.buttonEditItem.setOnClickListener { onEdit(item) }
             binding.buttonDeleteItem.setOnClickListener { onDelete(item) }
         }
@@ -131,6 +151,8 @@ class ItemAdapter(
             val context = binding.root.context
             binding.textItemName.text = item.name
             bindStock(binding.textItemStock, binding.textItemLow, item)
+            bindExpiry(binding.textItemExpiry, item)
+            binding.root.setOnClickListener { openBatches(item) }
             val parts = mutableListOf(
                 context.getString(R.string.list_selling_price) + " " + money(sellingAmount(item))
             )
@@ -173,9 +195,41 @@ class ItemAdapter(
                 binding.layoutItemPurchaseUnit.isVisible ||
                     binding.layoutItemPackFactor.isVisible ||
                     binding.layoutItemVendor.isVisible
+            bindExpiry(binding.textItemExpiry, item)
+            binding.root.setOnClickListener { openBatches(item) }
             binding.buttonEditItem.setOnClickListener { onEdit(item) }
             binding.buttonDeleteItem.setOnClickListener { onDelete(item) }
         }
+    }
+
+    private fun openBatches(item: Item) {
+        if (batchTrackingEnabled && item.trackBatches) onOpenBatches(item)
+    }
+
+    private fun bindExpiry(view: TextView, item: Item) {
+        val alerts = if (batchTrackingEnabled && item.trackBatches) {
+            expiringByItem[item.id].orEmpty()
+        } else {
+            emptyList()
+        }
+        view.isVisible = alerts.isNotEmpty()
+        if (alerts.isEmpty()) return
+        val lead = alerts.first()
+        val name = lead.lotNumber?.trim()?.takeIf { it.isNotEmpty() } ?: lead.internalRef
+        val extra = alerts.size - 1
+        view.text = if (lead.expired) {
+            if (extra > 0) view.context.getString(R.string.item_batch_expired_more, name, extra)
+            else view.context.getString(R.string.item_batch_expired, name)
+        } else {
+            if (extra > 0) view.context.getString(R.string.item_batch_expiring_more, name, extra)
+            else view.context.getString(R.string.item_batch_expiring, name)
+        }
+        view.setTextColor(
+            ContextCompat.getColor(
+                view.context,
+                if (alerts.any { it.expired }) R.color.balance_payable else R.color.orange_700
+            )
+        )
     }
 
     private class DiffCallback : DiffUtil.ItemCallback<Item>() {

@@ -22,7 +22,8 @@ object PdfGenerator {
         signatureImage: android.graphics.Bitmap?,
         shopLogoImage: android.graphics.Bitmap? = null,
         exchangeTitle: String? = null,
-        exchangeLines: List<String> = emptyList()
+        exchangeLines: List<String> = emptyList(),
+        batchNotes: Map<Long, String> = emptyMap()
     ): File {
         val renderContext = TemplateContextFactory.createForPdf(
             context = context,
@@ -34,7 +35,8 @@ object PdfGenerator {
             signatureImage = signatureImage,
             shopLogoImage = shopLogoImage,
             exchangeTitle = exchangeTitle,
-            exchangeLines = exchangeLines
+            exchangeLines = exchangeLines,
+            batchNotes = batchNotes
         )
 
         val document = PdfDocument()

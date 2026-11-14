@@ -147,7 +147,11 @@ class BillsHistoryViewModel(
                     signatureImage = settingsRepository.getSignatureImage(),
                     shopLogoImage = settingsRepository.getShopLogoImage(),
                     exchangeTitle = exchange?.first,
-                    exchangeLines = exchange?.second.orEmpty()
+                    exchangeLines = exchange?.second.orEmpty(),
+                    batchNotes = repository.batchNotesForPrint(
+                        billId,
+                        appContext.getString(com.kex.vikrsaathi.R.string.expiry_unknown)
+                    )
                 )
             }
             onResult(file)

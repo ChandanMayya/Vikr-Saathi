@@ -11,6 +11,9 @@
     <color name="surface_card">#1E1E1E</color>
     <color name="surface_panel">#252525</color>
     <color name="surface_muted">#2C2419</color>
+    <color name="dashboard_hero_surface">#2C2419</color>
+    <color name="dashboard_dues_surface">#1B2E22</color>
+    <color name="dashboard_payable_surface">#2E1E1E</color>
     <color name="surface_divider">#3A3A3A</color>
     <color name="stroke_default">#5D4037</color>
     <color name="stroke_subtle">#424242</color>

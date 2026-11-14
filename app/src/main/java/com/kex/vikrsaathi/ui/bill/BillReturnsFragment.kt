@@ -191,6 +191,10 @@ class BillReturnsFragment : Fragment() {
                     headerImage = app.settingsRepository.getHeaderImage(),
                     signatureImage = app.settingsRepository.getSignatureImage(),
                     shopLogoImage = app.settingsRepository.getShopLogoImage(),
+                    batchNotes = app.billRepository.batchNotesForPrint(
+                        billId,
+                        app.getString(R.string.expiry_unknown)
+                    ),
                     exchangeTitle = getString(R.string.exchange_bill_title),
                     exchangeLines = lines
                 )

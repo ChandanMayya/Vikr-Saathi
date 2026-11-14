@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="280dp"
+    android:layout_height="match_parent"
+    android:layout_gravity="end"
+    android:background="?attr/colorSurface"
+    android:clickable="true"
+    android:elevation="8dp"
+    android:fillViewport="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/textOptionsTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/stock_history_options"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/stock_history_show"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="@color/text_secondary_dark"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/radioHistoryFilter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp">
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioHistoryAll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="@string/stock_history_filter_all" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioHistoryIn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/stock_history_filter_in" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioHistoryOut"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/stock_history_filter_out" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioHistorySales"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/stock_history_filter_sales" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioHistoryAdjust"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/stock_history_filter_adjust" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioHistoryPurchase"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/stock_history_filter_purchase" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radioHistoryReturn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/stock_history_filter_return" />
+        </RadioGroup>
+    </LinearLayout>
+</ScrollView>

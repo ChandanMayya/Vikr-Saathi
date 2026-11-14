@@ -12,6 +12,7 @@ import com.kex.vikrsaathi.data.model.BillLineItem
 import com.kex.vikrsaathi.data.model.BillWithDetails
 import com.kex.vikrsaathi.data.draft.HeldBillRestore
 import com.kex.vikrsaathi.data.draft.HeldDraftSummary
+import com.kex.vikrsaathi.data.repository.BatchRepository
 import com.kex.vikrsaathi.data.repository.BillTotalsCalculator
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.BillDraftRepository
@@ -26,6 +27,7 @@ import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
 import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
 import com.kex.vikrsaathi.domain.bill.warrantySnapshot
 import com.kex.vikrsaathi.domain.finance.BillPaymentRequest
+import com.kex.vikrsaathi.domain.inventory.SaleLot
 import com.kex.vikrsaathi.domain.finance.BillPaymentStatus
 import com.kex.vikrsaathi.domain.finance.PaymentPortion
 import com.kex.vikrsaathi.domain.inventory.StockDeltaCalculator
@@ -44,7 +46,8 @@ class BillViewModel(
     private val billDraftRepository: BillDraftRepository,
     private val settingsRepository: SettingsRepository,
     private val invoiceTemplateRepository: InvoiceTemplateRepository,
-    private val inventoryRepository: InventoryRepository
+    private val inventoryRepository: InventoryRepository,
+    private val batchRepository: BatchRepository
 ) : ViewModel() {
 
     data class AutoRegisterResult(
@@ -57,6 +60,10 @@ class BillViewModel(
 
     private val _lineItems = MutableLiveData<List<BillLineItem>>(emptyList())
     val lineItems: LiveData<List<BillLineItem>> = _lineItems
+
+    private val _saleLots = MutableLiveData<Map<Long, List<SaleLot>>>(emptyMap())
+    val saleLots: LiveData<Map<Long, List<SaleLot>>> = _saleLots
+    private var lotsRequest = 0
 
     private val _selectedCustomer = MutableLiveData<Customer?>()
     val selectedCustomer: LiveData<Customer?> = _selectedCustomer
@@ -217,6 +224,7 @@ class BillViewModel(
             _lineItems.value = restored.lineItems
             _billRoundOff.value = restored.roundOff
             recalculate()
+            refreshSaleLots()
             onRestored(restored)
         }
     }
@@ -243,10 +251,12 @@ class BillViewModel(
     fun loadBill(billId: Long) {
         viewModelScope.launch {
             val bill = billRepository.getBillWithDetails(billId) ?: return@launch
+            val traces = batchRepository.tracesForBill(billId)
             editingBillId = billId
             editingSaleDateMillis = bill.bill.date
             _selectedCustomer.value = bill.customer
             _lineItems.value = bill.items.map {
+                val saved = traces[it.id].orEmpty()
                 BillLineItem(
                     itemId = it.itemId,
                     name = it.itemName,
@@ -255,10 +265,13 @@ class BillViewModel(
                     quantity = it.quantity,
                     roundOff = it.roundOff,
                     unitCostPaise = it.unitCostPaise,
-                    warranty = it.warrantySnapshot()
+                    warranty = it.warrantySnapshot(),
+                    batchId = saved.singleOrNull()?.batchId,
+                    savedLots = saved
                 )
             }
             _billRoundOff.value = bill.bill.roundOff
+            refreshSaleLots()
             _loadedPaymentStatus.value = bill.bill.paymentStatus
             _loadedPortions.value = bill.payments.map { PaymentPortion(it.method, it.amountPaise) }
             _loadedDueEpochDay.value = bill.bill.dueEpochDay
@@ -271,6 +284,7 @@ class BillViewModel(
         editingSaleDateMillis = null
         _selectedCustomer.value = null
         _lineItems.value = emptyList()
+        _saleLots.value = emptyMap()
         _billRoundOff.value = 0.0
         _loadedPaymentStatus.value = BillPaymentStatus.LEGACY
         _loadedPortions.value = emptyList()
@@ -385,6 +399,29 @@ class BillViewModel(
         items.removeAt(index)
         _lineItems.value = items
         recalculate()
+        refreshSaleLots()
+    }
+
+    fun updateLineBatch(index: Int, batchId: Long?) {
+        val items = _lineItems.value?.toMutableList() ?: return
+        if (index !in items.indices) return
+        val chosen = items[index].copy(batchId = batchId, savedLots = emptyList())
+        val mergeIndex = items.indexOfFirst { other ->
+            other !== items[index] &&
+                other.itemId != null &&
+                other.itemId == chosen.itemId &&
+                other.batchId == chosen.batchId &&
+                WarrantyPolicy.sameTerms(other.warranty, chosen.warranty)
+        }
+        if (mergeIndex >= 0) {
+            val existing = items[mergeIndex]
+            items[mergeIndex] = existing.copy(quantity = existing.quantity + chosen.quantity)
+            items.removeAt(index)
+        } else {
+            items[index] = chosen
+        }
+        _lineItems.value = items
+        recalculate()
     }
 
     fun saveBill(
@@ -485,7 +522,11 @@ class BillViewModel(
                 currencySymbol = settingsRepository.currencySymbol,
                 headerImage = settingsRepository.getHeaderImage(),
                 signatureImage = settingsRepository.getSignatureImage(),
-                shopLogoImage = settingsRepository.getShopLogoImage()
+                shopLogoImage = settingsRepository.getShopLogoImage(),
+                batchNotes = billRepository.batchNotesForPrint(
+                    billId,
+                    context.getString(com.kex.vikrsaathi.R.string.expiry_unknown)
+                )
             )
             onResult(file)
         }
@@ -501,7 +542,8 @@ class BillViewModel(
         val existingIndex = items.indexOfFirst {
             val sameItem = (it.itemId != null && it.itemId == keyed.itemId) ||
                 (keyed.isNew && it.isNew && it.name.trim().equals(keyed.name.trim(), ignoreCase = true))
-            sameItem && WarrantyPolicy.sameTerms(it.warranty, keyed.warranty)
+            val sameBatch = keyed.batchId == null || it.batchId == keyed.batchId
+            sameItem && sameBatch && WarrantyPolicy.sameTerms(it.warranty, keyed.warranty)
         }
         if (existingIndex >= 0) {
             val existing = items[existingIndex]
@@ -520,6 +562,33 @@ class BillViewModel(
         }
         _lineItems.value = items
         recalculate()
+        refreshSaleLots()
+    }
+
+    private fun refreshSaleLots() {
+        val items = _lineItems.value.orEmpty()
+        val ids = items.mapNotNull { it.itemId }.distinct()
+        if (!settingsRepository.batchTrackingEnabled || ids.isEmpty()) {
+            _saleLots.value = emptyMap()
+            return
+        }
+        val request = ++lotsRequest
+        val billId = editingBillId
+        viewModelScope.launch {
+            val map = ids.associateWith { batchRepository.saleLots(it, billId) }
+            if (request != lotsRequest) return@launch
+            _saleLots.value = map
+            val current = _lineItems.value.orEmpty()
+            val updated = current.map { line ->
+                val lots = line.itemId?.let { map[it] }.orEmpty()
+                if (line.batchId == null && line.savedLots.isEmpty() && lots.size == 1) {
+                    line.copy(batchId = lots.single().id)
+                } else {
+                    line
+                }
+            }
+            if (updated != current) _lineItems.value = updated
+        }
     }
 
     private fun recalculate() {

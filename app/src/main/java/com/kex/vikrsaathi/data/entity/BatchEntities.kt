@@ -79,5 +79,9 @@ data class BillBatchAllocation(
     val billId: Long,
     val billItemId: Long? = null,
     val batchId: Long,
-    val quantity: Int
+    val quantity: Int,
+    /** Lot identity at the time of the sale, so later edits to the lot do not rewrite this bill. */
+    val lotNumber: String? = null,
+    val internalRef: String? = null,
+    val expiryEpochDay: Long? = null
 )

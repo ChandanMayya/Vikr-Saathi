@@ -1001,6 +1001,32 @@ val MIGRATION_17_18 = object : Migration(17, 18) {
     }
 }
 
+val MIGRATION_22_23 = object : Migration(22, 23) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE bill_batch_allocations ADD COLUMN lotNumber TEXT")
+        db.execSQL("ALTER TABLE bill_batch_allocations ADD COLUMN internalRef TEXT")
+        db.execSQL("ALTER TABLE bill_batch_allocations ADD COLUMN expiryEpochDay INTEGER")
+        db.execSQL(
+            """
+            UPDATE bill_batch_allocations
+            SET lotNumber = (
+                    SELECT lotNumber FROM inventory_batches
+                    WHERE inventory_batches.id = bill_batch_allocations.batchId
+                ),
+                internalRef = (
+                    SELECT internalRef FROM inventory_batches
+                    WHERE inventory_batches.id = bill_batch_allocations.batchId
+                ),
+                expiryEpochDay = (
+                    SELECT expiryEpochDay FROM inventory_batches
+                    WHERE inventory_batches.id = bill_batch_allocations.batchId
+                )
+            WHERE internalRef IS NULL
+            """.trimIndent()
+        )
+    }
+}
+
 val MIGRATION_21_22 = object : Migration(21, 22) {
     override fun migrate(db: SupportSQLiteDatabase) {
         addClaimColumn(db, "serviceCentre", "TEXT NOT NULL DEFAULT ''")

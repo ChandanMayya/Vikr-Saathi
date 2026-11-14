@@ -13,6 +13,8 @@ import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Item
 import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
+import com.kex.vikrsaathi.domain.inventory.BatchState
+import com.kex.vikrsaathi.domain.inventory.CivilDate
 import com.kex.vikrsaathi.databinding.DialogItemFormBinding
 import com.kex.vikrsaathi.ui.stock.showBatchAdjustDialog
 import com.kex.vikrsaathi.databinding.FragmentItemsBinding
@@ -78,17 +80,22 @@ class ItemFragment : Fragment() {
             currencySymbol = app.settingsRepository.currencySymbol,
             lowStockThreshold = viewModel.lowStockThreshold,
             onEdit = { showItemDialog(it) },
-            onDelete = { confirmDelete(it) }
+            onDelete = { confirmDelete(it) },
+            onOpenBatches = { showStockedBatches(it) }
         )
         binding.recyclerItems.adapter = adapter
         applyViewMode(viewMode, persist = false)
 
-        viewModel.items.observe(viewLifecycleOwner) { adapter.submitList(it) }
+        viewModel.items.observe(viewLifecycleOwner) {
+            adapter.submitList(it)
+            refreshExpiryFlags()
+        }
         binding.fabAddItem.setOnClickListener { showItemDialog(null) }
     }
 
     override fun onResume() {
         super.onResume()
+        refreshExpiryFlags()
         val app = requireActivity().application as VikrSaathiApp
         if (!app.settingsRepository.vendorManagementEnabled) {
             adapter.vendorNames = emptyMap()
@@ -97,6 +104,53 @@ class ItemFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             if (!isAdded) return@launch
             adapter.vendorNames = app.vendorRepository.getAll().associate { it.id to it.name }
+        }
+    }
+
+    private fun refreshExpiryFlags() {
+        val app = requireActivity().application as VikrSaathiApp
+        viewLifecycleOwner.lifecycleScope.launch {
+            val enabled = app.settingsRepository.batchTrackingEnabled
+            val alerts = if (enabled) app.batchRepository.alerts() else emptyList()
+            if (!isAdded) return@launch
+            adapter.batchTrackingEnabled = enabled
+            adapter.expiringByItem = alerts.groupBy { it.itemId }
+        }
+    }
+
+    private fun showStockedBatches(item: Item) {
+        val app = requireActivity().application as VikrSaathiApp
+        if (!app.settingsRepository.batchTrackingEnabled || !item.trackBatches) return
+        viewLifecycleOwner.lifecycleScope.launch {
+            val lots = app.batchRepository.batchesFor(item.id).filter { it.quantityOnHand > 0 }
+            if (!isAdded) return@launch
+            val today = CivilDate.today()
+            val window = app.settingsRepository.expiryAlertDays
+            val message = if (lots.isEmpty()) {
+                getString(R.string.item_batches_none)
+            } else {
+                lots.joinToString("\n") { batch ->
+                    val name = batch.lotNumber?.trim()?.takeIf { it.isNotEmpty() } ?: batch.internalRef
+                    val expiry = batch.expiryEpochDay?.let { CivilDate.format(it) }
+                        ?: getString(R.string.expiry_unknown)
+                    val expired = batch.state == BatchState.EXPIRED ||
+                        (batch.expiryEpochDay != null && batch.expiryEpochDay < today)
+                    val soon = !expired && batch.expiryEpochDay != null &&
+                        batch.state != BatchState.QUARANTINE &&
+                        CivilDate.inAlertWindow(batch.expiryEpochDay, today, window)
+                    val line = when {
+                        expired -> R.string.item_batch_stock_expired
+                        soon -> R.string.item_batch_stock_soon
+                        else -> R.string.item_batch_stock_line
+                    }
+                    getString(line, name, expiry, batch.quantityOnHand)
+                }
+            }
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(item.name)
+                .setMessage(getString(R.string.item_batches_title) + "\n\n" + message)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
         }
     }
 

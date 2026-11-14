@@ -14,7 +14,7 @@ import com.kex.vikrsaathi.data.model.analytics.DiscountImpactSummary
 import com.kex.vikrsaathi.data.model.analytics.HeldBillSummary
 import com.kex.vikrsaathi.data.model.analytics.InventoryValueSummary
 import com.kex.vikrsaathi.data.model.analytics.PeakHourPoint
-import com.kex.vikrsaathi.data.model.analytics.SalesTrendPoint
+import com.kex.vikrsaathi.data.model.analytics.SalesTrendSeries
 import com.kex.vikrsaathi.data.model.analytics.VendorAnalytics
 import com.kex.vikrsaathi.domain.finance.LedgerRow
 import com.kex.vikrsaathi.domain.finance.PackMath
@@ -61,7 +61,7 @@ class AnalyticsRepository(
                 billCount = billCount,
                 avgBillValue = avgBillValue
             ),
-            salesTrend = buildSalesTrend(billTotals, start, end, returnsInRange),
+            salesTrend = SalesTrendSeries.build(billTotals, start, end, returnsInRange),
             topProducts = netTopProducts(
                 billDao.getTopProductsByRevenueBetween(start, end),
                 returnsInRange
@@ -177,54 +177,6 @@ class AnalyticsRepository(
                 totalRevenue = row.totalRevenue - Money.paiseToRupees(value[row.itemName] ?: 0L)
             )
         }.filter { it.totalQuantity > 0 || it.totalRevenue > 0.0 }
-    }
-
-    private fun buildSalesTrend(
-        rows: List<BillTotalRow>,
-        startInclusive: Long,
-        endExclusive: Long,
-        returnsInRange: List<com.kex.vikrsaathi.data.entity.SalesReturn> = emptyList()
-    ): List<SalesTrendPoint> {
-        val returnByDay = returnsInRange.groupBy { dayStartMillis(it.occurredAt) }.mapValues { (_, entries) ->
-            entries.sumOf {
-                ReturnReporting.merchandisePaise(it.returnValuePaise, it.moneyRefundedPaise, it.creditAdjustmentPaise)
-            }
-        }
-        val grouped = rows.groupBy { dayStartMillis(it.billDate) }
-            .mapValues { (day, bills) ->
-                SalesTrendPoint(
-                    dayStartMillis = day,
-                    revenue = ReturnReporting.netSalesRupees(
-                        bills.sumOf { it.billTotal },
-                        returnByDay[day] ?: 0L
-                    ),
-                    billCount = bills.size
-                )
-            }
-
-        val points = mutableListOf<SalesTrendPoint>()
-        val cursor = Calendar.getInstance().apply { timeInMillis = startInclusive }
-        val endCal = Calendar.getInstance().apply { timeInMillis = endExclusive }
-        while (cursor.before(endCal)) {
-            val dayStart = cursor.timeInMillis
-            points += grouped[dayStart] ?: SalesTrendPoint(
-                dayStart,
-                ReturnReporting.netSalesRupees(0.0, returnByDay[dayStart] ?: 0L),
-                0
-            )
-            cursor.add(Calendar.DAY_OF_MONTH, 1)
-        }
-        return points
-    }
-
-    private fun dayStartMillis(timestamp: Long): Long {
-        return Calendar.getInstance().apply {
-            timeInMillis = timestamp
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
     }
 
     private fun VendorLedgerEntry.toLedgerRow(): LedgerRow = LedgerRow(

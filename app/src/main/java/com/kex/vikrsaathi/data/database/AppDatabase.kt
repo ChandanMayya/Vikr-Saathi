@@ -104,7 +104,7 @@ import com.kex.vikrsaathi.data.entity.WarrantyClaimEvent
         WarrantyClaim::class,
         WarrantyClaimEvent::class
     ],
-    version = 22,
+    version = 23,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -160,7 +160,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_18_19,
                         MIGRATION_19_20,
                         MIGRATION_20_21,
-                        MIGRATION_21_22
+                        MIGRATION_21_22,
+                        MIGRATION_22_23
                     )
                     .build()
                     .also { INSTANCE = it }

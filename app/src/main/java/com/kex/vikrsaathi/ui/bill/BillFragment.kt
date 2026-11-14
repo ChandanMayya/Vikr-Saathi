@@ -19,7 +19,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
 import androidx.core.view.GravityCompat
 import androidx.core.view.MenuProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
+import androidx.core.view.updatePadding
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
@@ -42,6 +45,8 @@ import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.util.ViewModelFactory
 import kotlinx.coroutines.launch
+import com.kex.vikrsaathi.domain.inventory.CivilDate
+import com.kex.vikrsaathi.domain.inventory.SaleLot
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
 
@@ -90,6 +95,7 @@ class BillFragment : Fragment() {
         val settings = app.settingsRepository
 
         isReadOnly = arguments?.getBoolean(ARG_READ_ONLY, false) == true
+        keepBillAboveKeyboard()
 
         binding.textShopName.text = settings.shopName
         val logo = settings.getShopLogoImage()
@@ -109,6 +115,7 @@ class BillFragment : Fragment() {
             onRoundOffChange = { index, roundOff -> viewModel.updateLineRoundOff(index, roundOff) },
             onRateChange = { index, rate -> viewModel.updateLineRate(index, rate) },
             onRemove = { index -> viewModel.removeLine(index) },
+            onBatchClick = { index -> showBatchPicker(index) },
             warrantySaleMillis = { viewModel.warrantySaleMillis() }
         )
         binding.recyclerBillItems.layoutManager = LinearLayoutManager(requireContext())
@@ -159,6 +166,9 @@ class BillFragment : Fragment() {
             binding.layoutNewCustomerFlag.isVisible = false
             binding.autoCompleteCustomer.dismissDropDown()
             binding.autoCompleteCustomer.post { suppressCustomerSearch = false }
+        }
+        viewModel.saleLots.observe(viewLifecycleOwner) { lots ->
+            lineAdapter.lotsByItem = lots
         }
         viewModel.lineItems.observe(viewLifecycleOwner) { lines ->
             lineAdapter.submitList(lines)
@@ -1021,6 +1031,54 @@ class BillFragment : Fragment() {
         binding.buttonViewBillPrint.isEnabled = enabled
         binding.billDrawer.buttonDrawerDownloadPdf.isEnabled = enabled
         binding.billDrawer.buttonDrawerPrintBill.isEnabled = enabled
+    }
+
+    private fun keepBillAboveKeyboard() {
+        val scroll = binding.scrollBill
+        val baseBottom = scroll.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            val lift = (ime - nav).coerceAtLeast(0)
+            view.updatePadding(bottom = baseBottom + lift)
+            if (lift > 0) {
+                view.post {
+                    val focused = activity?.currentFocus ?: return@post
+                    if (focused.isAttachedToWindow) {
+                        focused.requestRectangleOnScreen(
+                            android.graphics.Rect(0, 0, focused.width, focused.height),
+                            true
+                        )
+                    }
+                }
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(scroll)
+    }
+
+    private fun showBatchPicker(index: Int) {
+        if (isReadOnly || !isAdded) return
+        val line = viewModel.lineItems.value?.getOrNull(index) ?: return
+        val lots = line.itemId?.let { viewModel.saleLots.value?.get(it) }.orEmpty()
+        if (lots.isEmpty()) return
+        val labels = ArrayList<String>(lots.size + 1)
+        labels += getString(R.string.bill_batch_earliest)
+        lots.forEach { lot -> labels += batchChoiceLabel(lot) }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.bill_batch)
+            .setItems(labels.toTypedArray()) { _, which ->
+                val batchId = if (which == 0) null else lots[which - 1].id
+                viewModel.updateLineBatch(index, batchId)
+            }
+            .show()
+    }
+
+    private fun batchChoiceLabel(lot: SaleLot): String {
+        val expiry = lot.expiryEpochDay?.let { CivilDate.format(it) }
+            ?: getString(R.string.expiry_unknown)
+        val name = lot.lotNumber?.trim()?.takeIf { it.isNotEmpty() } ?: lot.internalRef
+        return getString(R.string.bill_batch_choice, name, expiry, lot.quantityOnHand)
     }
 
     private fun setupPaymentSection() {

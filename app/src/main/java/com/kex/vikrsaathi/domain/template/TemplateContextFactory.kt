@@ -19,7 +19,8 @@ object TemplateContextFactory {
         shopLogoImage: Bitmap?,
         imageRenderScale: Float = 1f,
         exchangeTitle: String? = null,
-        exchangeLines: List<String> = emptyList()
+        exchangeLines: List<String> = emptyList(),
+        batchNotes: Map<Long, String> = emptyMap()
     ): TemplateRenderContext {
         return TemplateRenderContext(
             bill = bill,
@@ -31,7 +32,8 @@ object TemplateContextFactory {
             staticImages = TemplateImageStore.loadForTemplate(context, template),
             imageRenderScale = imageRenderScale,
             exchangeTitle = exchangeTitle,
-            exchangeLines = exchangeLines
+            exchangeLines = exchangeLines,
+            batchNotes = batchNotes
         )
     }
 
@@ -45,7 +47,8 @@ object TemplateContextFactory {
         signatureImage: Bitmap?,
         shopLogoImage: Bitmap?,
         exchangeTitle: String? = null,
-        exchangeLines: List<String> = emptyList()
+        exchangeLines: List<String> = emptyList(),
+        batchNotes: Map<Long, String> = emptyMap()
     ): TemplateRenderContext = create(
         context = context,
         template = template,
@@ -57,6 +60,7 @@ object TemplateContextFactory {
         shopLogoImage = shopLogoImage,
         imageRenderScale = PdfRenderQuality.IMAGE_SCALE,
         exchangeTitle = exchangeTitle,
-        exchangeLines = exchangeLines
+        exchangeLines = exchangeLines,
+        batchNotes = batchNotes
     )
 }

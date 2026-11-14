@@ -14,10 +14,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.data.entity.Item
-import com.kex.vikrsaathi.data.entity.StockMovement
-import com.kex.vikrsaathi.data.entity.StockMovementType
 import com.kex.vikrsaathi.databinding.FragmentStockBinding
-import com.kex.vikrsaathi.databinding.ItemStockMovementBinding
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -31,8 +28,6 @@ import com.kex.vikrsaathi.util.ListViewMode
 import com.kex.vikrsaathi.util.ListViewPreferences
 import com.kex.vikrsaathi.util.ListViewScreen
 import com.kex.vikrsaathi.util.ViewModelFactory
-import java.text.DateFormat
-import java.util.Date
 
 class StockFragment : Fragment() {
 
@@ -84,7 +79,7 @@ class StockFragment : Fragment() {
             lowStockThreshold = viewModel.lowStockThreshold,
             onAdjust = { showAdjustDialog(it) },
             onStockIn = { showAdjustDialog(it, prefillDelta = 1) },
-            onOpenMovements = { showMovementsDialog(it) }
+            onOpenMovements = { openHistory(it) }
         )
         binding.recyclerStock.adapter = adapter
         applyViewMode(viewMode, persist = false)
@@ -117,7 +112,7 @@ class StockFragment : Fragment() {
                 val match = items.firstOrNull { it.id == pendingFocusId }
                 if (match != null) {
                     pendingFocusId = 0L
-                    showMovementsDialog(match)
+                    openHistory(match)
                 }
             }
         }
@@ -175,85 +170,11 @@ class StockFragment : Fragment() {
         }
     }
 
-    private fun showMovementsDialog(item: Item) {
-        viewModel.loadMovements(item.id)
-        val container = android.widget.LinearLayout(requireContext()).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(48, 24, 48, 24)
-        }
-        val dialog = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(getString(R.string.stock_movements) + " — " + item.name)
-            .setView(container)
-            .setPositiveButton(android.R.string.ok, null)
-            .show()
-
-        viewModel.movements.observe(viewLifecycleOwner) { movements ->
-            if (!dialog.isShowing) return@observe
-            viewLifecycleOwner.lifecycleScope.launch {
-                val batches = app.batchRepository.batchesFor(item.id)
-                if (!dialog.isShowing) return@launch
-                container.removeAllViews()
-                batches.forEach { batch ->
-                    val expiry = batch.expiryEpochDay?.let { com.kex.vikrsaathi.domain.inventory.CivilDate.format(it) }
-                        ?: getString(R.string.expiry_unknown)
-                    container.addView(android.widget.TextView(requireContext()).apply {
-                        text = getString(
-                            R.string.batch_status_line,
-                            batch.lotNumber ?: batch.internalRef,
-                            expiry,
-                            batch.quantityOnHand,
-                            item.stockUnit(),
-                            batch.state
-                        )
-                        setPadding(0, 8, 0, 8)
-                    })
-                    if (batch.state == com.kex.vikrsaathi.domain.inventory.BatchState.QUARANTINE && batch.quantityOnHand > 0) {
-                        container.addView(com.google.android.material.button.MaterialButton(requireContext()).apply {
-                            text = getString(R.string.release_quarantine)
-                            setOnClickListener {
-                                viewLifecycleOwner.lifecycleScope.launch {
-                                    runCatching { app.batchRepository.releaseQuarantine(batch.id, null, true, null) }
-                                        .onSuccess { dialog.dismiss() }
-                                        .onFailure { Toast.makeText(requireContext(), it.message, Toast.LENGTH_SHORT).show() }
-                                }
-                            }
-                        })
-                    }
-                }
-                if (movements.isEmpty() && batches.isEmpty()) {
-                    container.addView(android.widget.TextView(requireContext()).apply {
-                        text = getString(R.string.stock_movement_empty)
-                    })
-                }
-                movements.forEach { movement ->
-                    val row = ItemStockMovementBinding.inflate(layoutInflater, container, false)
-                    bindMovement(row, movement)
-                    container.addView(row.root)
-                }
-            }
-        }
-    }
-
-    private fun bindMovement(binding: ItemStockMovementBinding, movement: StockMovement) {
-        binding.textMovementType.text = movementTypeLabel(movement.type)
-        binding.textMovementDelta.text = getString(
-            R.string.movement_delta_format,
-            movement.delta,
-            movement.quantityAfter
+    private fun openHistory(item: Item) {
+        findNavController().navigate(
+            R.id.action_stock_to_stock_history,
+            StockHistoryFragment.args(item.id)
         )
-        val date = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
-            .format(Date(movement.createdAt))
-        val note = movement.note?.takeIf { it.isNotBlank() }
-        binding.textMovementMeta.text = listOfNotNull(date, note).joinToString(" • ")
-    }
-
-    private fun movementTypeLabel(type: String): String = when (type) {
-        StockMovementType.SALE.name -> getString(R.string.movement_type_sale)
-        StockMovementType.SALE_REVERSAL.name -> getString(R.string.movement_type_sale_reversal)
-        StockMovementType.ADJUSTMENT.name -> getString(R.string.movement_type_adjustment)
-        StockMovementType.OPENING.name -> getString(R.string.movement_type_opening)
-        StockMovementType.IMPORT.name -> getString(R.string.movement_type_import)
-        else -> type
     }
 
     private fun exportInventory() {

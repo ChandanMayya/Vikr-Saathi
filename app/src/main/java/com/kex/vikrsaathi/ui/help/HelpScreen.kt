@@ -21,6 +21,7 @@ enum class HelpScreen {
     CUSTOMERS,
     ITEMS,
     STOCK,
+    STOCK_HISTORY,
     BILLS_HISTORY,
     EXCEL_UPLOAD,
     INVENTORY_IMPORT,

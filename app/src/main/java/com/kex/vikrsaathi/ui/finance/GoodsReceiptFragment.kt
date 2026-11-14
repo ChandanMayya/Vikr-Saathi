@@ -26,7 +26,9 @@ import com.kex.vikrsaathi.domain.finance.HubOrderLineInput
 import com.kex.vikrsaathi.domain.finance.HubReceiptInput
 import com.kex.vikrsaathi.domain.finance.OrderHubMath
 import com.kex.vikrsaathi.domain.finance.PackMath
+import com.google.android.material.datepicker.MaterialDatePicker
 import com.kex.vikrsaathi.domain.finance.PurchaseMath
+import com.kex.vikrsaathi.domain.inventory.CivilDate
 import com.kex.vikrsaathi.domain.finance.ReceiptQtyInput
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
@@ -161,9 +163,15 @@ class GoodsReceiptFragment : Fragment() {
         card.editReceived.setText(remainingPackages.toString())
         card.editDamaged.setText("0")
         card.editRejected.setText("0")
-        val tracked = item?.trackBatches == true && app().settingsRepository.batchTrackingEnabled
-        card.groupLots.isVisible = tracked
-        val draft = ReceiptCard(line, card, baseUnit)
+        val shopTracks = app().settingsRepository.batchTrackingEnabled
+        card.groupLots.isVisible = shopTracks && item != null
+        val draft = ReceiptCard(
+            line = line,
+            binding = card,
+            baseUnit = baseUnit,
+            requireExpiry = item?.trackBatches == true
+        )
+        wireExpiry(draft)
         card.buttonSplitLots.setOnClickListener { askSplit(draft) }
         val watcher = object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -207,6 +215,41 @@ class GoodsReceiptFragment : Fragment() {
         card.binding.textAcceptedMath.text = getString(R.string.receipt_accepted_math, received, damaged, rejected)
     }
 
+    private fun wireExpiry(card: ReceiptCard) {
+        fun showExpiry() {
+            val day = card.expiryDay
+            card.binding.editLotExpiry.setText(if (day == null) "" else CivilDate.format(day))
+        }
+        fun openPicker() {
+            if (!isAdded || card.binding.checkLotExpiryUnknown.isChecked) return
+            val day = card.expiryDay ?: CivilDate.today()
+            val picker = MaterialDatePicker.Builder.datePicker()
+                .setTitleText(R.string.expiry_date_label)
+                .setSelection(day * 86_400_000L)
+                .build()
+            picker.addOnPositiveButtonClickListener { selection ->
+                card.expiryDay = selection / 86_400_000L
+                card.splitLots = null
+                card.binding.textSplitLots.text = ""
+                showExpiry()
+            }
+            picker.show(parentFragmentManager, "receipt_expiry_${card.line.id}")
+        }
+        card.binding.layoutLotExpiry.setEndIconOnClickListener { openPicker() }
+        card.binding.editLotExpiry.setOnClickListener { openPicker() }
+        card.binding.checkLotExpiryUnknown.setOnCheckedChangeListener { _, checked ->
+            card.binding.layoutLotExpiry.isEnabled = !checked
+            card.splitLots = null
+            card.binding.textSplitLots.text = ""
+            if (checked) {
+                card.expiryDay = null
+                showExpiry()
+            } else {
+                openPicker()
+            }
+        }
+    }
+
     private fun lotsFor(card: ReceiptCard, acceptedBase: Int): List<com.kex.vikrsaathi.data.repository.ReceiptLot>? {
         if (!card.binding.groupLots.isVisible || acceptedBase <= 0) return emptyList()
         card.splitLots?.let { lots ->
@@ -217,11 +260,10 @@ class GoodsReceiptFragment : Fragment() {
             return lots
         }
         val unknown = card.binding.checkLotExpiryUnknown.isChecked
-        val expiry = if (unknown) {
-            null
-        } else {
-            com.kex.vikrsaathi.domain.inventory.CivilDate.parse(card.binding.editLotExpiry.text.toString())
-        }
+        val expiry = if (unknown) null else card.expiryDay
+        val lotNumber = card.binding.editLotNumber.text.toString().trim().ifEmpty { null }
+        val stated = unknown || expiry != null || lotNumber != null
+        if (!stated && !card.requireExpiry) return emptyList()
         if (!unknown && expiry == null) {
             toast(R.string.batch_expiry_required)
             return null
@@ -229,7 +271,7 @@ class GoodsReceiptFragment : Fragment() {
         return listOf(
             com.kex.vikrsaathi.data.repository.ReceiptLot(
                 quantity = acceptedBase,
-                lotNumber = card.binding.editLotNumber.text.toString().trim().ifEmpty { null },
+                lotNumber = lotNumber,
                 expiryEpochDay = expiry,
                 expiryUnknown = unknown
             )
@@ -256,11 +298,7 @@ class GoodsReceiptFragment : Fragment() {
                     return@setPositiveButton
                 }
                 val unknown = card.binding.checkLotExpiryUnknown.isChecked
-                val expiry = if (unknown) {
-                    null
-                } else {
-                    com.kex.vikrsaathi.domain.inventory.CivilDate.parse(card.binding.editLotExpiry.text.toString())
-                }
+                val expiry = if (unknown) null else card.expiryDay
                 if (!unknown && expiry == null) {
                     toast(R.string.batch_expiry_required)
                     return@setPositiveButton
@@ -428,5 +466,7 @@ private class ReceiptCard(
     val line: PurchaseOrderLine,
     val binding: ItemReceiptLineBinding,
     val baseUnit: String,
+    val requireExpiry: Boolean = false,
+    var expiryDay: Long? = null,
     var splitLots: List<com.kex.vikrsaathi.data.repository.ReceiptLot>? = null
 )

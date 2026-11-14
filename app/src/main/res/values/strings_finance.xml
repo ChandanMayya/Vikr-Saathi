@@ -449,6 +449,7 @@
     <string-array name="help_vendors_s1">
         <item>A purchase order does not add stock.</item>
         <item>A goods receipt adds stock only for accepted quantity: received, minus damaged, minus rejected.</item>
+        <item>When expiry and batch tracking is on, the receipt asks for the batch and expiry. That date is stored with the lot. Items that were not tracked yet start tracking once you record a date.</item>
         <item>A purchase invoice is what you owe. It is separate from the receipt and from the payment.</item>
         <item>Quotes can be for one item or many. Comparison shows rates and a landed total that includes delivery charges.</item>
         <item>A purchase request lists materials for several vendors to quote. Awarding creates one purchase order per vendor.</item>

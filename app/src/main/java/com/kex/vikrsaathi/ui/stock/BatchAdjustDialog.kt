@@ -3,6 +3,8 @@ package com.kex.vikrsaathi.ui.stock
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.fragment.app.Fragment
+import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.data.entity.InventoryBatch
@@ -20,7 +22,7 @@ data class BatchAdjustRequest(
 )
 
 fun showBatchAdjustDialog(
-    fragment: androidx.fragment.app.Fragment,
+    fragment: Fragment,
     item: Item,
     batches: List<InventoryBatch>,
     prefillDelta: Int?,
@@ -37,6 +39,35 @@ fun showBatchAdjustDialog(
         "$name · $expiry · ${batch.quantityOnHand} · ${batch.state}"
     }
     binding.spinnerBatch.adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, labels)
+    var expiryDay: Long? = null
+    fun showExpiry() {
+        val day = expiryDay
+        binding.editExpiry.setText(if (day == null) "" else CivilDate.format(day))
+    }
+    fun openExpiryPicker() {
+        if (!fragment.isAdded || binding.checkExpiryUnknown.isChecked) return
+        val day = expiryDay ?: CivilDate.today()
+        val picker = MaterialDatePicker.Builder.datePicker()
+            .setTitleText(R.string.expiry_date_label)
+            .setSelection(day * 86_400_000L)
+            .build()
+        picker.addOnPositiveButtonClickListener { selection ->
+            expiryDay = selection / 86_400_000L
+            showExpiry()
+        }
+        picker.show(fragment.parentFragmentManager, "stock_expiry")
+    }
+    binding.layoutExpiry.setEndIconOnClickListener { openExpiryPicker() }
+    binding.editExpiry.setOnClickListener { openExpiryPicker() }
+    binding.checkExpiryUnknown.setOnCheckedChangeListener { _, checked ->
+        binding.layoutExpiry.isEnabled = !checked
+        if (checked) {
+            expiryDay = null
+            showExpiry()
+        } else {
+            openExpiryPicker()
+        }
+    }
     val dialog = MaterialAlertDialogBuilder(context)
         .setTitle(R.string.adjust_stock)
         .setView(binding.root)
@@ -51,7 +82,7 @@ fun showBatchAdjustDialog(
                 return@setOnClickListener
             }
             val unknown = binding.checkExpiryUnknown.isChecked
-            val expiry = if (unknown) null else CivilDate.parse(binding.editExpiry.text.toString())
+            val expiry = if (unknown) null else expiryDay
             val chosen = batches.getOrNull(binding.spinnerBatch.selectedItemPosition)
             if (item.trackBatches && delta < 0 && chosen == null) {
                 Toast.makeText(context, R.string.batch_required, Toast.LENGTH_SHORT).show()

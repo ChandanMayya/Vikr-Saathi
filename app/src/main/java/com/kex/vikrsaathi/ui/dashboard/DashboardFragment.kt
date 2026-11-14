@@ -18,18 +18,15 @@ import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
 import com.kex.vikrsaathi.databinding.FragmentDashboardBinding
+import com.kex.vikrsaathi.databinding.ItemDashboardAttentionBinding
+import com.kex.vikrsaathi.databinding.ItemDashboardTopSellerBinding
 import com.kex.vikrsaathi.domain.dashboard.DashboardPeriod
-import com.kex.vikrsaathi.domain.dashboard.DashboardPeriods
-import com.kex.vikrsaathi.domain.dashboard.GrossProfitCalculator
-import com.kex.vikrsaathi.domain.money.Money
 import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.util.ViewModelFactory
 import com.kex.vikrsaathi.ui.help.HelpScreen
@@ -44,7 +41,6 @@ class DashboardFragment : Fragment() {
         ViewModelFactory(requireActivity().application as VikrSaathiApp)
     }
 
-    private val lowStockAdapter = LowStockAdapter()
     private var actionsExpanded = false
     private var ignoreHandleClick = false
     private var actionOffset = 0f
@@ -75,8 +71,7 @@ class DashboardFragment : Fragment() {
         val app = requireActivity().application as VikrSaathiApp
         updateToolbarTitle(app.settingsRepository.shopName)
 
-        binding.recyclerLowStock.layoutManager = LinearLayoutManager(requireContext())
-        binding.recyclerLowStock.adapter = lowStockAdapter
+        bindGreeting()
         setupQuickActions(savedInstanceState)
 
         viewModel.shopName.observe(viewLifecycleOwner, ::updateToolbarTitle)
@@ -124,53 +119,13 @@ class DashboardFragment : Fragment() {
         if (arguments?.getString("openPeriod") == "WEEK") {
             binding.togglePeriod.check(R.id.buttonPeriodWeek)
         }
-        viewModel.dueBoard.observe(viewLifecycleOwner) { board ->
-            val enabled = (requireActivity().application as VikrSaathiApp).settingsRepository.customerBalanceEnabled
-            binding.cardDue.isVisible = enabled
-            if (!enabled) return@observe
-            val symbol = viewModel.currencySymbol.value ?: "₹"
-            if (board.soonCount == 0 && board.overdueCount == 0) {
-                binding.textDueSummary.setText(R.string.dashboard_due_empty)
-                binding.cardDue.setOnClickListener {
-                    findNavController().navigate(R.id.action_dashboard_to_outstanding)
-                }
-            } else {
-                binding.textDueSummary.text = getString(
-                    R.string.dashboard_due_line,
-                    board.soonCount,
-                    com.kex.vikrsaathi.ui.finance.FinanceUi.formatPaise(board.soonPaise, symbol),
-                    board.overdueCount,
-                    com.kex.vikrsaathi.ui.finance.FinanceUi.formatPaise(board.overduePaise, symbol)
-                )
-                val filter = if (board.overdueCount > 0) "overdue" else "soon"
-                binding.cardDue.setOnClickListener {
-                    findNavController().navigate(
-                        R.id.action_dashboard_to_outstanding,
-                        androidx.core.os.bundleOf("dueFilter" to filter)
-                    )
-                }
-            }
-        }
+        viewModel.dueBoard.observe(viewLifecycleOwner) { renderAttention() }
         binding.cardPeriodSales.setOnClickListener { openBillsForPeriod() }
-        binding.topItemsChart.onItemClick = { item -> openBillsForPeriod(item.name) }
-        binding.buttonProfitInfo.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.dashboard_gross_profit)
-                .setMessage(R.string.dashboard_profit_help)
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
-        }
-        lowStockAdapter.onClick = { row ->
-            findNavController().navigate(
-                R.id.action_dashboard_to_stock,
-                bundleOf("focusItemId" to row.itemId, "focusItemName" to row.name)
-            )
-        }
 
         viewModel.periodStats.observe(viewLifecycleOwner) { stats ->
             if (stats == null) return@observe
             val symbol = viewModel.currencySymbol.value.orEmpty().ifBlank { "₹" }
-            binding.textPeriodRange.text = DashboardPeriods.formatRange(stats.window)
+            binding.textSalesTitle.setText(salesTitle(stats.period))
             binding.textTodaySalesAmount.text = PriceCalculator.formatAmount(stats.totalSales, symbol)
             binding.textTodayBillCount.text = resources.getQuantityString(
                 R.plurals.dashboard_bill_count,
@@ -179,40 +134,22 @@ class DashboardFragment : Fragment() {
             )
             val average = if (stats.billCount == 0) 0.0 else stats.totalSales / stats.billCount
             binding.textAverageBill.text = getString(
-                R.string.dashboard_avg_bill,
+                R.string.dashboard_avg_bill_short,
                 PriceCalculator.formatAmount(average, symbol)
             )
-            renderComparison(stats, symbol)
-            renderProfit(stats, symbol)
-            val hasTopItems = stats.topItems.isNotEmpty()
-            binding.topItemsChart.isVisible = hasTopItems
-            binding.textTopItemsEmpty.isVisible = !hasTopItems
-            if (hasTopItems) binding.topItemsChart.setItems(stats.topItems)
+            renderComparison(stats)
+            binding.salesSparkline.setValues(stats.trend.map { it.revenue })
+            binding.salesSparkline.contentDescription = trendDescription(stats.trend.map { it.revenue })
+            renderTopSellers(stats.topItems)
         }
 
         viewModel.customerDuesPaise.observe(viewLifecycleOwner) { paise ->
             val symbol = viewModel.currencySymbol.value.orEmpty().ifBlank { "₹" }
-            binding.textCustomerDues.text = getString(
-                R.string.dashboard_outstanding,
-                com.kex.vikrsaathi.ui.finance.FinanceUi.formatBalance(paise, symbol)
-            )
-            binding.textCustomerDues.setTextColor(
-                requireContext().getColor(
-                    if (paise > 0L) R.color.balance_receivable else R.color.text_secondary_dark
-                )
-            )
+            binding.textCustomerDues.text = com.kex.vikrsaathi.ui.finance.FinanceUi.formatBalance(paise, symbol)
         }
         viewModel.vendorPayablesPaise.observe(viewLifecycleOwner) { paise ->
             val symbol = viewModel.currencySymbol.value.orEmpty().ifBlank { "₹" }
-            binding.textVendorPayables.text = getString(
-                R.string.dashboard_payables,
-                com.kex.vikrsaathi.ui.finance.FinanceUi.formatBalance(paise, symbol)
-            )
-            binding.textVendorPayables.setTextColor(
-                requireContext().getColor(
-                    if (paise > 0L) R.color.balance_payable else R.color.text_secondary_dark
-                )
-            )
+            binding.textVendorPayables.text = com.kex.vikrsaathi.ui.finance.FinanceUi.formatBalance(paise, symbol)
         }
 
         viewModel.orderAttentionCount.observe(viewLifecycleOwner) { count ->
@@ -220,22 +157,9 @@ class DashboardFragment : Fragment() {
             if (count > 0) {
                 binding.textOrdersAttention.text = getString(R.string.orders_need_attention, count)
             }
+            renderAttention()
         }
-
-        viewModel.lowStock.observe(viewLifecycleOwner) { summary ->
-            if (summary.count == 0) {
-                binding.textLowStockSummary.text = getString(R.string.low_stock_empty)
-                binding.recyclerLowStock.isVisible = false
-                binding.textLowStockViewAll.isVisible = false
-                lowStockAdapter.submitList(emptyList())
-            } else {
-                binding.textLowStockSummary.text =
-                    getString(R.string.low_stock_count, summary.count)
-                binding.recyclerLowStock.isVisible = true
-                binding.textLowStockViewAll.isVisible = summary.count > summary.items.size
-                lowStockAdapter.submitList(summary.items)
-            }
-        }
+        viewModel.lowStock.observe(viewLifecycleOwner) { renderAttention() }
 
         binding.cardNewBill.setOnClickListener { openNewBill() }
         binding.cardCustomers.setOnClickListener { openCustomers() }
@@ -243,42 +167,9 @@ class DashboardFragment : Fragment() {
         binding.cardBillsHistory.setOnClickListener { openBillsHistory() }
         binding.cardVendors.setOnClickListener { openVendors() }
         binding.cardStock.setOnClickListener { openInventory() }
-        viewModel.expiryAlerts.observe(viewLifecycleOwner) { alerts ->
-            val tracking = (requireActivity().application as VikrSaathiApp).settingsRepository.batchTrackingEnabled
-            binding.cardExpiry.isVisible = tracking
-            if (!tracking) return@observe
-            if (alerts.isEmpty()) {
-                binding.textExpirySummary.text = getString(R.string.dashboard_expiry_empty)
-                binding.cardExpiry.setOnClickListener(null)
-                return@observe
-            }
-            binding.textExpirySummary.text = alerts.take(5).joinToString("\n") { alert ->
-                val whenLabel = if (alert.expired) getString(R.string.batch_filter_expired) else getString(R.string.batch_filter_soon)
-                getString(
-                    R.string.dashboard_expiry_line,
-                    alert.itemName,
-                    alert.lotNumber ?: alert.internalRef,
-                    com.kex.vikrsaathi.domain.inventory.CivilDate.format(alert.expiryEpochDay),
-                    alert.quantity,
-                    alert.unit.ifBlank { whenLabel }
-                )
-            }
-            binding.cardExpiry.setOnClickListener {
-                val filter = if (alerts.any { it.expired }) "expired" else "soon"
-                findNavController().navigate(
-                    R.id.action_dashboard_to_stock,
-                    androidx.core.os.bundleOf("batchFilter" to filter)
-                )
-            }
-        }
+        viewModel.expiryAlerts.observe(viewLifecycleOwner) { renderAttention() }
         binding.cardAnalysis.setOnClickListener { openAnalysis() }
         binding.cardOrders.setOnClickListener { openOrders() }
-        binding.cardLowStock.setOnClickListener {
-            findNavController().navigate(R.id.action_dashboard_to_stock)
-        }
-        binding.textLowStockViewAll.setOnClickListener {
-            findNavController().navigate(R.id.action_dashboard_to_stock)
-        }
         binding.cardSettings.setOnClickListener { openSettings() }
         binding.cardWarrantyService.setOnClickListener { openWarranty() }
         binding.textCustomerDues.setOnClickListener {
@@ -293,6 +184,7 @@ class DashboardFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        bindGreeting()
         applyDashboardLayout()
         viewModel.refresh()
     }
@@ -307,9 +199,11 @@ class DashboardFragment : Fragment() {
         val settings = (requireActivity().application as VikrSaathiApp).settingsRepository
         vendorsEnabled = settings.vendorManagementEnabled
         ordersEnabled = settings.orderManagementEnabled
-        binding.textCustomerDues.isVisible = settings.customerBalanceEnabled
-        binding.textVendorPayables.isVisible = vendorsEnabled
+        binding.cardCustomerDues.isVisible = settings.customerBalanceEnabled
+        binding.cardVendorPayables.isVisible = vendorsEnabled
+        binding.layoutMoney.isVisible = settings.customerBalanceEnabled || vendorsEnabled
         updateActionConstraints(vendorsEnabled, ordersEnabled, settings.warrantyEnabled)
+        renderAttention()
         renderActions(actionOffset)
     }
 
@@ -325,10 +219,27 @@ class DashboardFragment : Fragment() {
         )
     }
 
-    private fun renderComparison(
-        stats: com.kex.vikrsaathi.data.model.DashboardPeriodStats,
-        symbol: String
-    ) {
+    private fun bindGreeting() {
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val greeting = when (hour) {
+            in 5..11 -> R.string.dashboard_greeting_morning
+            in 12..16 -> R.string.dashboard_greeting_afternoon
+            in 17..20 -> R.string.dashboard_greeting_evening
+            else -> R.string.dashboard_greeting_night
+        }
+        binding.textGreeting.setText(greeting)
+        val date = java.text.SimpleDateFormat("EEEE, d MMM", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        binding.textGreetingDate.text = date
+    }
+
+    private fun salesTitle(period: DashboardPeriod): Int = when (period) {
+        DashboardPeriod.TODAY -> R.string.dashboard_sales_today
+        DashboardPeriod.WEEK -> R.string.dashboard_sales_week
+        DashboardPeriod.MONTH -> R.string.dashboard_sales_month
+    }
+
+    private fun renderComparison(stats: com.kex.vikrsaathi.data.model.DashboardPeriodStats) {
         val comparison = stats.comparison
         val versus = when (stats.period) {
             DashboardPeriod.TODAY -> getString(R.string.dashboard_vs_yesterday)
@@ -358,13 +269,7 @@ class DashboardFragment : Fragment() {
                 } else {
                     String.format(java.util.Locale.getDefault(), "%.1f%%", percent)
                 }
-                text = getString(
-                    R.string.dashboard_comparison,
-                    arrow,
-                    PriceCalculator.formatAmount(kotlin.math.abs(comparison.salesDelta), symbol),
-                    percentText,
-                    versus
-                )
+                text = getString(R.string.dashboard_comparison_percent, arrow, percentText, versus)
                 color = when {
                     comparison.salesDelta > 0.0 -> R.color.balance_receivable
                     comparison.salesDelta < 0.0 -> R.color.balance_payable
@@ -376,31 +281,129 @@ class DashboardFragment : Fragment() {
         binding.textSalesComparison.setTextColor(requireContext().getColor(color))
     }
 
-    private fun renderProfit(
-        stats: com.kex.vikrsaathi.data.model.DashboardPeriodStats,
-        symbol: String
-    ) {
-        val profit = stats.profit
-        if (profit.coverage != GrossProfitCalculator.Coverage.COMPLETE || profit.profitPaise == null) {
-            binding.textGrossProfit.text = getString(R.string.dashboard_cost_incomplete)
-            binding.textProfitDetail.text = getString(
-                R.string.dashboard_cost_incomplete_detail,
-                profit.uncoveredUnits
-            )
-            return
-        }
-        val rupees = Money.paiseToRupees(profit.profitPaise)
-        binding.textGrossProfit.text = PriceCalculator.formatAmount(rupees, symbol)
-        val margin = profit.marginPercent
-        binding.textProfitDetail.text = if (margin == null) {
-            getString(R.string.dashboard_profit_no_margin)
-        } else {
-            getString(
-                R.string.dashboard_profit_margin,
-                String.format(java.util.Locale.getDefault(), "%.1f", margin)
-            )
+    private fun trendDescription(values: List<Double>): String {
+        if (values.isEmpty()) return getString(R.string.dashboard_trend_empty)
+        if (values.size == 1) return getString(R.string.dashboard_trend_point)
+        val delta = values.last() - values.first()
+        return getString(
+            when {
+                delta > 0.0 -> R.string.dashboard_trend_up
+                delta < 0.0 -> R.string.dashboard_trend_down
+                else -> R.string.dashboard_trend_flat
+            }
+        )
+    }
+
+    private fun renderTopSellers(items: List<com.kex.vikrsaathi.data.model.DashboardTopItem>) {
+        val shown = items.take(3)
+        binding.topSellerRows.removeAllViews()
+        binding.textTopItemsEmpty.isVisible = shown.isEmpty()
+        if (shown.isEmpty()) return
+        val maxQty = shown.maxOf { it.quantity }.coerceAtLeast(1)
+        shown.forEachIndexed { index, item ->
+            val row = ItemDashboardTopSellerBinding.inflate(layoutInflater, binding.topSellerRows, true)
+            row.textSellerRank.text = getString(R.string.dashboard_seller_rank, index + 1)
+            row.textSellerName.text = item.name
+            row.textSellerQty.text = getString(R.string.dashboard_sold_count, item.quantity)
+            row.root.setOnClickListener { openBillsForPeriod(item.name) }
+            row.sellerTrack.post {
+                if (_binding == null) return@post
+                val width = row.sellerTrack.width
+                val bar = (width * item.quantity / maxQty.toFloat()).toInt().coerceAtLeast(dp(8))
+                row.sellerBar.layoutParams = row.sellerBar.layoutParams.apply { this.width = bar }
+            }
         }
     }
+
+    private fun renderAttention() {
+        if (_binding == null) return
+        val settings = (requireActivity().application as VikrSaathiApp).settingsRepository
+        val rows = mutableListOf<AttentionRow>()
+        val low = viewModel.lowStock.value?.count ?: 0
+        if (low > 0) {
+            rows += AttentionRow(
+                icon = R.drawable.ic_dashboard_stock,
+                message = resources.getQuantityString(R.plurals.dashboard_attention_low_stock, low, low),
+                action = getString(R.string.dashboard_attention_review_stock)
+            ) { findNavController().navigate(R.id.action_dashboard_to_stock) }
+        }
+        val board = viewModel.dueBoard.value
+        if (settings.customerBalanceEnabled && board != null && board.overdueCount > 0) {
+            rows += AttentionRow(
+                icon = R.drawable.ic_calendar,
+                message = resources.getQuantityString(
+                    R.plurals.dashboard_attention_overdue,
+                    board.overdueCount,
+                    board.overdueCount
+                ),
+                action = getString(R.string.dashboard_attention_view_dues)
+            ) {
+                findNavController().navigate(
+                    R.id.action_dashboard_to_outstanding,
+                    bundleOf("dueFilter" to "overdue")
+                )
+            }
+        } else if (settings.customerBalanceEnabled && board != null && board.soonCount > 0) {
+            rows += AttentionRow(
+                icon = R.drawable.ic_calendar,
+                message = resources.getQuantityString(
+                    R.plurals.dashboard_attention_due_soon,
+                    board.soonCount,
+                    board.soonCount
+                ),
+                action = getString(R.string.dashboard_attention_view_dues)
+            ) {
+                findNavController().navigate(
+                    R.id.action_dashboard_to_outstanding,
+                    bundleOf("dueFilter" to "soon")
+                )
+            }
+        }
+        val orders = viewModel.orderAttentionCount.value ?: 0
+        if (settings.orderManagementEnabled && orders > 0) {
+            rows += AttentionRow(
+                icon = R.drawable.ic_dashboard_orders,
+                message = resources.getQuantityString(R.plurals.dashboard_attention_orders, orders, orders),
+                action = getString(R.string.dashboard_attention_review_orders)
+            ) { openOrders() }
+        }
+        val alerts = viewModel.expiryAlerts.value.orEmpty()
+        if (settings.batchTrackingEnabled && alerts.isNotEmpty()) {
+            val filter = if (alerts.any { it.expired }) "expired" else "soon"
+            rows += AttentionRow(
+                icon = R.drawable.ic_calendar,
+                message = resources.getQuantityString(
+                    R.plurals.dashboard_attention_expiry,
+                    alerts.size,
+                    alerts.size
+                ),
+                action = getString(R.string.dashboard_attention_review_expiry)
+            ) {
+                findNavController().navigate(
+                    R.id.action_dashboard_to_stock,
+                    bundleOf("batchFilter" to filter)
+                )
+            }
+        }
+        binding.attentionRows.removeAllViews()
+        binding.textAttentionEmpty.isVisible = rows.isEmpty()
+        binding.textAttentionCount.isVisible = rows.isNotEmpty()
+        binding.textAttentionCount.text = rows.size.toString()
+        rows.forEach { row ->
+            val line = ItemDashboardAttentionBinding.inflate(layoutInflater, binding.attentionRows, true)
+            line.imageAttention.setImageResource(row.icon)
+            line.textAttentionMessage.text = row.message
+            line.textAttentionAction.text = row.action
+            line.root.setOnClickListener { row.onClick() }
+        }
+    }
+
+    private data class AttentionRow(
+        val icon: Int,
+        val message: String,
+        val action: String,
+        val onClick: () -> Unit
+    )
 
     private fun setupQuickActions(savedInstanceState: Bundle?) {
         actionsExpanded = savedInstanceState?.getBoolean(STATE_ACTIONS_EXPANDED) == true

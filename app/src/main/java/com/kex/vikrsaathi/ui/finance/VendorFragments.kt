@@ -11,6 +11,7 @@ import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
@@ -23,6 +24,7 @@ import com.kex.vikrsaathi.databinding.FragmentPartyLedgerBinding
 import com.kex.vikrsaathi.databinding.FragmentPurchasingBinding
 import com.kex.vikrsaathi.databinding.ItemRecordCardBinding
 import com.kex.vikrsaathi.domain.finance.HubOrderLineInput
+import com.kex.vikrsaathi.domain.inventory.CivilDate
 import com.kex.vikrsaathi.domain.finance.HubReceiptInput
 import com.kex.vikrsaathi.domain.finance.OrderHubMath
 import com.kex.vikrsaathi.domain.finance.PackMath
@@ -361,12 +363,48 @@ class PurchasingFragment : Fragment() {
             receivedField = received
             damagedField = damaged
             rejectedField = rejected
-            val lotNumber = FinanceForm.text(this@PurchasingFragment, form, getString(R.string.batch_number_optional))
-            val expiry = FinanceForm.text(this@PurchasingFragment, form, getString(R.string.expiry_date))
-            val expiryUnknown = com.google.android.material.checkbox.MaterialCheckBox(requireContext()).apply {
-                text = getString(R.string.expiry_unknown)
+            var expiryDay: Long? = null
+            val trackingOn = app().settingsRepository.batchTrackingEnabled
+            val lotNumber = if (trackingOn) {
+                FinanceForm.text(this@PurchasingFragment, form, getString(R.string.batch_number_optional))
+            } else {
+                null
             }
-            form.addView(expiryUnknown)
+            val expiryField = if (trackingOn) {
+                FinanceForm.text(this@PurchasingFragment, form, getString(R.string.expiry_date_label)).apply {
+                    inputType = InputType.TYPE_NULL
+                    isFocusable = false
+                    isClickable = true
+                    setOnClickListener {
+                        val day = expiryDay ?: CivilDate.today()
+                        val picker = MaterialDatePicker.Builder.datePicker()
+                            .setTitleText(R.string.expiry_date_label)
+                            .setSelection(day * 86_400_000L)
+                            .build()
+                        picker.addOnPositiveButtonClickListener { selection ->
+                            expiryDay = selection / 86_400_000L
+                            setText(CivilDate.format(expiryDay!!))
+                        }
+                        picker.show(parentFragmentManager, "purchase_expiry")
+                    }
+                }
+            } else {
+                null
+            }
+            val expiryUnknown = if (trackingOn) {
+                com.google.android.material.checkbox.MaterialCheckBox(requireContext()).apply {
+                    text = getString(R.string.expiry_unknown)
+                    setOnCheckedChangeListener { _, checked ->
+                        expiryField?.isEnabled = !checked
+                        if (checked) {
+                            expiryDay = null
+                            expiryField?.setText("")
+                        }
+                    }
+                }.also { form.addView(it) }
+            } else {
+                null
+            }
             val packFields = PackForm.add(this@PurchasingFragment, form)
             pack = packFields
             PackForm.watch(packFields, listOf(received, damaged, rejected)) { refreshPack() }
@@ -401,9 +439,9 @@ class PurchasingFragment : Fragment() {
                                         damaged = damaged.text.toString().toIntOrNull() ?: 0,
                                         rejected = rejected.text.toString().toIntOrNull() ?: 0,
                                         factor = factor,
-                                        lotNumber = lotNumber.text.toString(),
-                                        expiryText = expiry.text.toString(),
-                                        expiryUnknown = expiryUnknown.isChecked
+                                        lotNumber = lotNumber?.text?.toString().orEmpty(),
+                                        expiryDay = expiryDay,
+                                        expiryUnknown = expiryUnknown?.isChecked == true
                                     )
                                 )
                             )
@@ -515,19 +553,21 @@ class PurchasingFragment : Fragment() {
         rejected: Int,
         factor: Int,
         lotNumber: String,
-        expiryText: String,
+        expiryDay: Long?,
         expiryUnknown: Boolean
     ): List<com.kex.vikrsaathi.data.repository.ReceiptLot> {
-        if (!item.trackBatches || !app().settingsRepository.batchTrackingEnabled) return emptyList()
+        if (!app().settingsRepository.batchTrackingEnabled) return emptyList()
         val accepted = (received - damaged - rejected).coerceAtLeast(0)
         val base = com.kex.vikrsaathi.domain.finance.PackMath.toBase(accepted, factor) ?: return emptyList()
         if (base <= 0) return emptyList()
-        val expiry = if (expiryUnknown) null else com.kex.vikrsaathi.domain.inventory.CivilDate.parse(expiryText)
-        if (!expiryUnknown && expiry == null) {
+        val named = lotNumber.trim().isNotEmpty()
+        if (!item.trackBatches && !expiryUnknown && expiryDay == null && !named) return emptyList()
+        if (!expiryUnknown && expiryDay == null) {
             throw com.kex.vikrsaathi.domain.finance.FinanceException(
                 com.kex.vikrsaathi.domain.finance.FinanceError.BATCH_EXPIRY_REQUIRED
             )
         }
+        val expiry = if (expiryUnknown) null else expiryDay
         return listOf(
             com.kex.vikrsaathi.data.repository.ReceiptLot(
                 quantity = base,

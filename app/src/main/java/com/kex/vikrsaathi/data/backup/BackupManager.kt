@@ -570,7 +570,10 @@ class BackupManager(
                         com.kex.vikrsaathi.data.entity.BillBatchAllocation(
                             billId = billId,
                             batchId = batchId,
-                            quantity = row.quantity
+                            quantity = row.quantity,
+                            lotNumber = row.lotNumber,
+                            internalRef = row.internalRef,
+                            expiryEpochDay = row.expiryEpochDay
                         )
                     )
                 } catch (e: Exception) {

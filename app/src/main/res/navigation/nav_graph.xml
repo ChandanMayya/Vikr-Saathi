@@ -303,12 +303,30 @@
             android:defaultValue=""
             app:argType="string" />
         <action
+            android:id="@+id/action_stock_to_stock_history"
+            app:destination="@id/stockHistoryFragment"
+            app:enterAnim="@anim/nav_fade_in"
+            app:exitAnim="@anim/nav_fade_out"
+            app:popEnterAnim="@anim/nav_fade_pop_in"
+            app:popExitAnim="@anim/nav_fade_pop_out" />
+        <action
             android:id="@+id/action_stock_to_inventory_import"
             app:destination="@id/inventoryImportFragment"
             app:enterAnim="@anim/nav_fade_in"
             app:exitAnim="@anim/nav_fade_out"
             app:popEnterAnim="@anim/nav_fade_pop_in"
             app:popExitAnim="@anim/nav_fade_pop_out" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/stockHistoryFragment"
+        android:name="com.kex.vikrsaathi.ui.stock.StockHistoryFragment"
+        android:label="@string/stock_history_title"
+        tools:layout="@layout/fragment_stock_history">
+        <argument
+            android:name="itemId"
+            android:defaultValue="0L"
+            app:argType="long" />
     </fragment>
 
     <fragment

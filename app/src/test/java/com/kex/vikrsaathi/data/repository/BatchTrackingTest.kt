@@ -154,6 +154,56 @@ class BatchTrackingTest {
     }
 
     @Test
+    fun chosenBatchIsTheOnlyLotReduced() = runBlocking {
+        val milk = tracked("Milk")
+        receive(milk, listOf(
+            ReceiptLot(4, "SOON", today + 2, false),
+            ReceiptLot(5, "LATER", today + 20, false)
+        ))
+        val later = batches.batchesFor(milk).single { it.lotNumber == "LATER" }
+        val item = db.itemDao().getItemById(milk)!!
+        val billId = bills.saveBill(
+            customerId = null,
+            lineItems = listOf(
+                BillLineItem(
+                    itemId = milk,
+                    name = item.name,
+                    mrp = 10.0,
+                    discount = 0.0,
+                    quantity = 2,
+                    batchId = later.id
+                )
+            ),
+            payment = BillPaymentRequest.KeepLegacy
+        )
+        val lots = batches.batchesFor(milk).associateBy { it.lotNumber }
+        assertEquals(4, lots.getValue("SOON").quantityOnHand)
+        assertEquals(3, lots.getValue("LATER").quantityOnHand)
+        val trace = batches.tracesForBill(billId).values.single().single()
+        assertEquals(later.id, trace.batchId)
+        assertEquals(2, trace.quantity)
+        assertEquals(today + 20, trace.expiryEpochDay)
+        val saved = db.batchDao().allocationsForBill(billId).single()
+        assertEquals("LATER", saved.lotNumber)
+        assertEquals(today + 20, saved.expiryEpochDay)
+        assertEquals(
+            "LATER · ${CivilDate.format(today + 20)}",
+            bills.batchNotesForPrint(billId, "Expiry unknown").values.single()
+        )
+    }
+
+    @Test
+    fun trackingOffLeavesChosenBatchUntouched() = runBlocking {
+        val milk = tracked("Milk")
+        receive(milk, listOf(ReceiptLot(4, "SOON", today + 2, false)))
+        val lot = batches.batchesFor(milk).single()
+        settings.batchTrackingEnabled = false
+        sellChosen(milk, lot.id, 1)
+        assertEquals(4, batches.batchesFor(milk).single().quantityOnHand)
+        assertEquals(3, db.itemDao().getItemById(milk)!!.stockQty)
+    }
+
+    @Test
     fun editRestoresTheOriginalLotsBeforeAllocatingAgain() = runBlocking {
         val milk = tracked("Milk")
         receive(milk, listOf(
@@ -259,6 +309,24 @@ class BatchTrackingTest {
                     lots = lots
                 )
             )
+        )
+    }
+
+    private suspend fun sellChosen(itemId: Long, batchId: Long, qty: Int): Long {
+        val item = db.itemDao().getItemById(itemId)!!
+        return bills.saveBill(
+            customerId = null,
+            lineItems = listOf(
+                BillLineItem(
+                    itemId = itemId,
+                    name = item.name,
+                    mrp = 10.0,
+                    discount = 0.0,
+                    quantity = qty,
+                    batchId = batchId
+                )
+            ),
+            payment = BillPaymentRequest.KeepLegacy
         )
     }
 

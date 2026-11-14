@@ -5,11 +5,11 @@
     <!-- Dashboard -->
     <string name="help_dashboard_title">Dashboard</string>
     <string name="help_dashboard_overview">Your home screen. See today\'s sales at a glance and jump to common tasks quickly.</string>
-    <string name="help_dashboard_s1_title">Today\'s sales</string>
+    <string name="help_dashboard_s1_title">At a glance</string>
     <string-array name="help_dashboard_s1">
-        <item>Total amount and bill count for today.</item>
-        <item>Top items chart shows your best sellers by quantity.</item>
-        <item>Low stock card lists items at or below your threshold — tap to open Inventory.</item>
+        <item>Today, Week, or Month changes the sales total, the trend line, and the top sellers.</item>
+        <item>Needs attention lists only what needs a look, such as low stock, overdue payments, or orders.</item>
+        <item>Money to follow up shows what customers still owe and what you owe vendors.</item>
     </string-array>
     <string name="help_dashboard_s2_title">Quick actions</string>
     <string-array name="help_dashboard_s2">
@@ -146,10 +146,25 @@
     <string-array name="help_stock_s1">
         <item>Search by name or barcode; toggle Low stock only to focus on shortages.</item>
         <item>Stock in / Adjust — change quantity with an optional note.</item>
-        <item>Tap a row to view recent stock movements (sales, adjustments, opening).</item>
+        <item>Tap a row to open that item’s stock history, including batches and expiry when tracking is on.</item>
         <item>Sales deduct stock on bill save; deleting a bill restores stock.</item>
         <item>Menu (⋮) — open options to switch View mode, import from Excel/CSV, or export your catalog.</item>
         <item>Import adds new items or updates existing ones; stock from the file is added to current quantity.</item>
+    </string-array>
+
+    <string name="help_stock_history_title">Stock history</string>
+    <string name="help_stock_history_overview">See how this item’s stock changed, and which batches are still on hand.</string>
+    <string name="help_stock_history_s1_title">On this page</string>
+    <string-array name="help_stock_history_s1">
+        <item>Stock now is the quantity in the shop at this moment.</item>
+        <item>Batches in stock appear only when expiry and batch tracking is on for this item. Each card is one lot, with its expiry date and how many are left.</item>
+        <item>May expire soon uses the same warning window as the rest of the shop. Held for inspection is a returned lot that is not for sale yet.</item>
+    </string-array>
+    <string name="help_stock_history_s2_title">The change list</string>
+    <string-array name="help_stock_history_s2">
+        <item>Each card is one change: a sale, an adjustment, a purchase, or a return. The number on the right is how much stock moved.</item>
+        <item>Stock after this is the quantity left immediately after that change.</item>
+        <item>Menu (⋮) opens the side panel. Choose which changes to show: all, added, removed, sales, adjustments, purchases, or returns.</item>
     </string-array>
 
     <!-- Bills history -->

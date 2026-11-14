@@ -1,5 +1,6 @@
 package com.kex.vikrsaathi.data.model
 
+import com.kex.vikrsaathi.data.model.analytics.SalesTrendPoint
 import com.kex.vikrsaathi.domain.dashboard.DashboardPeriod
 import com.kex.vikrsaathi.domain.dashboard.DateWindow
 import com.kex.vikrsaathi.domain.dashboard.GrossProfitCalculator
@@ -13,5 +14,6 @@ data class DashboardPeriodStats(
     val billCount: Int,
     val comparison: PeriodComparison,
     val topItems: List<DashboardTopItem>,
-    val profit: GrossProfitCalculator.Result
+    val profit: GrossProfitCalculator.Result,
+    val trend: List<SalesTrendPoint> = emptyList()
 )

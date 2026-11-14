@@ -390,6 +390,12 @@ class VendorRepository(
                         referenceId = id,
                         note = "Goods receipt"
                     )
+                    if (input.lots.isNotEmpty() && settingsRepository.batchTrackingEnabled) {
+                        val current = itemDao.getItemById(itemId)
+                        if (current != null && !current.trackBatches) {
+                            itemDao.update(current.copy(trackBatches = true))
+                        }
+                    }
                     batches.receive(itemId, acceptedBase, input.lots, id)
                 }
             }

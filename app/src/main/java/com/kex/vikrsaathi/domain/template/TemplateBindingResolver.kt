@@ -22,7 +22,9 @@ data class TemplateRenderContext(
     val staticImages: Map<String, Bitmap> = emptyMap(),
     val imageRenderScale: Float = 1f,
     val exchangeTitle: String? = null,
-    val exchangeLines: List<String> = emptyList()
+    val exchangeLines: List<String> = emptyList(),
+    /** Bill item id to the lot and expiry already allocated to that line. */
+    val batchNotes: Map<Long, String> = emptyMap()
 )
 
 data class TableRowData(
@@ -60,6 +62,11 @@ class TemplateBindingResolver {
         }
     }
 
+    private fun batchName(itemName: String, batchNote: String?): String {
+        if (batchNote.isNullOrBlank()) return itemName
+        return itemName + "\n" + batchNote
+    }
+
     fun resolveImage(key: DataBindingKey, context: TemplateRenderContext): Bitmap? {
         return when (key) {
             DataBindingKey.HEADER_IMAGE -> context.headerImage
@@ -87,7 +94,10 @@ class TemplateBindingResolver {
             TableRowData(
                 mapOf(
                     "sl" to (index + 1).toString(),
-                    "name" to WarrantyPolicy.printText(line.name, item.warrantySnapshot()),
+                    "name" to batchName(
+                        WarrantyPolicy.printText(line.name, item.warrantySnapshot()),
+                        context.batchNotes[item.id]
+                    ),
                     "quantity" to line.quantity.toString(),
                     "mrp" to PriceCalculator.formatAmount(line.mrp, context.currencySymbol),
                     "discount" to String.format(Locale.getDefault(), "%.1f", line.discount),

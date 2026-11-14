@@ -39,6 +39,9 @@
     <color name="surface_card">#FFFFFF</color>
     <color name="surface_panel">#FFFFFF</color>
     <color name="surface_muted">@color/orange_50</color>
+    <color name="dashboard_hero_surface">#FFF6EC</color>
+    <color name="dashboard_dues_surface">#E8F5E9</color>
+    <color name="dashboard_payable_surface">#FDECEA</color>
     <color name="surface_divider">@color/orange_100</color>
     <color name="stroke_default">@color/orange_200</color>
     <color name="stroke_subtle">@color/orange_100</color>
