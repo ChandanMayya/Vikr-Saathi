@@ -67,6 +67,9 @@ interface BillDao {
     @Query("SELECT COUNT(*) FROM bills WHERE billNumber = :billNumber")
     suspend fun countByBillNumber(billNumber: String): Int
 
+    @Query("SELECT * FROM bills WHERE billNumber = :billNumber LIMIT 1")
+    suspend fun getByBillNumber(billNumber: String): Bill?
+
     @Query("DELETE FROM bills")
     suspend fun deleteAll()
 

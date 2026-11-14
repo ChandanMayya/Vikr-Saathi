@@ -25,6 +25,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -40,6 +41,7 @@ import com.kex.vikrsaathi.util.FileShareHelper
 import com.kex.vikrsaathi.util.InventoryMode
 import com.kex.vikrsaathi.util.PriceCalculator
 import com.kex.vikrsaathi.util.ViewModelFactory
+import kotlinx.coroutines.launch
 import com.kex.vikrsaathi.ui.help.HelpScreen
 import com.kex.vikrsaathi.ui.help.installHelpMenu
 
@@ -367,6 +369,7 @@ class BillFragment : Fragment() {
             buyerAddress = binding.editBuyerAddress.text.toString().trim(),
             buyerPhone = binding.editBuyerPhone.text.toString().trim(),
             onHeld = { summary ->
+                if (!isAdded || _binding == null) return@holdBill
                 if (closeDrawer) {
                     binding.drawerLayout.closeDrawer(GravityCompat.END)
                 }
@@ -383,6 +386,7 @@ class BillFragment : Fragment() {
                 }
             },
             onEmpty = {
+                if (!isAdded) return@holdBill
                 Toast.makeText(requireContext(), R.string.hold_bill_empty, Toast.LENGTH_SHORT).show()
             }
         )
@@ -392,6 +396,7 @@ class BillFragment : Fragment() {
         viewModel.resumeHeldBill(
             draftId = draftId,
             onRestored = { restored ->
+                if (!isAdded || _binding == null) return@resumeHeldBill
                 suppressCustomerSearch = true
                 binding.autoCompleteCustomer.setText(restored.customerName, false)
                 binding.editBuyerAddress.setText(restored.buyerAddress)
@@ -402,6 +407,7 @@ class BillFragment : Fragment() {
                 updateTitle()
             },
             onMissing = {
+                if (!isAdded) return@resumeHeldBill
                 Toast.makeText(requireContext(), R.string.held_bill_missing, Toast.LENGTH_SHORT).show()
                 viewModel.clearBill()
             }
@@ -421,10 +427,21 @@ class BillFragment : Fragment() {
             openHeldBills()
         }
         binding.billDrawer.buttonEnableEditBill.setOnClickListener {
-            binding.drawerLayout.closeDrawer(GravityCompat.END)
-            isReadOnly = false
-            applyReadOnlyState()
-            requireActivity().invalidateOptionsMenu()
+            val billId = savedBillId()
+            viewLifecycleOwner.lifecycleScope.launch {
+                val linked = billId > 0L && (requireActivity().application as VikrSaathiApp)
+                    .customerFinanceRepository.exchangeRecords()
+                    .any { it.exchangeBillId == billId && it.voidedAt == null && it.voidsReturnId == null }
+                if (!isAdded || _binding == null) return@launch
+                if (linked) {
+                    Toast.makeText(requireContext(), R.string.exchange_bill_locked, Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+                binding.drawerLayout.closeDrawer(GravityCompat.END)
+                isReadOnly = false
+                applyReadOnlyState()
+                requireActivity().invalidateOptionsMenu()
+            }
         }
         binding.billDrawer.rowVersions.setOnClickListener {
             val billId = savedBillId()
@@ -939,6 +956,7 @@ class BillFragment : Fragment() {
                 ).show()
             }
         ) { id, autoRegister ->
+            if (!isAdded || _binding == null) return@saveBill
             if (autoRegister.hasChanges) {
                 val message = buildList {
                     if (autoRegister.customerCreated) add(getString(R.string.auto_saved_customer))
@@ -974,6 +992,7 @@ class BillFragment : Fragment() {
 
         setViewBillPdfActionsEnabled(false)
         viewModel.exportBillPdf(requireContext(), billId) { file ->
+            if (!isAdded || _binding == null) return@exportBillPdf
             setViewBillPdfActionsEnabled(true)
             if (file == null) {
                 Toast.makeText(requireContext(), R.string.pdf_generation_failed, Toast.LENGTH_SHORT).show()
@@ -997,6 +1016,7 @@ class BillFragment : Fragment() {
     }
 
     private fun setViewBillPdfActionsEnabled(enabled: Boolean) {
+        if (_binding == null) return
         binding.buttonViewBillDownloadPdf.isEnabled = enabled
         binding.buttonViewBillPrint.isEnabled = enabled
         binding.billDrawer.buttonDrawerDownloadPdf.isEnabled = enabled

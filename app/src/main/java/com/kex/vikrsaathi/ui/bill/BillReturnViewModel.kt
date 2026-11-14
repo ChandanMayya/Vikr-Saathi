@@ -261,9 +261,7 @@ class BillReturnViewModel(
     fun replacementPaise(): Long {
         val lines = replacementItems()
         if (lines.isEmpty()) return 0L
-        return Money.rupeesToPaise(
-            com.kex.vikrsaathi.data.repository.BillTotalsCalculator.grandTotal(lines, 0.0)
-        )
+        return lines.sumOf { it.lineTotal.let(Money::rupeesToPaise) }
     }
 
     fun exchangePlan(): ExchangeMoney? {

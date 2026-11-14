@@ -23,10 +23,12 @@ object WarrantyClaimPolicy {
     const val NO_RECORD = WarrantyPolicy.NO_RECORD
     const val BLOCKED_NONE = "A claim cannot be created because this sale has no saved warranty."
     const val BLOCKED_EXPIRED = "A claim cannot be created because this warranty has expired."
+    const val BLOCKED_RETURNED = "A claim cannot be created because this item has already been returned."
     const val ISSUE_REQUIRED = "Enter the issue or reason."
     const val RESOLUTION_REQUIRED = "Add the outcome for this status."
     const val OUTCOME_NOTE_REQUIRED = "Add an outcome note."
     const val STATUS_FOLLOWS_OUTCOME = "This claim status follows the saved provider outcome."
+    const val SAVE_IN_PROGRESS = "Wait for the current save to finish."
     const val HANDOVER_WAITING = "Awaiting customer"
     const val HANDOVER_RETURNED = "Returned to customer"
     const val HANDOVER_NOT_YET = "Item not yet returned to customer"
@@ -80,8 +82,20 @@ object WarrantyClaimPolicy {
     fun statusForOutcome(outcome: String): String =
         if (outcome == DECLINED) REJECTED else RESOLVED
 
-    fun handoverLabel(returned: Boolean): String =
-        if (returned) HANDOVER_RETURNED else HANDOVER_WAITING
+    fun handoverLabel(returned: Boolean, status: String = ""): String = when {
+        returned -> HANDOVER_RETURNED
+        status == AWAITING_CUSTOMER -> HANDOVER_WAITING
+        else -> HANDOVER_NOT_YET
+    }
+
+    /** Recording where the item was sent does not reopen a claim that is already closed. */
+    fun statusAfterServiceCentre(currentStatus: String, providerOutcome: String?): String {
+        if (!providerOutcome.isNullOrBlank()) return currentStatus
+        return when (currentStatus) {
+            RESOLVED, REJECTED, AWAITING_CUSTOMER -> currentStatus
+            else -> SENT_TO_SERVICE
+        }
+    }
 
     /**
      * Coverage uses the sale snapshot only. The end date is the last covered day.

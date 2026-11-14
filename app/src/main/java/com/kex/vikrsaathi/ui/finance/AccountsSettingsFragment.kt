@@ -1,12 +1,14 @@
 package com.kex.vikrsaathi.ui.finance
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kex.vikrsaathi.R
@@ -24,8 +26,10 @@ class AccountsSettingsFragment : Fragment() {
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) {
-        NotificationPreferences(requireContext()).permissionPrompted = true
+    ) { granted ->
+        val notes = NotificationPreferences(requireContext())
+        notes.permissionPrompted = true
+        notes.enabled = granted
         NotificationScheduler.reconcile(requireContext())
         bindAllowNotifications()
     }
@@ -84,12 +88,8 @@ class AccountsSettingsFragment : Fragment() {
                 .setTitle(R.string.notify_opt_in_title)
                 .setMessage(R.string.notify_opt_in_body)
                 .setPositiveButton(R.string.notify_continue) { _, _ ->
-                    notes.enabled = true
                     notes.permissionPrompted = true
-                    NotificationScheduler.reconcile(requireContext())
-                    if (Build.VERSION.SDK_INT >= 33) {
-                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
+                    enableNotificationsIfAllowed()
                 }
                 .setNegativeButton(R.string.notify_not_now) { _, _ ->
                     binding.switchAllowNotifications.isChecked = false
@@ -100,8 +100,25 @@ class AccountsSettingsFragment : Fragment() {
                 .show()
             return
         }
+        enableNotificationsIfAllowed()
+    }
+
+    private fun enableNotificationsIfAllowed() {
+        val notes = NotificationPreferences(requireContext())
+        if (Build.VERSION.SDK_INT >= 33 && !notificationsPermitted()) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
         notes.enabled = true
         NotificationScheduler.reconcile(requireContext())
+        bindAllowNotifications()
+    }
+
+    private fun notificationsPermitted(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     override fun onDestroyView() {

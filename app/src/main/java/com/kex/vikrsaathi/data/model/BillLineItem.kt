@@ -1,6 +1,7 @@
 package com.kex.vikrsaathi.data.model
 
 import com.kex.vikrsaathi.domain.bill.WarrantyPolicy
+import com.kex.vikrsaathi.domain.money.Money
 import com.kex.vikrsaathi.util.PriceCalculator
 
 /**
@@ -29,7 +30,7 @@ data class BillLineItem(
         get() = PriceCalculator.priceAfterDiscount(mrp, discount)
 
     val rawLineTotal: Double
-        get() = unitPriceAfterDiscount * quantity
+        get() = Money.paiseToRupees(Money.rupeesToPaise(unitPriceAfterDiscount) * quantity)
 
     val lineTotal: Double
         get() = rawLineTotal + roundOff

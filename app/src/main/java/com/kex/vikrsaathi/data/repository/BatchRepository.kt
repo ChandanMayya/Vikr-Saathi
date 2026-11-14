@@ -176,7 +176,7 @@ class BatchRepository(
     }
 
     suspend fun reverseRestock(batchId: Long?, quantity: Int, returnId: Long, itemId: Long) {
-        if (quantity <= 0) return
+        if (quantity <= 0 || !tracks(itemId)) return
         var left = quantity
         val candidates = buildList {
             if (batchId != null) dao.batch(batchId)?.let { add(it) }
@@ -200,6 +200,7 @@ class BatchRepository(
                 left -= take
             }
         }
+        if (candidates.isEmpty()) return
         if (left > 0) throw FinanceException(FinanceError.BATCH_SHORT)
     }
 

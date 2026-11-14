@@ -10,6 +10,7 @@ import com.kex.vikrsaathi.data.model.WarrantySaleLine
 import com.kex.vikrsaathi.data.repository.SettingsRepository
 import com.kex.vikrsaathi.data.repository.WarrantyClaimOutcome
 import com.kex.vikrsaathi.data.repository.WarrantyClaimRepository
+import com.kex.vikrsaathi.domain.bill.WarrantyClaimPolicy
 import kotlinx.coroutines.launch
 
 class WarrantyServiceViewModel(
@@ -39,7 +40,15 @@ class WarrantyServiceViewModel(
     val billExists: LiveData<Boolean> = _billExists
 
     private var searchToken = 0
+    private var lineToken = 0
+    private var claimToken = 0
     private var saving = false
+
+    private val _lineLoaded = MutableLiveData(false)
+    val lineLoaded: LiveData<Boolean> = _lineLoaded
+
+    private val _claimLoaded = MutableLiveData(false)
+    val claimLoaded: LiveData<Boolean> = _claimLoaded
 
     val shopName: String
         get() = settingsRepository.shopName
@@ -50,8 +59,8 @@ class WarrantyServiceViewModel(
             _loading.value = true
             val found = repository.search(query)
             if (token == searchToken) {
-                _lines.value = found
                 _loading.value = false
+                _lines.value = found
             }
         }
     }
@@ -61,8 +70,13 @@ class WarrantyServiceViewModel(
     }
 
     fun loadLine(billItemId: Long) {
+        val token = ++lineToken
+        _lineLoaded.value = false
         viewModelScope.launch {
-            _selectedLine.value = repository.saleLine(billItemId)
+            val line = repository.saleLine(billItemId)
+            if (token != lineToken) return@launch
+            _selectedLine.value = line
+            _lineLoaded.value = true
         }
     }
 
@@ -73,7 +87,10 @@ class WarrantyServiceViewModel(
         note: String,
         onResult: (WarrantyClaimOutcome) -> Unit
     ) {
-        if (saving) return
+        if (saving) {
+            onResult(WarrantyClaimOutcome.NotAllowed(WarrantyClaimPolicy.SAVE_IN_PROGRESS))
+            return
+        }
         saving = true
         viewModelScope.launch {
             val outcome = repository.createClaim(billItemId, issue, condition, note)
@@ -83,11 +100,15 @@ class WarrantyServiceViewModel(
     }
 
     fun loadClaim(claimId: Long) {
+        val token = ++claimToken
+        _claimLoaded.value = false
         viewModelScope.launch {
             val stored = repository.claim(claimId)
+            if (token != claimToken) return@launch
             _claim.value = stored
             _events.value = if (stored == null) emptyList() else repository.events(claimId)
             _billExists.value = repository.billStillExists(stored?.billId)
+            _claimLoaded.value = true
         }
     }
 
@@ -140,7 +161,10 @@ class WarrantyServiceViewModel(
         onResult: (WarrantyClaimOutcome) -> Unit,
         action: suspend () -> WarrantyClaimOutcome
     ) {
-        if (saving) return
+        if (saving) {
+            onResult(WarrantyClaimOutcome.NotAllowed(WarrantyClaimPolicy.SAVE_IN_PROGRESS))
+            return
+        }
         saving = true
         viewModelScope.launch {
             val outcome = action()

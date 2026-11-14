@@ -21,15 +21,17 @@ object ExchangeHistory {
         val returnedQuantity: Int
     )
 
-    fun relations(links: List<ReturnLink>): Map<Long, Relation> {
-        val result = linkedMapOf<Long, Relation>()
+    fun relations(links: List<ReturnLink>): Map<Long, List<Relation>> {
+        val result = linkedMapOf<Long, MutableList<Relation>>()
         links.filter { !it.voided && it.originalBillId != null && it.replacementBillId != null }
             .forEach { link ->
                 val originalId = link.originalBillId ?: return@forEach
                 val replacementId = link.replacementBillId ?: return@forEach
                 val quantity = link.returnedQuantity.coerceAtLeast(0)
-                result[originalId] = Relation(Role.ORIGINAL, replacementId, quantity)
-                result[replacementId] = Relation(Role.REPLACEMENT, originalId, quantity)
+                result.getOrPut(originalId) { mutableListOf() }
+                    .add(Relation(Role.ORIGINAL, replacementId, quantity))
+                result.getOrPut(replacementId) { mutableListOf() }
+                    .add(Relation(Role.REPLACEMENT, originalId, quantity))
             }
         return result
     }

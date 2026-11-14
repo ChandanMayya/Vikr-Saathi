@@ -28,7 +28,6 @@ interface WarrantyClaimDao {
            OR bi.itemName LIKE '%' || :query || '%'
            OR IFNULL(c.name, '') LIKE '%' || :query || '%'
         ORDER BY b.date DESC, bi.id DESC
-        LIMIT 40
         """
     )
     suspend fun searchSaleLines(query: String): List<WarrantySaleLine>

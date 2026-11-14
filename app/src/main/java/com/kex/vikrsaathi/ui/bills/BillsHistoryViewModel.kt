@@ -83,12 +83,14 @@ class BillsHistoryViewModel(
                     )
                 }
             )
-            _exchangeCards.value = relations.mapValues { (_, relation) ->
+            _exchangeCards.value = relations.mapValues { (_, relationList) ->
+                val first = relationList.first()
+                val labels = relationList.map { numbers[it.otherBillId].orEmpty() }.filter { it.isNotBlank() }
                 ExchangeCardLink(
-                    role = relation.role,
-                    otherBillId = relation.otherBillId,
-                    otherNumber = numbers[relation.otherBillId].orEmpty(),
-                    returnedQuantity = relation.returnedQuantity
+                    role = first.role,
+                    otherBillId = first.otherBillId,
+                    otherNumber = labels.joinToString(", "),
+                    returnedQuantity = relationList.sumOf { it.returnedQuantity }
                 )
             }
         }

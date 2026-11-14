@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kex.vikrsaathi.data.model.BillVersionDetails
+import com.kex.vikrsaathi.data.repository.BillNotFoundException
 import com.kex.vikrsaathi.data.repository.BillRepository
 import com.kex.vikrsaathi.data.repository.InsufficientStockException
 import com.kex.vikrsaathi.data.repository.InvoiceTemplateRepository
@@ -110,6 +111,8 @@ class BillVersionsViewModel(
             block()
         } catch (error: InsufficientStockException) {
             VersionActionOutcome.Shortage(error.shortfalls)
+        } catch (_: BillNotFoundException) {
+            VersionActionOutcome.Missing
         } catch (error: Exception) {
             VersionActionOutcome.Failed(error)
         }

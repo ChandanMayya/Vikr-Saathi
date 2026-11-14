@@ -407,7 +407,7 @@
     <string name="help_warranty_claims_s1_title">Each card</string>
     <string-array name="help_warranty_claims_s1">
         <item>Shows the claim reference, customer and item, original invoice, and date received.</item>
-        <item>Also shows the claim status, the provider outcome when one is saved, and Awaiting customer or Returned to customer.</item>
+        <item>Also shows the claim status, the provider outcome when one is saved, and whether the item is still with the shop, awaiting the customer, or returned.</item>
     </string-array>
     <string name="help_warranty_claims_s2_title">How to use</string>
     <string-array name="help_warranty_claims_s2">
@@ -426,11 +426,11 @@
     <string name="help_returns_s2_title">Exchange bills</string>
     <string-array name="help_returns_s2">
         <item>Open shows the exchange bill. Print prints that exchange bill.</item>
-        <item>An exchange stays on record. To undo the replacement, return that exchange bill separately.</item>
+        <item>Void removes an unchanged exchange bill and reverses this return. If that bill was edited or returned, it stays, and a cash return of it does not cancel this exchange.</item>
     </string-array>
     <string name="help_returns_s3_title">Void a return</string>
     <string-array name="help_returns_s3">
         <item>Void keeps the return and posts a reversal. Stock that was added back is removed.</item>
-        <item>An exchange cannot be voided from this list.</item>
+        <item>An edited exchange bill, or one that already has its own return, cannot be voided from this list.</item>
     </string-array>
 </resources>

@@ -70,7 +70,12 @@ object ReplacementRatePolicy {
     }
 
     fun sameDiscount(left: Double, right: Double): Boolean {
-        return Money.rupeesToPaise(left) == Money.rupeesToPaise(right)
+        return discountKey(left) == discountKey(right)
+    }
+
+    fun lineTotalPaise(unitRate: Double, discountPercent: Double, quantity: Int): Long {
+        val unitPaise = Money.rupeesToPaise(PriceCalculator.priceAfterDiscount(unitRate, discountPercent))
+        return unitPaise * quantity.coerceAtLeast(0)
     }
 
     fun compare(master: PriceQuote, billed: List<BilledPrice>): PriceComparison {
@@ -95,7 +100,14 @@ object ReplacementRatePolicy {
     }
 
     fun lineTotal(unitRate: Double, discountPercent: Double, quantity: Int): Double {
-        return PriceCalculator.priceAfterDiscount(unitRate, discountPercent) * quantity.coerceAtLeast(0)
+        return Money.paiseToRupees(lineTotalPaise(unitRate, discountPercent, quantity))
+    }
+
+    private fun discountKey(percent: Double): Long {
+        return java.math.BigDecimal.valueOf(percent)
+            .setScale(4, java.math.RoundingMode.HALF_UP)
+            .movePointRight(4)
+            .longValueExact()
     }
 
     /**

@@ -51,6 +51,12 @@ class WarrantyClaimRepository(
             )
             val blocked = WarrantyClaimPolicy.blockedMessage(coverage)
             if (blocked != null) return@withTransaction WarrantyClaimOutcome.NotAllowed(blocked)
+            val sold = database.billItemDao().getItemsForBill(line.billId)
+                .firstOrNull { it.id == billItemId }
+            val returned = database.customerLedgerDao().activeReturnedQuantity(billItemId)
+            if (sold != null && returned >= sold.quantity) {
+                return@withTransaction WarrantyClaimOutcome.NotAllowed(WarrantyClaimPolicy.BLOCKED_RETURNED)
+            }
             val snapshot = line.snapshot()
             var sequence = claims.maxSequence() + 1
             var reference = WarrantyClaimPolicy.reference(WarrantyClaimPolicy.yearOf(now), sequence)
@@ -144,11 +150,10 @@ class WarrantyClaimRepository(
             ?: return@withTransaction WarrantyClaimOutcome.NotAllowed("This claim could not be found.")
         val now = clock()
         val sent = sentEpochDay ?: WarrantyClaimPolicy.today(now)
-        val nextStatus = if (current.providerOutcome.isNullOrBlank()) {
-            WarrantyClaimPolicy.SENT_TO_SERVICE
-        } else {
-            current.status
-        }
+        val nextStatus = WarrantyClaimPolicy.statusAfterServiceCentre(
+            current.status,
+            current.providerOutcome
+        )
         claims.updateClaim(
             current.copy(
                 serviceCentre = centre.trim(),
@@ -261,11 +266,6 @@ class WarrantyClaimRepository(
         )
         WarrantyClaimOutcome.Saved(claimId)
     }
-
-    fun coverageNow(line: WarrantySaleLine): WarrantyClaimPolicy.Coverage =
-        WarrantyClaimPolicy.coverage(line.snapshot(), WarrantyClaimPolicy.today(clock()))
-
-    fun snapshotOf(claim: WarrantyClaim) = claim.claimSnapshot()
 }
 
 sealed class WarrantyClaimOutcome {

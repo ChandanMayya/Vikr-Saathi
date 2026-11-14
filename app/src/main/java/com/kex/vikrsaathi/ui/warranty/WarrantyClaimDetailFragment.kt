@@ -69,19 +69,77 @@ class WarrantyClaimDetailFragment : Fragment() {
             binding.layoutHandoverForm.isVisible = !binding.layoutHandoverForm.isVisible
         }
         binding.buttonConfirmHandover.setOnClickListener { confirmHandover() }
-        viewModel.claim.observe(viewLifecycleOwner) { claim ->
-            val missing = claim == null || claim.id != claimId
-            binding.textDetailMissing.isVisible = missing
-            binding.cardClaimDetail.isVisible = !missing
-            binding.cardServiceCentre.isVisible = !missing
-            binding.cardProviderOutcome.isVisible = !missing
-            binding.cardClaimStatus.isVisible = !missing
-            binding.buttonPrintSlip.isVisible = !missing
-            binding.cardHandover.isVisible = !missing && !claim?.providerOutcome.isNullOrBlank()
-            if (claim == null || missing) {
-                binding.textDetailMissing.text = getString(R.string.warranty_bill_missing)
-                return@observe
+        viewModel.claimLoaded.observe(viewLifecycleOwner) { renderClaim() }
+        viewModel.claim.observe(viewLifecycleOwner) { renderClaim() }
+        viewModel.events.observe(viewLifecycleOwner) { events ->
+            binding.textStatusHistory.text = events.joinToString("\n") { WarrantySlip.eventLine(it) }
+        }
+        viewModel.billExists.observe(viewLifecycleOwner) { exists ->
+            if (viewModel.claimLoaded.value != true) return@observe
+            val claim = viewModel.claim.value
+            val present = claim != null && claim.id == claimId
+            binding.buttonOpenBill.isVisible = exists && present
+            binding.textDetailBillMissing.isVisible = present && !exists
+        }
+        binding.buttonOpenBill.setOnClickListener {
+            val billId = viewModel.claim.value?.billId ?: return@setOnClickListener
+            findNavController().navigate(
+                R.id.action_warranty_detail_to_bill,
+                bundleOf(
+                    BillFragment.ARG_BILL_ID to billId,
+                    BillFragment.ARG_READ_ONLY to true
+                )
+            )
+        }
+        binding.buttonUpdateStatus.setOnClickListener {
+            val status = statusCode(binding.autoClaimStatus.text?.toString().orEmpty()) ?: return@setOnClickListener
+            val note = binding.editClaimOutcome.text?.toString().orEmpty()
+            if (WarrantyClaimPolicy.needsResolution(status) && note.isBlank()) {
+                binding.layoutClaimOutcome.error = WarrantyClaimPolicy.RESOLUTION_REQUIRED
+                return@setOnClickListener
             }
+            binding.layoutClaimOutcome.error = null
+            binding.buttonUpdateStatus.isEnabled = false
+            viewModel.updateStatus(claimId, status, note) { outcome ->
+                if (_binding == null) return@updateStatus
+                binding.buttonUpdateStatus.isEnabled = true
+                if (outcome is WarrantyClaimOutcome.NotAllowed) {
+                    binding.layoutClaimOutcome.error = outcome.message
+                }
+            }
+        }
+        binding.buttonPrintSlip.setOnClickListener {
+            val claim = viewModel.claim.value ?: return@setOnClickListener
+            val shopName = viewModel.shopName
+            val appContext = requireContext().applicationContext
+            binding.buttonPrintSlip.isEnabled = false
+            viewLifecycleOwner.lifecycleScope.launch {
+                val file = withContext(Dispatchers.IO) {
+                    WarrantySlipPdfGenerator.generate(appContext, claim, shopName)
+                }
+                if (_binding == null) return@launch
+                binding.buttonPrintSlip.isEnabled = true
+                PdfPrintHelper.print(requireContext(), file, claim.reference)
+            }
+        }
+        viewModel.loadClaim(claimId)
+    }
+
+    private fun renderClaim() {
+        if (_binding == null || viewModel.claimLoaded.value != true) return
+        val claim = viewModel.claim.value
+        val missing = claim == null || claim.id != claimId
+        binding.textDetailMissing.isVisible = missing
+        binding.cardClaimDetail.isVisible = !missing
+        binding.cardServiceCentre.isVisible = !missing
+        binding.cardProviderOutcome.isVisible = !missing
+        binding.cardClaimStatus.isVisible = !missing
+        binding.buttonPrintSlip.isVisible = !missing
+        binding.cardHandover.isVisible = !missing && !claim?.providerOutcome.isNullOrBlank()
+        if (claim == null || missing) {
+            binding.textDetailMissing.text = getString(R.string.warranty_bill_missing)
+            return
+        }
             binding.textDetailReference.text = claim.reference
             binding.textDetailStatus.text = WarrantyClaimPolicy.label(claim.status)
             val outcome = claim.providerOutcome
@@ -131,57 +189,9 @@ class WarrantyClaimDetailFragment : Fragment() {
                 binding.textHandoverState.setTextColor(requireContext().getColor(R.color.text_accent))
                 binding.buttonMarkReturned.setText(R.string.warranty_mark_returned)
             }
-        }
-        viewModel.events.observe(viewLifecycleOwner) { events ->
-            binding.textStatusHistory.text = events.joinToString("\n") { WarrantySlip.eventLine(it) }
-        }
-        viewModel.billExists.observe(viewLifecycleOwner) { exists ->
-            val claim = viewModel.claim.value
-            binding.buttonOpenBill.isVisible = exists && claim != null
-            binding.textDetailBillMissing.isVisible = claim != null && !exists
-        }
-        binding.buttonOpenBill.setOnClickListener {
-            val billId = viewModel.claim.value?.billId ?: return@setOnClickListener
-            findNavController().navigate(
-                R.id.action_warranty_detail_to_bill,
-                bundleOf(
-                    BillFragment.ARG_BILL_ID to billId,
-                    BillFragment.ARG_READ_ONLY to true
-                )
-            )
-        }
-        binding.buttonUpdateStatus.setOnClickListener {
-            val status = statusCode(binding.autoClaimStatus.text?.toString().orEmpty()) ?: return@setOnClickListener
-            val note = binding.editClaimOutcome.text?.toString().orEmpty()
-            if (WarrantyClaimPolicy.needsResolution(status) && note.isBlank()) {
-                binding.layoutClaimOutcome.error = WarrantyClaimPolicy.RESOLUTION_REQUIRED
-                return@setOnClickListener
-            }
-            binding.layoutClaimOutcome.error = null
-            binding.buttonUpdateStatus.isEnabled = false
-            viewModel.updateStatus(claimId, status, note) { outcome ->
-                if (_binding == null) return@updateStatus
-                binding.buttonUpdateStatus.isEnabled = true
-                if (outcome is WarrantyClaimOutcome.NotAllowed) {
-                    binding.layoutClaimOutcome.error = outcome.message
-                }
-            }
-        }
-        binding.buttonPrintSlip.setOnClickListener {
-            val claim = viewModel.claim.value ?: return@setOnClickListener
-            val shopName = viewModel.shopName
-            val appContext = requireContext().applicationContext
-            binding.buttonPrintSlip.isEnabled = false
-            viewLifecycleOwner.lifecycleScope.launch {
-                val file = withContext(Dispatchers.IO) {
-                    WarrantySlipPdfGenerator.generate(appContext, claim, shopName)
-                }
-                if (_binding == null) return@launch
-                binding.buttonPrintSlip.isEnabled = true
-                PdfPrintHelper.print(requireContext(), file, claim.reference)
-            }
-        }
-        viewModel.loadClaim(claimId)
+        val exists = viewModel.billExists.value == true
+        binding.buttonOpenBill.isVisible = exists
+        binding.textDetailBillMissing.isVisible = !exists
     }
 
     private fun recordService() {
@@ -232,7 +242,11 @@ class WarrantyClaimDetailFragment : Fragment() {
         if (_binding == null) return
         button.isEnabled = true
         if (outcome is WarrantyClaimOutcome.NotAllowed) {
-            errorLayout?.error = outcome.message
+            if (outcome.message == WarrantyClaimPolicy.SAVE_IN_PROGRESS || errorLayout == null) {
+                android.widget.Toast.makeText(requireContext(), outcome.message, android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                errorLayout.error = outcome.message
+            }
         }
     }
 

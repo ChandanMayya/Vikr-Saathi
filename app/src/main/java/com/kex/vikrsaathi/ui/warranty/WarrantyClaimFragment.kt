@@ -8,6 +8,7 @@ import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import android.widget.Toast
 import androidx.navigation.fragment.findNavController
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
@@ -32,29 +33,8 @@ class WarrantyClaimFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val billItemId = arguments?.getLong(ARG_BILL_ITEM_ID, 0L) ?: 0L
         viewModel.loadLine(billItemId)
-        viewModel.selectedLine.observe(viewLifecycleOwner) { line ->
-            if (line == null || line.billItemId != billItemId) {
-                showBlocked(getString(R.string.warranty_bill_missing))
-                return@observe
-            }
-            val coverage = WarrantyClaimPolicy.coverage(
-                line.snapshot(),
-                WarrantyClaimPolicy.today(System.currentTimeMillis())
-            )
-            val blocked = WarrantyClaimPolicy.blockedMessage(coverage)
-            if (blocked != null) {
-                showBlocked(blocked)
-                return@observe
-            }
-            binding.textClaimUnavailable.isVisible = false
-            binding.cardClaimSummary.isVisible = true
-            binding.cardNewClaim.isVisible = true
-            binding.textClaimItem.text = line.itemName
-            binding.textClaimInvoice.text = line.billNumber
-            val until = line.snapshot()?.let { WarrantyPolicy.validUntil(it) }.orEmpty()
-            binding.textClaimUntil.isVisible = until.isNotBlank()
-            binding.textClaimUntil.text = until
-        }
+        viewModel.lineLoaded.observe(viewLifecycleOwner) { renderSale(billItemId) }
+        viewModel.selectedLine.observe(viewLifecycleOwner) { renderSale(billItemId) }
         binding.buttonSaveClaim.setOnClickListener {
             val issue = binding.editClaimIssue.text?.toString().orEmpty()
             if (issue.isBlank()) {
@@ -77,15 +57,43 @@ class WarrantyClaimFragment : Fragment() {
                         bundleOf(WarrantyClaimDetailFragment.ARG_CLAIM_ID to outcome.claimId)
                     )
                     is WarrantyClaimOutcome.NotAllowed -> {
-                        if (outcome.message == WarrantyClaimPolicy.ISSUE_REQUIRED) {
-                            binding.layoutClaimIssue.error = outcome.message
-                        } else {
-                            showBlocked(outcome.message)
+                        when (outcome.message) {
+                            WarrantyClaimPolicy.ISSUE_REQUIRED ->
+                                binding.layoutClaimIssue.error = outcome.message
+                            WarrantyClaimPolicy.SAVE_IN_PROGRESS ->
+                                Toast.makeText(requireContext(), outcome.message, Toast.LENGTH_SHORT).show()
+                            else -> showBlocked(outcome.message)
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun renderSale(billItemId: Long) {
+        if (_binding == null || viewModel.lineLoaded.value != true) return
+        val line = viewModel.selectedLine.value
+        if (line == null || line.billItemId != billItemId) {
+            showBlocked(getString(R.string.warranty_bill_missing))
+            return
+        }
+        val coverage = WarrantyClaimPolicy.coverage(
+            line.snapshot(),
+            WarrantyClaimPolicy.today(System.currentTimeMillis())
+        )
+        val blocked = WarrantyClaimPolicy.blockedMessage(coverage)
+        if (blocked != null) {
+            showBlocked(blocked)
+            return
+        }
+        binding.textClaimUnavailable.isVisible = false
+        binding.cardClaimSummary.isVisible = true
+        binding.cardNewClaim.isVisible = true
+        binding.textClaimItem.text = line.itemName
+        binding.textClaimInvoice.text = line.billNumber
+        val until = line.snapshot()?.let { WarrantyPolicy.validUntil(it) }.orEmpty()
+        binding.textClaimUntil.isVisible = until.isNotBlank()
+        binding.textClaimUntil.text = until
     }
 
     private fun showBlocked(message: String) {

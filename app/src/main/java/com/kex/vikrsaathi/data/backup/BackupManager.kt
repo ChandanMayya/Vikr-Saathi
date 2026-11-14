@@ -615,12 +615,16 @@ class BackupManager(
         val decoded = WarrantyClaimBackup.decode(root)
         if (decoded.isEmpty()) return
         val dao = database.warrantyClaimDao()
+        val usedBillItems = mutableMapOf<Long, MutableSet<Long>>()
         decoded.forEach { row ->
             if (row.reference.isBlank() || dao.countReference(row.reference) > 0) return@forEach
             val billId = row.billLegacyId?.let { billIdMap[it] }
+                ?: database.billDao().getByBillNumber(row.billNumber)?.id
             val billItemId = if (billId != null) {
                 val items = database.billItemDao().getItemsForBill(billId)
-                WarrantyClaimBackup.matchingBillItemId(items, row.itemName, row.warrantyEndEpochDay)
+                val used = usedBillItems.getOrPut(billId) { mutableSetOf() }
+                WarrantyClaimBackup.matchingBillItemId(items, row.itemName, row.warrantyEndEpochDay, used)
+                    ?.also { used.add(it) }
             } else {
                 null
             }

@@ -116,6 +116,15 @@ interface CustomerLedgerDao {
     @Query("SELECT * FROM sales_returns WHERE billId = :billId ORDER BY occurredAt DESC, id DESC")
     suspend fun getReturnsForBill(billId: Long): List<SalesReturn>
 
+    @Query(
+        """
+        SELECT * FROM sales_returns
+        WHERE exchangeBillId = :billId AND voidedAt IS NULL AND voidsReturnId IS NULL
+        LIMIT 1
+        """
+    )
+    suspend fun activeExchangeReplacement(billId: Long): SalesReturn?
+
     @Query("SELECT * FROM sales_returns WHERE id = :id")
     suspend fun getReturnById(id: Long): SalesReturn?
 
@@ -133,6 +142,15 @@ interface CustomerLedgerDao {
 
     @Query("SELECT * FROM sales_return_lines WHERE returnId = :returnId")
     suspend fun getLinesForReturn(returnId: Long): List<SalesReturnLine>
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(l.quantity), 0) FROM sales_return_lines l
+        INNER JOIN sales_returns r ON r.id = l.returnId
+        WHERE l.billItemId = :billItemId AND r.voidedAt IS NULL AND r.voidsReturnId IS NULL
+        """
+    )
+    suspend fun activeReturnedQuantity(billItemId: Long): Int
 
     @Query("DELETE FROM sales_return_lines")
     suspend fun deleteAllReturnLines()

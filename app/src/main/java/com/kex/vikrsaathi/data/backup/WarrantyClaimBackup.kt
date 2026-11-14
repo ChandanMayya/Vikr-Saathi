@@ -24,8 +24,13 @@ object WarrantyClaimBackup {
     }
 
     /** Prefer the line whose saved warranty end date matches the claim. */
-    fun matchingBillItemId(items: List<BillItem>, itemName: String, endEpochDay: Long?): Long? {
-        val named = items.filter { it.itemName == itemName }
+    fun matchingBillItemId(
+        items: List<BillItem>,
+        itemName: String,
+        endEpochDay: Long?,
+        usedIds: Set<Long> = emptySet()
+    ): Long? {
+        val named = items.filter { it.itemName == itemName && it.id !in usedIds }
         return named.firstOrNull { it.warrantyEndEpochDay == endEpochDay }?.id ?: named.firstOrNull()?.id
     }
 

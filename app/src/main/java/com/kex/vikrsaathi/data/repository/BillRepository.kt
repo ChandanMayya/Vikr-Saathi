@@ -70,10 +70,13 @@ class BillRepository(
 
     suspend fun getPayments(billId: Long): List<BillPayment> = billPaymentDao.getForBill(billId)
 
-    suspend fun deleteBill(bill: Bill) {
+    suspend fun deleteBill(bill: Bill, allowLinkedReturn: Boolean = false) {
         database.withTransaction {
             if (database.billVersionDao().countForBill(bill.id) > 0) {
                 throw BillHistoryRetainedException(bill.id)
+            }
+            if (!allowLinkedReturn && billHasActiveReturn(bill.id)) {
+                throw BillLinkedReturnException(bill.id)
             }
             val items = billItemDao.getItemsForBill(bill.id)
             val quantities = StockDeltaCalculator.aggregateQuantities(
@@ -94,6 +97,13 @@ class BillRepository(
             batches.restoreBill(bill.id)
             billDao.deleteBill(bill)
             inventoryRepository.reverseBillStock(bill.id, quantities)
+        }
+    }
+
+    private suspend fun billHasActiveReturn(billId: Long): Boolean {
+        if (customerLedgerDao.activeExchangeReplacement(billId) != null) return true
+        return customerLedgerDao.getReturnsForBill(billId).any {
+            it.voidedAt == null && it.voidsReturnId == null
         }
     }
 
@@ -118,15 +128,7 @@ class BillRepository(
 
             if (existingBillId != null) {
                 val existing = billDao.getBillById(existingBillId)
-                    ?:                     return@withTransaction saveBill(
-                        customerId,
-                        lineItems,
-                        billRoundOff,
-                        null,
-                        payment,
-                        shortageAcknowledged,
-                        changeSummary = changeSummary
-                    )
+                    ?: throw BillNotFoundException()
                 val priorItems = billItemDao.getItemsForBill(existingBillId)
                 val priorPayments = billPaymentDao.getForBill(existingBillId)
                 oldQuantities = StockDeltaCalculator.aggregateQuantities(
@@ -352,9 +354,10 @@ class BillRepository(
     ): Long {
         val selected = versionDetails(billId, versionNumber) ?: return billId
         if (selected.isCurrent) return billId
+        if (billDao.getBillById(billId) == null) throw BillNotFoundException()
         return saveBill(
-            customerId = selected.version.customerId,
-            lineItems = selected.toLineItems(keepWarrantyDates = true),
+            customerId = liveCustomerId(selected.version.customerId),
+            lineItems = selected.toLineItems(keepWarrantyDates = true).withoutMissingItems(),
             billRoundOff = selected.version.roundOff,
             existingBillId = billId,
             payment = selected.toPaymentRequest(clearWhenEmpty = true),
@@ -374,8 +377,8 @@ class BillRepository(
             return duplicateBill(billId, shortageAcknowledged)
         }
         return saveBill(
-            customerId = selected.version.customerId,
-            lineItems = selected.toLineItems(keepWarrantyDates = false),
+            customerId = liveCustomerId(selected.version.customerId),
+            lineItems = selected.toLineItems(keepWarrantyDates = false).withoutMissingItems(),
             billRoundOff = selected.version.roundOff,
             payment = selected.toPaymentRequest(clearWhenEmpty = false),
             shortageAcknowledged = shortageAcknowledged
@@ -437,6 +440,20 @@ class BillRepository(
     private suspend fun versionDetails(billId: Long, versionNumber: Int): BillVersionDetails? =
         getVersionHistory(billId).firstOrNull { it.version.versionNumber == versionNumber }
 
+    private suspend fun liveCustomerId(customerId: Long?): Long? {
+        if (customerId == null) return null
+        return customerId.takeIf { database.customerDao().getCustomerById(it) != null }
+    }
+
+    private suspend fun List<BillLineItem>.withoutMissingItems(): List<BillLineItem> = map { line ->
+        val itemId = line.itemId
+        if (itemId != null && database.itemDao().getItemById(itemId) == null) {
+            line.copy(itemId = null)
+        } else {
+            line
+        }
+    }
+
     private fun BillVersionDetails.toLineItems(keepWarrantyDates: Boolean): List<BillLineItem> = items.map { item ->
         val warranty = item.warrantySnapshot()
         BillLineItem(
@@ -462,6 +479,8 @@ class BillRepository(
 
     suspend fun billNumberExists(billNumber: String): Boolean =
         billDao.countByBillNumber(billNumber) > 0
+
+    suspend fun getBillByNumber(billNumber: String): Bill? = billDao.getByBillNumber(billNumber)
 
     suspend fun getDashboardPeriodStats(
         period: DashboardPeriod,

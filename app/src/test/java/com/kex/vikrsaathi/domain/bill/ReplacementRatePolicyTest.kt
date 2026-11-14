@@ -99,10 +99,10 @@ class ReplacementRatePolicyTest {
             ExchangeHistory.ReturnLink(3L, 4L, voided = true, returnedQuantity = 1)
         )
         val relations = ExchangeHistory.relations(links)
-        assertEquals(ExchangeHistory.Role.ORIGINAL, relations.getValue(1L).role)
-        assertEquals(2L, relations.getValue(1L).otherBillId)
-        assertEquals(ExchangeHistory.Role.REPLACEMENT, relations.getValue(2L).role)
-        assertEquals(1L, relations.getValue(2L).otherBillId)
+        assertEquals(ExchangeHistory.Role.ORIGINAL, relations.getValue(1L).single().role)
+        assertEquals(2L, relations.getValue(1L).single().otherBillId)
+        assertEquals(ExchangeHistory.Role.REPLACEMENT, relations.getValue(2L).single().role)
+        assertEquals(1L, relations.getValue(2L).single().otherBillId)
         assertTrue(relations[3L] == null && relations[4L] == null)
     }
 

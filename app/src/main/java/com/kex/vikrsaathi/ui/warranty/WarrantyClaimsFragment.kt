@@ -112,7 +112,7 @@ class WarrantyClaimsFragment : Fragment() {
                     binding.textClaimOutcome.setTextColor(context.getColor(outcomeColor))
                 }
                 val returned = claim.handoverEpochDay != null
-                binding.textClaimHandover.text = WarrantyClaimPolicy.handoverLabel(returned)
+                binding.textClaimHandover.text = WarrantyClaimPolicy.handoverLabel(returned, claim.status)
                 val handoverColor = if (returned) R.color.text_secondary_dark else R.color.text_accent
                 binding.textClaimHandover.setTextColor(context.getColor(handoverColor))
                 binding.root.setOnClickListener { onClick(claim) }

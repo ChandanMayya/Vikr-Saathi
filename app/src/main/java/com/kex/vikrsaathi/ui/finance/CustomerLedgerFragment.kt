@@ -167,15 +167,34 @@ class CustomerLedgerFragment : Fragment() {
                     return@confirm
                 }
                 viewLifecycleOwner.lifecycleScope.launch {
-                    val billId = bill.text?.toString()?.toLongOrNull()
+                    val typed = bill.text?.toString()?.trim().orEmpty()
+                    val byNumber = if (typed.isEmpty()) null else app.billRepository.getBillByNumber(typed)
+                    val billId = byNumber?.id ?: typed.toLongOrNull()?.takeIf {
+                        app.billRepository.getBillWithDetails(it) != null
+                    }
+                    val moneyPaise = FinanceUi.parseAmountPaise(refund.text?.toString())
+                    val creditPaise = FinanceUi.parseAmountPaise(credit.text?.toString())
+                    if (moneyPaise > 0L && creditPaise > 0L) {
+                        toast(getString(R.string.return_error_settlement))
+                        return@launch
+                    }
+                    if (quantity > 0 && billId == null) {
+                        toast(getString(R.string.return_error_line))
+                        return@launch
+                    }
                     val resolved = if (quantity > 0 && item != null) {
                         val billItems = if (billId != null) app.database.billItemDao().getItemsForBill(billId) else emptyList()
-                        val match = billItems.firstOrNull { it.itemId == item.id }
+                        val match = billItems.firstOrNull { it.itemId == item.id && it.quantity > 0 }
+                        if (match == null) {
+                            toast(getString(R.string.return_error_line))
+                            return@launch
+                        }
                         listOf(
                             com.kex.vikrsaathi.data.repository.ReturnLineInput(
-                                itemId = match?.itemId ?: item.id,
-                                itemName = match?.itemName ?: item.name,
-                                quantity = quantity
+                                itemId = match.itemId ?: item.id,
+                                itemName = match.itemName,
+                                quantity = quantity,
+                                billItemId = match.id
                             )
                         )
                     } else {
@@ -186,8 +205,8 @@ class CustomerLedgerFragment : Fragment() {
                             customerId = customerId,
                             billId = billId,
                             reason = reason.text?.toString().orEmpty(),
-                            moneyRefundedPaise = FinanceUi.parseAmountPaise(refund.text?.toString()),
-                            creditAdjustmentPaise = FinanceUi.parseAmountPaise(credit.text?.toString()),
+                            moneyRefundedPaise = moneyPaise,
+                            creditAdjustmentPaise = creditPaise,
                             lines = resolved,
                             occurredAt = System.currentTimeMillis()
                         )

@@ -1,5 +1,8 @@
 package com.kex.vikrsaathi.ui.bill
 
+import android.app.Dialog
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -17,9 +20,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kex.vikrsaathi.R
 import com.kex.vikrsaathi.VikrSaathiApp
+import com.kex.vikrsaathi.databinding.DialogExchangeNotVoidableBinding
 import com.kex.vikrsaathi.databinding.FragmentBillReturnsBinding
 import com.kex.vikrsaathi.databinding.ItemBillReturnBinding
 import com.kex.vikrsaathi.databinding.ItemBillReturnLineBinding
+import com.kex.vikrsaathi.domain.finance.FinanceError
+import com.kex.vikrsaathi.domain.finance.FinanceException
 import com.kex.vikrsaathi.domain.finance.PaymentMethod
 import com.kex.vikrsaathi.domain.finance.RefundMethod
 import com.kex.vikrsaathi.domain.money.Money
@@ -77,16 +83,20 @@ class BillReturnsFragment : Fragment() {
 
     private fun confirmVoid(row: BillReturnRow) {
         if (row.record.voidedAt != null || row.record.voidsReturnId != null) return
-        if (row.record.exchangeBillId != null) {
-            Toast.makeText(requireContext(), R.string.return_error_exchange_void, Toast.LENGTH_LONG).show()
-            return
-        }
         val input = EditText(requireContext()).apply {
             hint = getString(R.string.return_reason_optional)
         }
+        val exchangeNumber = row.replacementNumber.orEmpty()
+        val message = if (row.record.exchangeBillId == null) {
+            getString(R.string.return_void_message)
+        } else if (exchangeNumber.isBlank()) {
+            getString(R.string.return_exchange_void_confirm_unnamed)
+        } else {
+            getString(R.string.return_exchange_void_confirm, exchangeNumber)
+        }
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.return_void_title)
-            .setMessage(R.string.return_void_message)
+            .setMessage(message)
             .setView(input)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.return_void) { _, _ ->
@@ -96,11 +106,57 @@ class BillReturnsFragment : Fragment() {
                     reason,
                     onDone = { Toast.makeText(requireContext(), R.string.return_voided, Toast.LENGTH_SHORT).show() },
                     onError = { error ->
-                        Toast.makeText(requireContext(), FinanceUi.message(requireContext(), error), Toast.LENGTH_LONG).show()
+                        if ((error as? FinanceException)?.code == FinanceError.EXCHANGE_NOT_VOIDABLE) {
+                            showExchangeNotVoidable(row)
+                        } else {
+                            Toast.makeText(requireContext(), FinanceUi.message(requireContext(), error), Toast.LENGTH_LONG).show()
+                        }
                     }
                 )
             }
             .show()
+    }
+
+    private fun showExchangeNotVoidable(row: BillReturnRow) {
+        val exchangeId = row.record.exchangeBillId ?: return
+        if (!isAdded) return
+        val number = row.replacementNumber.orEmpty()
+        val content = DialogExchangeNotVoidableBinding.inflate(layoutInflater)
+        content.textExchangeVoidBody.text = if (number.isBlank()) {
+            getString(R.string.return_exchange_void_body_unnamed)
+        } else {
+            getString(R.string.return_exchange_void_body, number)
+        }
+        content.textExchangeVoidStepOpen.text = if (number.isBlank()) {
+            getString(R.string.return_exchange_void_step_open_unnamed)
+        } else {
+            getString(R.string.return_exchange_void_step_open, number)
+        }
+        content.buttonOpenExchangeFromVoid.text = if (number.isBlank()) {
+            getString(R.string.return_exchange_void_open)
+        } else {
+            getString(R.string.return_exchange_void_open_numbered, number)
+        }
+        val dialog = Dialog(requireContext())
+        dialog.setContentView(content.root)
+        dialog.setCancelable(true)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.setOnShowListener {
+            val shownWidth = (resources.displayMetrics.widthPixels * 0.92f).toInt()
+            dialog.window?.setLayout(shownWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+            dialog.window?.decorView?.setPadding(0, 0, 0, 0)
+        }
+        content.buttonCloseExchangeVoid.setOnClickListener { dialog.dismiss() }
+        content.buttonDismissExchangeVoid.setOnClickListener { dialog.dismiss() }
+        content.buttonOpenExchangeFromVoid.setOnClickListener {
+            dialog.dismiss()
+            if (!isAdded) return@setOnClickListener
+            findNavController().navigate(
+                R.id.action_returns_to_bill,
+                bundleOf(BillFragment.ARG_BILL_ID to exchangeId, BillFragment.ARG_READ_ONLY to true)
+            )
+        }
+        dialog.show()
     }
 
     private fun printExchange(billId: Long) {

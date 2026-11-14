@@ -67,7 +67,8 @@ data class CustomerPaymentResult(
 data class ReturnLineInput(
     val itemId: Long?,
     val itemName: String,
-    val quantity: Int
+    val quantity: Int,
+    val billItemId: Long? = null
 )
 
 data class BillReturnLineInput(
@@ -274,6 +275,10 @@ class CustomerFinanceRepository(
             throw FinanceException(FinanceError.AMOUNT_REQUIRED)
         }
         if (lines.any { it.quantity <= 0 }) throw FinanceException(FinanceError.RETURN_QTY_INVALID)
+        if (moneyRefundedPaise > 0L && creditAdjustmentPaise > 0L) {
+            throw FinanceException(FinanceError.INVALID_SETTLEMENT)
+        }
+        if (lines.isNotEmpty() && billId == null) throw FinanceException(FinanceError.RETURN_LINE_UNKNOWN)
         if (lines.isEmpty() && moneyRefundedPaise == 0L && creditAdjustmentPaise == 0L) {
             throw FinanceException(FinanceError.NOTHING_TO_RECORD)
         }
@@ -298,7 +303,10 @@ class CustomerFinanceRepository(
             )
             val billItems = billId?.let { billItemDao.getItemsForBill(it) }.orEmpty()
             lines.forEach { line ->
-                val matches = billItems.filter { it.itemId != null && it.itemId == line.itemId && it.quantity > 0 }
+                val matches = when {
+                    line.billItemId != null -> billItems.filter { it.id == line.billItemId }
+                    else -> billItems.filter { it.itemId != null && it.itemId == line.itemId && it.quantity > 0 }
+                }
                 val unitCost = if (matches.isNotEmpty() && matches.all { it.unitCostPaise != null }) {
                     val qty = matches.sumOf { it.quantity }
                     val total = matches.sumOf { it.quantity * (it.unitCostPaise ?: 0L) }
@@ -312,8 +320,10 @@ class CustomerFinanceRepository(
                     itemName = line.itemName,
                     quantity = line.quantity,
                     unitCost = unitCost,
-                    billItemId = null,
-                    lineValuePaise = 0L,
+                    billItemId = line.billItemId ?: matches.singleOrNull()?.id,
+                    lineValuePaise = matches.singleOrNull()?.let {
+                        Money.rupeesToPaise(it.finalPrice) * line.quantity
+                    } ?: 0L,
                     restock = true,
                     occurredAt = occurredAt
                 )
@@ -427,8 +437,9 @@ class CustomerFinanceRepository(
             if (original.voidedAt != null || original.voidsReturnId != null) {
                 throw FinanceException(FinanceError.ALREADY_VOIDED)
             }
-            if (original.exchangeBillId != null) {
-                throw FinanceException(FinanceError.EXCHANGE_NOT_VOIDABLE)
+            val exchangeBillId = original.exchangeBillId
+            if (exchangeBillId != null) {
+                releaseExchangeBill(exchangeBillId)
             }
             val lines = ledgerDao.getLinesForReturn(returnId)
             lines.filter { it.restock }.forEach { line ->
@@ -550,7 +561,7 @@ class CustomerFinanceRepository(
             it.entryType == CustomerLedgerType.CREDIT_SALE && it.billId != null && it.id !in reversed
         }.groupBy { it.billId!! }
         val returns = entries.filter {
-            it.entryType == CustomerLedgerType.SALES_RETURN && it.billId != null
+            it.entryType == CustomerLedgerType.SALES_RETURN && it.billId != null && it.id !in reversed
         }.groupBy { it.billId!! }
         val allocated = ledgerDao.getAllAllocations()
             .groupBy { it.billId }
@@ -789,6 +800,20 @@ class CustomerFinanceRepository(
                 billId = billId
             )
         )
+    }
+
+    private suspend fun releaseExchangeBill(exchangeBillId: Long) {
+        if (billDao.getBillById(exchangeBillId) == null) return
+        if (database.billVersionDao().countForBill(exchangeBillId) > 0) {
+            throw FinanceException(FinanceError.EXCHANGE_NOT_VOIDABLE)
+        }
+        val hasOwnReturn = ledgerDao.getReturnsForBill(exchangeBillId).any {
+            it.voidedAt == null && it.voidsReturnId == null
+        }
+        if (hasOwnReturn) throw FinanceException(FinanceError.EXCHANGE_NOT_VOIDABLE)
+        val bills = billRepository ?: throw FinanceException(FinanceError.EXCHANGE_NOT_VOIDABLE)
+        val bill = billDao.getBillById(exchangeBillId) ?: return
+        bills.deleteBill(bill, allowLinkedReturn = true)
     }
 
     suspend fun reverseSalesReturnStock() {
